@@ -1,13 +1,14 @@
 #pragma once
 
-#include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
+#include "esphome/core/component.h"
+
 
 namespace esphome {
 namespace pt2258 {
 
 class PT2258 : public Component, public i2c::I2CDevice {
- public:
+public:
   void dump_config() override;
   void setup() override;
   void setMasterVolume(int volume);
@@ -28,8 +29,8 @@ class PT2258 : public Component, public i2c::I2CDevice {
   bool isPowered();
   void setPower(bool power);
 
- protected:
- private:
+protected:
+private:
   bool power_ = false;
   int defaultVolume_ = 50;
   int masterVolume_ = defaultVolume_;
@@ -45,5 +46,5 @@ class PT2258 : public Component, public i2c::I2CDevice {
   void setChannelVolume(int volume, int channel);
 };
 
-}  // namespace pt2258
-}  // namespace esphome
+} // namespace pt2258
+} // namespace esphome

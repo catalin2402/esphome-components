@@ -16,7 +16,8 @@ void PT2323::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mute: %s", this->mute_ ? "true" : "false");
   ESP_LOGCONFIG(TAG, "  Mute Front: %s", this->muteFront_ ? "true" : "false");
   ESP_LOGCONFIG(TAG, "  Mute Rear: %s", this->muteRear_ ? "true" : "false");
-  ESP_LOGCONFIG(TAG, "  Mute Subwoofer: %s", this->muteSubwoofer_ ? "true" : "false");
+  ESP_LOGCONFIG(TAG, "  Mute Subwoofer: %s",
+                this->muteSubwoofer_ ? "true" : "false");
   ESP_LOGCONFIG(TAG, "  Mute Center: %s", this->muteCenter_ ? "true" : "false");
   LOG_I2C_DEVICE(this);
 }
@@ -107,5 +108,5 @@ void PT2323::sendData(uint8_t data) {
   }
 }
 
-}  // namespace pt2323
-}  // namespace esphome
+} // namespace pt2323
+} // namespace esphome

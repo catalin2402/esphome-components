@@ -1,18 +1,18 @@
 #pragma once
 
-#include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
+#include "esphome/core/component.h"
 
 namespace esphome {
 namespace tuya_doorbell {
 
 enum class TuyaDatapointType : uint8_t {
-  RAW = 0x00,      // variable length
-  BOOLEAN = 0x01,  // 1 byte (0/1)
-  INTEGER = 0x02,  // 4 byte
-  STRING = 0x03,   // variable length
-  ENUM = 0x04,     // 1 byte
-  BITMASK = 0x05,  // 2 bytes
+  RAW = 0x00,     // variable length
+  BOOLEAN = 0x01, // 1 byte (0/1)
+  INTEGER = 0x02, // 4 byte
+  STRING = 0x03,  // variable length
+  ENUM = 0x04,    // 1 byte
+  BITMASK = 0x05, // 2 bytes
 };
 
 struct TuyaDatapoint {
@@ -62,7 +62,7 @@ enum class TuyaInitState : uint8_t {
 };
 
 class TuyaDoorbell : public Component, public uart::UARTDevice {
- public:
+public:
   uint8_t ringMode_ = 0;
   uint8_t volume_ = 10;
   uint8_t sound_ = 1;
@@ -70,25 +70,30 @@ class TuyaDoorbell : public Component, public uart::UARTDevice {
   void setup() override;
   void loop() override;
   void dump_config() override;
-  void register_listener(uint8_t datapoint_id, const std::function<void(TuyaDatapoint)> &func);
+  void register_listener(uint8_t datapoint_id,
+                         const std::function<void(TuyaDatapoint)> &func);
   void set_datapoint_value(TuyaDatapoint datapoint);
   void setRingMode(uint8_t mode);
   void setVolume(uint8_t volume);
   void setSound(uint8_t sound);
   void ring();
 
- protected:
+protected:
   void handle_char_(uint8_t c);
   void handle_datapoints_(const uint8_t *buffer, size_t len);
   bool validate_message_();
   void updateDoorbell();
 
-  void handle_command_(TuyaCommandTypeV3 command, uint8_t version, const uint8_t *buffer, size_t len);
+  void handle_command_(TuyaCommandTypeV3 command, uint8_t version,
+                       const uint8_t *buffer, size_t len);
   void send_command_(uint8_t command, const uint8_t *buffer, uint16_t len);
-  void send_command_(TuyaCommandTypeV3 command, const uint8_t *buffer, uint16_t len) {
-    this->send_command_((uint8_t) command, buffer, len);
+  void send_command_(TuyaCommandTypeV3 command, const uint8_t *buffer,
+                     uint16_t len) {
+    this->send_command_((uint8_t)command, buffer, len);
   }
-  void send_empty_command_(TuyaCommandTypeV3 command) { this->send_command_(command, nullptr, 0); }
+  void send_empty_command_(TuyaCommandTypeV3 command) {
+    this->send_command_(command, nullptr, 0);
+  }
 
   TuyaInitState init_state_ = TuyaInitState::INIT_HEARTBEAT;
   WifiState wifi_state_ = WifiState::DISCONNECTED;
@@ -104,5 +109,5 @@ class TuyaDoorbell : public Component, public uart::UARTDevice {
   std::vector<uint8_t> rx_message_;
 };
 
-}  // namespace tuya_doorbell
-}  // namespace esphome
+} // namespace tuya_doorbell
+} // namespace esphome

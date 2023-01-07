@@ -4,11 +4,10 @@ import esphome.codegen as cg
 from esphome.const import CONF_OPTIONS
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
 
-DEPENDENCIES = ['pt2323']
+DEPENDENCIES = ["pt2323"]
 
 
 PT2323Select = pt2323_ns.class_("PT2323Select", select.Select, cg.Component)
-
 
 def ensure_option_map(value):
     cv.check_not_templatable(value)

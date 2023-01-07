@@ -1,5 +1,5 @@
-#include "esphome/core/log.h"
 #include "PT2323Select.h"
+#include "esphome/core/log.h"
 
 namespace esphome {
 namespace pt2323 {
@@ -43,9 +43,10 @@ void PT2323Select::dump_config() {
   ESP_LOGCONFIG(TAG, "  Options are:");
   auto options = this->traits.get_options();
   for (auto i = 0; i < this->mappings_.size(); i++) {
-    ESP_LOGCONFIG(TAG, "    %i: %s", this->mappings_.at(i), options.at(i).c_str());
+    ESP_LOGCONFIG(TAG, "    %i: %s", this->mappings_.at(i),
+                  options.at(i).c_str());
   }
 }
 
-}  // namespace pt2323
-}  // namespace esphome
+} // namespace pt2323
+} // namespace esphome

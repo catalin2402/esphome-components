@@ -8,7 +8,6 @@ DEPENDENCIES = ["pt2258"]
 
 PT2258Number = pt2258_ns.class_("PT2258Number", number.Number, cg.Component)
 
-
 CONF_NUMBER_TYPE = "number_type"
 CONF_ON_MUTE = "on_mute"
 NUMBER_TYPE = {

@@ -1,13 +1,14 @@
 #pragma once
 
-#include "esphome/core/component.h"
 #include "esphome/components/i2c/i2c.h"
+#include "esphome/core/component.h"
+
 
 namespace esphome {
 namespace pt2323 {
 
 class PT2323 : public Component, public i2c::I2CDevice {
- public:
+public:
   void dump_config() override;
   void setup() override;
   void setDefaults();
@@ -30,7 +31,7 @@ class PT2323 : public Component, public i2c::I2CDevice {
   bool isPowered();
   int getSelectedInput();
 
- private:
+private:
   int input_ = 4;
   bool power_ = false;
   bool enhance_ = false;
@@ -43,5 +44,5 @@ class PT2323 : public Component, public i2c::I2CDevice {
   void sendData(uint8_t data);
 };
 
-}  // namespace pt2323
-}  // namespace esphome
+} // namespace pt2323
+} // namespace esphome

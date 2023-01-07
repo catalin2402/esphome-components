@@ -3,16 +3,21 @@ import esphome.config_validation as cv
 from esphome.components import uart
 from esphome.const import CONF_ID
 
-DEPENDENCIES = ['uart']
+DEPENDENCIES = ["uart"]
 
-tuya_doorbell = cg.esphome_ns.namespace('tuya_doorbell')
-TuyaDoorbell = tuya_doorbell.class_(
-    'TuyaDoorbell', cg.Component, uart.UARTDevice)
+tuya_doorbell = cg.esphome_ns.namespace("tuya_doorbell")
+TuyaDoorbell = tuya_doorbell.class_("TuyaDoorbell", cg.Component, uart.UARTDevice)
 
-CONF_TUYA2_ID = 'tuya_doorbell'
-CONFIG_SCHEMA = cv.Schema({
-    cv.GenerateID(): cv.declare_id(TuyaDoorbell),
-}).extend(cv.COMPONENT_SCHEMA).extend(uart.UART_DEVICE_SCHEMA)
+CONF_TUYA2_ID = "tuya_doorbell"
+CONFIG_SCHEMA = (
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.declare_id(TuyaDoorbell),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+    .extend(uart.UART_DEVICE_SCHEMA)
+)
 
 
 def to_code(config):

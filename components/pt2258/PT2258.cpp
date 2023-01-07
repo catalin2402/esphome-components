@@ -1,6 +1,7 @@
 #include "PT2258.h"
-#include "esphome/core/log.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/log.h"
+
 
 namespace esphome {
 namespace pt2258 {
@@ -131,8 +132,8 @@ void PT2258::setVolume() {
     subwooferVolume_ = 0;
   }
 
-  if (masterVolume_ == frontVolume_ && masterVolume_ == rearVolume_ && masterVolume_ == centerVolume_ &&
-      masterVolume_ == subwooferVolume_) {
+  if (masterVolume_ == frontVolume_ && masterVolume_ == rearVolume_ &&
+      masterVolume_ == centerVolume_ && masterVolume_ == subwooferVolume_) {
     setChannelVolume(masterVolume_, 0);
   } else {
     setChannelVolume(subwooferVolume_, 1);
@@ -159,42 +160,43 @@ void PT2258::setChannelVolume(int volume, int channel) {
   }
 
   switch (channel) {
-    case 0:
-      x1 = x1 + 0xe0;
-      x10 = x10 + 0xd0;
-      break;
-    case 1:
-      x1 = x1 + 0x90;
-      x10 = x10 + 0x80;
-      break;
-    case 2:
-      x1 = x1 + 0x50;
-      x10 = x10 + 0x40;
-      break;
-    case 3:
-      x1 = x1 + 0x10;
-      x10 = x10 + 0x00;
-      break;
-    case 4:
-      x1 = x1 + 0x30;
-      x10 = x10 + 0x20;
-      break;
-    case 5:
-      x1 = x1 + 0x70;
-      x10 = x10 + 0x60;
-      break;
-    case 6:
-      x1 = x1 + 0xb0;
-      x10 = x10 + 0xa0;
+  case 0:
+    x1 = x1 + 0xe0;
+    x10 = x10 + 0xd0;
+    break;
+  case 1:
+    x1 = x1 + 0x90;
+    x10 = x10 + 0x80;
+    break;
+  case 2:
+    x1 = x1 + 0x50;
+    x10 = x10 + 0x40;
+    break;
+  case 3:
+    x1 = x1 + 0x10;
+    x10 = x10 + 0x00;
+    break;
+  case 4:
+    x1 = x1 + 0x30;
+    x10 = x10 + 0x20;
+    break;
+  case 5:
+    x1 = x1 + 0x70;
+    x10 = x10 + 0x60;
+    break;
+  case 6:
+    x1 = x1 + 0xb0;
+    x10 = x10 + 0xa0;
   }
 
-  ESP_LOGD("PT2258", "Sending data twice: x10:%d x1:%d", x10, x1);
-  bool result1 = this->write_bytes(x10, nullptr, 0, false);
-  bool result2 = this->write_bytes(x1, nullptr, 0, true);
-  bool result3 = this->write_bytes(x10, nullptr, 0, false);
-  bool result4 = this->write_bytes(x1, nullptr, 0, true);
+  ESP_LOGD("PT2258", "Sending data twice: x10:0x%02X x1:0x%02X", x10, x1);
 
-  if (!(result1 && result2 && result3 && result4)) {
+  bool result1 = this->write_byte(x10, x1);
+  delay(5);
+  bool result2 = this->write_byte(x10, x1);
+  delay(5);
+
+  if (!result1 && result2) {
     ESP_LOGE("PT2258", "Error writing data");
     this->status_set_warning();
   } else {
@@ -202,5 +204,5 @@ void PT2258::setChannelVolume(int volume, int channel) {
   }
 }
 
-}  // namespace pt2258
-}  // namespace esphome
+} // namespace pt2258
+} // namespace esphome
