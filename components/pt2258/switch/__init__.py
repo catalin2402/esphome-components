@@ -19,7 +19,7 @@ SwitchTurnOffTrigger = pt2258_ns.class_(
 
 CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
     {
-        cv.GenerateID(): cv.CONF_PT2258_ID(PT2258Switch),
+        cv.GenerateID(): cv.declare_id(PT2258Switch),
         cv.GenerateID(CONF_PT2258_ID): cv.use_id(PT2258),
         cv.Optional(CONF_ON_TURN_ON): automation.validate_automation(
             {
