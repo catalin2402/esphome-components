@@ -29,6 +29,8 @@ void PT2323Switch::setup() {
   case 6:
     this->state_ = parent_->isMutedCenter();
     break;
+  case 7:
+    this->state_ = parent_->isPowered();
   }
 
   this->publish_state(this->state_);
@@ -36,6 +38,14 @@ void PT2323Switch::setup() {
 }
 
 void PT2323Switch::write_state(bool state) {
+
+  if (this->switch_type_ == 7) {
+    parent_->setPower(state);
+    if (state) {
+      parent_->setDefaults();
+    }
+  }
+
   if (!parent_->isPowered()) {
     ESP_LOGD(TAG, "PT2323 is turned off");
     return;
@@ -64,6 +74,7 @@ void PT2323Switch::write_state(bool state) {
     parent_->setMuteCenter(state);
     break;
   }
+
   ESP_LOGD(TAG, "Setting switch: %s", ONOFF(state));
   this->state_ = state;
   this->publish_state(this->state_);

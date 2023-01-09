@@ -3,7 +3,6 @@
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/core/component.h"
 
-
 namespace esphome {
 namespace pt2323 {
 
