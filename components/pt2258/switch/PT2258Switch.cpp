@@ -27,7 +27,6 @@ void PT2258Switch::write_state(bool state) {
 
 void PT2258Switch::dump_config() {
   LOG_SWITCH("", "PT2358 Switch", this);
-  ESP_LOGCONFIG(TAG, "  Switch type: %u", this->switch_type_);
 }
 
 void PT2258Switch::set_parent(PT2258 *parent) { this->parent_ = parent; }
