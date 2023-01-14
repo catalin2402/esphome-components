@@ -1,10 +1,10 @@
-#include "SilvercrestButton.h"
+#include "silvercrest_button.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
 namespace silvercrest {
 
-static const char *TAG = "SilvercrestButton.button";
+static const char *TAG = "Silvercrest.button";
 
 void SilvercrestButton::press_action() {
   switch (this->button_type_) {
