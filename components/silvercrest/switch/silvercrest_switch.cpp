@@ -6,40 +6,47 @@ namespace silvercrest {
 
 static const char *TAG = "Silvercrest.switch";
 
-void SilvercrestSwitch::setup() {
-  this->set_optimistic(true);
-  this->set_assumed_state(true);
-}
-
 void SilvercrestSwitch::write_state(bool state) {
   switch (this->channel_) {
   case 0:
     if (state)
-      parent_->SendCode_A_ON() else parent_->SendCode_A_OFF();
+      parent_->SendCode_A_ON();
+    else
+      parent_->SendCode_A_OFF();
     break;
   case 1:
     if (state)
-      parent_->SendCode_B_ON() else parent_->SendCode_B_OFF();
+      parent_->SendCode_B_ON();
+    else
+      parent_->SendCode_B_OFF();
     break;
   case 2:
     if (state)
-      parent_->SendCode_C_ON() else parent_->SendCode_C_OFF();
+      parent_->SendCode_C_ON();
+    else
+      parent_->SendCode_C_OFF();
     break;
   case 3:
     if (state)
-      parent_->SendCode_D_ON() else parent_->SendCode_D_OFF();
+      parent_->SendCode_D_ON();
+    else
+      parent_->SendCode_D_OFF();
     break;
   case 4:
     if (state)
-      parent_->SendCode_M_ON() else parent_->SendCode_M_OFF();
+      parent_->SendCode_M_ON();
+    else
+      parent_->SendCode_M_OFF();
     break;
   }
+
+  this->publish_state(state);
 
   ESP_LOGD(TAG, "Sending command");
 }
 
 void SilvercrestSwitch::dump_config() {
-  LOG_BUTTON("", "SilvercrestSwitch", this);
+  LOG_SWITCH("", "SilvercrestSwitch", this);
   ESP_LOGCONFIG(TAG, "  Channel: %u", this->channel_);
 }
 
@@ -51,5 +58,6 @@ void SilvercrestSwitch::set_parent(Silvercrest *parent) {
   this->parent_ = parent;
 }
 
+bool SilvercrestSwitch::assumed_state() { return true; }
 } // namespace silvercrest
 } // namespace esphome

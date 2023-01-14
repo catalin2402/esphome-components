@@ -1,4 +1,4 @@
-from esphome.components import template_switch
+from esphome.components import switch
 import esphome.config_validation as cv
 import esphome.codegen as cg
 from esphome.const import CONF_ID
