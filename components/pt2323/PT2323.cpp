@@ -38,6 +38,7 @@ void PT2323::muteAllChannels(bool mute) {
 }
 
 void PT2323::muteChannel(int channel, bool mute) {
+  this->channelsMuted_[channel] = mute;
   switch (channel) {
   case 1:
     sendData(mute ? 0xF1 : 0xF0);
