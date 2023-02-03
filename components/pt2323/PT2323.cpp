@@ -18,6 +18,7 @@ void PT2323::dump_config() {
 }
 
 void PT2323::setInput(int input) {
+  this->input_ = input;
   sendData(0xC7 + this->input_);
 }
 
