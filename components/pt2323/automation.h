@@ -61,5 +61,29 @@ protected:
   PT2323 *pt2323_;
 };
 
+template <typename... Ts> class SetEnhanceAction : public Action<Ts...> {
+public:
+  explicit SetEnhanceAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
+  TEMPLATABLE_VALUE(bool, enhance);
+  void play(Ts... x) override {
+    this->pt2323_->setEnhance(this->enhance_.value(x...));
+  }
+
+protected:
+  PT2323 *pt2323_;
+};
+
+template <typename... Ts> class SetBoostAction : public Action<Ts...> {
+public:
+  explicit SetBoostAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
+  TEMPLATABLE_VALUE(bool, boost);
+  void play(Ts... x) override {
+    this->pt2323_->setBoost(this->boost_.value(x...));
+  }
+
+protected:
+  PT2323 *pt2323_;
+};
+
 } // namespace pt2323
 } // namespace esphome

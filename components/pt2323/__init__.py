@@ -20,6 +20,8 @@ SetMuteAction = pt2323_ns.class_("SetMuteAction", automation.Action)
 SetUnmuteAction = pt2323_ns.class_("SetUnmuteAction", automation.Action)
 SetMuteChannelAction = pt2323_ns.class_("SetMuteChannelAction", automation.Action)
 SetUnmuteChannelAction = pt2323_ns.class_("SetUnmuteChannelAction", automation.Action)
+SetEnhanceAction = pt2323_ns.class_("SetEnhanceAction", automation.Action)
+SetBoostAction = pt2323_ns.class_("SetBoostAction", automation.Action)
 
 CONF_PT2323_ID = "pt2323_id"
 CONFIG_SCHEMA = (
@@ -58,21 +60,29 @@ async def to_code(config):
         )
     ),
 )
-async def select_set_input_to_code(config, action_id, template_arg, args):
+async def pt2323_set_input_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config[CONF_INPUT], args, cg.size_t)
     cg.add(var.set_input(template_))
     return var
 
-@automation.register_action("pt2323.mute", SetMuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA))
-async def select_set_mute_to_code(config, action_id, template_arg, args):
+@automation.register_action(
+    "pt2323.mute",
+    SetMuteAction,
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+)
+async def pt2323_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
 
-@automation.register_action("pt2323.unmute", SetUnmuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA))
-async def select_set_unmute_to_code(config, action_id, template_arg, args):
+@automation.register_action(
+    "pt2323.unmute",
+    SetUnmuteAction,
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+)
+async def pt2323_unmute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
@@ -88,7 +98,7 @@ async def select_set_unmute_to_code(config, action_id, template_arg, args):
         )
     ),
 )
-async def select_set_mute_channel_to_code(config, action_id, template_arg, args):
+async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
@@ -106,9 +116,45 @@ async def select_set_mute_channel_to_code(config, action_id, template_arg, args)
         )
     ),
 )
-async def select_set_input_to_code(config, action_id, template_arg, args):
+async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
     cg.add(var.set_channel(template_))
+    return var
+
+@automation.register_action(
+    "pt2323.set_enhance",
+    SetEnhanceAction,
+    automation.maybe_simple_id(
+        OPERATION_BASE_SCHEMA.extend(
+            {
+                cv.Required(CONF_ENAHNCE): cv.boolean,
+            }
+        )
+    ),
+)
+async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    template_ = await cg.templatable(config[CONF_ENAHNCE], args, cg.bool_)
+    cg.add(var.set_enhance(template_))
+    return var
+
+@automation.register_action(
+    "pt2323.set_boost",
+    SetBoostAction,
+    automation.maybe_simple_id(
+        OPERATION_BASE_SCHEMA.extend(
+            {
+                cv.Required(CONF_BOOST): cv.boolean,
+            }
+        )
+    ),
+)
+async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    var = cg.new_Pvariable(action_id, template_arg, paren)
+    template_ = await cg.templatable(config[CONF_BOOST], args, cg.bool_)
+    cg.add(var.set_boost(template_))
     return var

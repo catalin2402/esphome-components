@@ -22,7 +22,7 @@ public:
   void muteAllChannels(bool mute);
   void muteChannel(int channel, bool mute);
 
-  int getSelectedInput() { return input_; }
+  int getInput() { return input_; }
   bool getEnhance() { return enhance_; }
   bool getMute() { return mute_; }
   bool getBoost() { return boost_; }
