@@ -45,7 +45,14 @@ OPERATION_BASE_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await i2c.register_i2c_device(var, config)
-
+    if CONF_INPUT in config:
+        cg.add(var.setInput(config[CONF_INPUT]))   
+    if CONF_ENAHNCE in config:
+        cg.add(var.setEnhance(config[CONF_ENAHNCE]))
+    if CONF_BOOST in config:
+        cg.add(var.setBoost(config[CONF_BOOST]))
+    if CONF_MUTE in config:
+        cg.add(var.muteAllChannels(config[CONF_MUTE]))        
 
 @automation.register_action(
     "pt2323.set_input",
