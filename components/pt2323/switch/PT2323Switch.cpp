@@ -6,6 +6,21 @@ namespace pt2323 {
 
 static const char *TAG = "PT2323.switch";
 
+void PT2323Switch::setup() {
+  switch (this->type_) {
+  case 0:
+    this->state_ = this->parent_->getEnhance();
+    break;
+  case 1:
+    this->state_ = this->parent_->getBoost();
+    break;
+  case 3:
+    this->state_ = this->parent_->getMute();
+    break;
+  }
+  this->publish_state(this->state_);
+}
+
 void PT2323Switch::dump_config() {
   LOG_SWITCH("", "PT2323 Switch", this);
   ESP_LOGCONFIG(TAG, "  Type: %u", this->type_);

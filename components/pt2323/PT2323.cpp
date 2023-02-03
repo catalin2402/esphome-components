@@ -71,6 +71,7 @@ void PT2323::sendData(uint8_t data) {
     ESP_LOGE(TAG, "Error writing data");
     this->status_set_warning();
   } else {
+    ESP_LOGD(TAG, "Sent data: %X", data);
     this->status_clear_warning();
   }
 }

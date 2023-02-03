@@ -7,7 +7,16 @@ namespace pt2323 {
 static const char *const TAG = "PT2323.select";
 
 void PT2323Select::setup() {
-  auto value = this->at(0);
+  uint8_t enum_value = this->parent_->getSelectedInput();
+  auto options = this->traits.get_options();
+  auto mappings = this->mappings_;
+  auto it = std::find(mappings.cbegin(), mappings.cend(), enum_value);
+  if (it == mappings.end()) {
+    ESP_LOGW(TAG, "Invalid value %u", enum_value);
+    return;
+  }
+  size_t mapping_idx = std::distance(mappings.cbegin(), it);
+  auto value = this->at(mapping_idx);
   this->publish_state(value.value());
 }
 

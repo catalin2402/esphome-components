@@ -11,6 +11,9 @@ class PT2323Select : public select::Select, public Component {
 public:
   void setup() override;
   void dump_config() override;
+  float get_setup_priority() const override {
+    return esphome::setup_priority::AFTER_WIFI;
+  }
 
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
   void set_select_mappings(std::vector<uint8_t> mappings) {

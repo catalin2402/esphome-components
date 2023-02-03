@@ -8,9 +8,11 @@ namespace pt2323 {
 
 class PT2323 : public Component, public i2c::I2CDevice {
 public:
-  float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
+  float get_setup_priority() const override {
+    return esphome::setup_priority::AFTER_WIFI;
+  }
   void dump_config() override;
-  
+
   void setup() override;
   void setDefaults();
 
@@ -20,6 +22,10 @@ public:
   void muteAllChannels(bool mute);
   void muteChannel(int channel, bool mute);
 
+  int getSelectedInput() { return input_; }
+  bool getEnhance() { return enhance_; }
+  bool getMute() { return mute_; }
+  bool getBoost() { return boost_; }
 
 private:
   int input_ = 0;
