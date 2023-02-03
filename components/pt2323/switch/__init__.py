@@ -1,34 +1,46 @@
 from esphome.components import switch
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_ID, CONF_ON_TURN_OFF, CONF_ON_TURN_ON, CONF_TRIGGER_ID
+from esphome.const import (
+    CONF_ID,
+    CONF_ON_TURN_OFF,
+    CONF_ON_TURN_ON,
+    CONF_TRIGGER_ID,
+    CONF_TYPE,
+)
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
 from esphome import automation
 
 DEPENDENCIES = ["pt2323"]
 
-CONF_TYPE = "type"
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
 
 SWITCH_TYPE = {
-    "ENHANCE": 0,
-    "BOOST": 1,
-    "MUTE": 2,
-    "MUTE_ALL": 3,
+    "enhance": 0,
+    "boost": 1,
+    "mute": 2,
+    "mute_all": 3,
 }
 
 PT2323Switch = pt2323_ns.class_("PT2323Switch", switch.Switch, cg.Component)
+SwitchTurnOnTrigger = pt2323_ns.class_(
+    "SwitchTurnOnTrigger", automation.Trigger.template()
+)
+SwitchTurnOffTrigger = pt2323_ns.class_(
+    "SwitchTurnOffTrigger", automation.Trigger.template()
+)
 
-SwitchTurnOnTrigger = pt2323_ns.class_("SwitchTurnOnTrigger", automation.Trigger.template())
-SwitchTurnOffTrigger = pt2323_ns.class_("SwitchTurnOffTrigger", automation.Trigger.template())
 
-
-def validate_config(value):
-    if value[CONF_TYPE] == "MUTE" and CONF_CHANNEL_A not in value and CONF_CHANNEL_B not in value:
+def vaildate(value):
+    if (
+        value[CONF_TYPE] == "MUTE"
+        and CONF_CHANNEL_A not in value
+        and CONF_CHANNEL_B not in value
+    ):
         raise cv.Invalid("At least one channel is needed for mute switch")
     return value
-    
+
 
 CONFIG_SCHEMA = cv.All(
     switch.SWITCH_SCHEMA.extend(
@@ -47,10 +59,10 @@ CONFIG_SCHEMA = cv.All(
                 {
                     cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SwitchTurnOffTrigger),
                 }
-            )
+            ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
-    validate_config,
+    vaildate,
 )
 
 

@@ -26,6 +26,7 @@ public:
   bool getEnhance() { return enhance_; }
   bool getMute() { return mute_; }
   bool getBoost() { return boost_; }
+  bool getChannelMute(int channel) { return channelsMuted_[channel]; }
 
 private:
   int input_ = 0;
@@ -33,6 +34,7 @@ private:
   bool boost_ = false;
   bool mute_ = false;
   void sendData(uint8_t data);
+  bool channelsMuted_[6];
 };
 
 } // namespace pt2323

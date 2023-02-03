@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PT2323.h"
+#include "pt2323.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 

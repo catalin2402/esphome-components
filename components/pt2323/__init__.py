@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import i2c
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_INPUT, CONF_CHANNEL
 from esphome import automation
 
 DEPENDENCIES = ["i2c"]
@@ -12,8 +12,6 @@ PT2323 = pt2323_ns.class_("PT2323", cg.Component, i2c.I2CDevice)
 CONF_ENAHNCE = "enhance"
 CONF_BOOST = "boost"
 CONF_MUTE = "mute"
-CONF_INPUT = "input"
-CONF_CHANNEL = "channel"
 
 SetInputAction = pt2323_ns.class_("SetInputAction", automation.Action)
 SetMuteAction = pt2323_ns.class_("SetMuteAction", automation.Action)
