@@ -1,7 +1,7 @@
 from esphome.components import select
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_OPTIONS
+from esphome.const import CONF_OPTIONS, CONF_ID
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
 
 DEPENDENCIES = ["pt2323"]
@@ -21,7 +21,8 @@ CONFIG_SCHEMA = select.SELECT_SCHEMA.extend(
 
 
 async def to_code(config):
-    var = await select.new_select(config, options=config[CONF_OPTIONS])
+    var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    await select.register_select(var, config, options=config[CONF_OPTIONS])
     parent = await cg.get_variable(config[CONF_PT2323_ID])
     cg.add(var.set_parent(parent))

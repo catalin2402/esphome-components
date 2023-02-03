@@ -12,8 +12,10 @@ void PT2323Select::setup() {
 }
 
 void PT2323Select::control(const std::string &value) {
-  auto idx = this->index_of(value);
-  this->parent_->setInput(idx.value());
+  auto options = this->traits.get_options();
+  auto opt_it = std::find(options.cbegin(), options.cend(), value);
+  size_t idx = std::distance(options.cbegin(), opt_it);
+  this->parent_->setInput(idx);
   this->publish_state(value);
 }
 
