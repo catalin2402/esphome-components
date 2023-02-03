@@ -1,4 +1,4 @@
-#include "PT2323Select.h"
+#include "pt2323_select.h"
 #include "esphome/core/log.h"
 
 namespace esphome {

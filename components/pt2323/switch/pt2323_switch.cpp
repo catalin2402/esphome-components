@@ -1,4 +1,4 @@
-#include "PT2323Switch.h"
+#include "pt2323_switch.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -22,6 +22,12 @@ void PT2323Switch::setup() {
   case 1:
     this->state_ = this->parent_->getBoost();
     break;
+  case 2:
+    if (this->channel_a_ != 0)
+      this->state_ = this->parent_->getChannelMute(this->channel_a_);
+    if (this->channel_b_ != 0)
+      this->state_ = this->parent_->getChannelMute(this->channel_b_);
+    break;
   case 3:
     this->state_ = this->parent_->getMute();
     break;
@@ -37,6 +43,12 @@ void PT2323Switch::update() {
     break;
   case 1:
     newState = this->parent_->getBoost();
+    break;
+  case 2:
+    if (this->channel_a_ != 0)
+      newState = this->parent_->getChannelMute(this->channel_a_);
+    if (this->channel_b_ != 0)
+      newState = this->parent_->getChannelMute(this->channel_b_);
     break;
   case 3:
     newState = this->parent_->getMute();
