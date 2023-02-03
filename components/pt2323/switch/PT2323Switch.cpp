@@ -6,6 +6,14 @@ namespace pt2323 {
 
 static const char *TAG = "PT2323.switch";
 
+void PT2323Switch::dump_config() {
+  LOG_SWITCH("", "PT2323 Switch", this);
+  ESP_LOGCONFIG(TAG, "  Type: %u", this->type_);
+  ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
+  ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);
+  ESP_LOGCONFIG(TAG, "  State: %s", ONOFF(this->state_));
+}
+
 void PT2323Switch::setup() {
   switch (this->type_) {
   case 0:
@@ -21,12 +29,23 @@ void PT2323Switch::setup() {
   this->publish_state(this->state_);
 }
 
-void PT2323Switch::dump_config() {
-  LOG_SWITCH("", "PT2323 Switch", this);
-  ESP_LOGCONFIG(TAG, "  Type: %u", this->type_);
-  ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
-  ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);
-  ESP_LOGCONFIG(TAG, "  State: %s", ONOFF(this->state_));
+void PT2323Switch::update() {
+  bool newState;
+  switch (this->type_) {
+  case 0:
+    newState = this->parent_->getEnhance();
+    break;
+  case 1:
+    newState = this->parent_->getBoost();
+    break;
+  case 3:
+    newState = this->parent_->getMute();
+    break;
+  }
+  if (this->state_ != newState) {
+    this->state_ = newState;
+    this->publish_state(this->state_);
+  }
 }
 
 void PT2323Switch::write_state(bool state) {

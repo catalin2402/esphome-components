@@ -7,10 +7,12 @@
 namespace esphome {
 namespace pt2323 {
 
-class PT2323Switch : public switch_::Switch, public Component {
+class PT2323Switch : public switch_::Switch, public PollingComponent {
 public:
+  PT2323Switch() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
+  void update() override;
   float get_setup_priority() const override {
     return esphome::setup_priority::AFTER_WIFI;
   }
