@@ -8,7 +8,6 @@ static const char *const TAG = "pt2323.select";
 
 void PT2323Select::dump_config() {
   LOG_SELECT("", "PT2323 Select", this);
-  ESP_LOGCONFIG(TAG, "  Selected input: %s", this->state_);
 }
 
 void PT2323Select::setup() {

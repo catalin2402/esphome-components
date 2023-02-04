@@ -6,8 +6,6 @@ namespace pt2323 {
 
 static const char *const TAG = "pt2323";
 
-void PT2323::setup() { setDefaults(); }
-
 void PT2323::dump_config() {
   ESP_LOGCONFIG(TAG, "PT2323:");
   LOG_I2C_DEVICE(this);
@@ -16,6 +14,8 @@ void PT2323::dump_config() {
   ESP_LOGCONFIG(TAG, "  Boost: %s", ONOFF(this->boost_));
   ESP_LOGCONFIG(TAG, "  Mute: %s", ONOFF(this->mute_));
 }
+
+void PT2323::setup() { setDefaults(); }
 
 void PT2323::setInput(int input) {
   this->input_ = input;
