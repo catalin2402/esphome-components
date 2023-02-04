@@ -12,9 +12,6 @@ public:
   PT2323Switch() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
-  float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
-  }
   void update() override;
 
   void set_type(uint8_t type) { this->type_ = type; }

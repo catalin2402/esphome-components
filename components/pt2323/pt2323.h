@@ -10,9 +10,6 @@ class PT2323 : public Component, public i2c::I2CDevice {
 public:
   void setup() override;
   void dump_config() override;
-  float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
-  }
   void setDefaults();
 
   void setInput(int input);

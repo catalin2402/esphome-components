@@ -12,9 +12,6 @@ public:
   PT2323Select() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
-  float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
-  }
   void update() override;
 
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
