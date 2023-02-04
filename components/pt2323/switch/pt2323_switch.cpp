@@ -4,10 +4,10 @@
 namespace esphome {
 namespace pt2323 {
 
-static const char *TAG = "PT2323.switch";
+static const char *TAG = "pt2323.switch";
 
 void PT2323Switch::dump_config() {
-  LOG_SWITCH("", "PT2323 Switch", this);
+  LOG_SWITCH(TAG, "PT2323 Switch", this);
   ESP_LOGCONFIG(TAG, "  Type: %u", this->type_);
   ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
   ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);

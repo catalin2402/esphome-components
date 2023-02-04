@@ -4,9 +4,12 @@
 namespace esphome {
 namespace pt2323 {
 
-static const char *const TAG = "PT2323.select";
+static const char *const TAG = "pt2323.select";
 
-void PT2323Select::dump_config() { LOG_SELECT("", "PT2323 Select", this); }
+void PT2323Select::dump_config() {
+  LOG_SELECT("", "PT2323 Select", this);
+  ESP_LOGCONFIG(TAG, "  Selected input: %s", this->state_);
+}
 
 void PT2323Select::setup() {
   auto value = this->traits.get_options().at(this->parent_->getInput());
