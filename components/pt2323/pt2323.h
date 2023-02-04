@@ -11,6 +11,9 @@ public:
   void setup() override;
   void dump_config() override;
   void setDefaults();
+  float get_setup_priority() const override {
+    return esphome::setup_priority::AFTER_WIFI;
+  }
 
   void setInput(int input);
   void setEnhance(bool enhance);

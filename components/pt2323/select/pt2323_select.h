@@ -13,6 +13,9 @@ public:
   void setup() override;
   void dump_config() override;
   void update() override;
+  float get_setup_priority() const override {
+    return esphome::setup_priority::AFTER_WIFI;
+  }
 
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
 

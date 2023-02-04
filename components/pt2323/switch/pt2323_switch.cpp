@@ -7,10 +7,12 @@ namespace pt2323 {
 static const char *TAG = "pt2323.switch";
 
 void PT2323Switch::dump_config() {
-  LOG_SWITCH(TAG, "PT2323 Switch", this);
+  LOG_SWITCH("", "PT2323 Switch", this);
   ESP_LOGCONFIG(TAG, "  Type: %u", this->type_);
-  ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
-  ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);
+  if (this->type_ == 2) {
+    ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
+    ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);
+  }
   ESP_LOGCONFIG(TAG, "  State: %s", ONOFF(this->state_));
 }
 
