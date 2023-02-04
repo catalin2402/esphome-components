@@ -1,28 +1,27 @@
 #pragma once
 
-#include "../pt2323.h"
+#include "../PT2323.h"
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
 
 namespace esphome {
 namespace pt2323 {
 
-class PT2323Select : public select::Select, public PollingComponent {
+class PT2323Select : public select::Select, public Component {
 public:
-  PT2323Select() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
-  void update() override;
-  float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
-  }
 
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
+  void set_select_mappings(std::vector<uint8_t> mappings) {
+    this->mappings_ = std::move(mappings);
+  }
 
 protected:
   void control(const std::string &value) override;
-  std::string state_;
+
   PT2323 *parent_;
+  std::vector<uint8_t> mappings_;
 };
 
 } // namespace pt2323

@@ -3,6 +3,7 @@
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/core/component.h"
 
+
 namespace esphome {
 namespace pt2258 {
 
@@ -10,25 +11,39 @@ class PT2258 : public Component, public i2c::I2CDevice {
 public:
   void dump_config() override;
   void setup() override;
-  float get_setup_priority() const override {
-    return esphome::setup_priority::AFTER_WIFI;
-  }
-  void setDefaultVolume(int volume);
   void setMasterVolume(int volume);
-  void setChannelVolume(int volume, int channel);
-  void setOffsetChannelVolume(int offset, int channel);
-  int getChannelVolume(int channel) { return volumes_[channel]; }
+  void setFrontVolume(int offset);
+  void setRearVolume(int offset);
+  void setCenterVolume(int offset);
+  void setSubwooferVolume(int offset);
+  void setDefaults();
+  int getMasterVolume();
+  int getFrontVolume();
+  int getRearVolume();
+  int getCenterVolume();
+  int getSubwooferVolume();
+  int getOffsetFront();
+  int getOffsetRear();
+  int getOffsetCenter();
+  int getOffsetSubwoofer();
+  bool isPowered();
+  void setPower(bool power);
 
 protected:
 private:
-  int defaultVolume_ = 40;
-  int volumes_[7];
-  void sendData();
-  void sendChannelVolume(int volume, int channel);
-  void calculateVolumes(int initialValue);
-  char calculateX1(int volume);
-  char calculateX10(int volume);
-  bool shouldSendIndividualChannelsVolume();
+  bool power_ = false;
+  int defaultVolume_ = 50;
+  int masterVolume_ = defaultVolume_;
+  int frontVolume_ = defaultVolume_;
+  int rearVolume_ = defaultVolume_;
+  int centerVolume_ = defaultVolume_;
+  int subwooferVolume_ = defaultVolume_;
+  int offsetFront_ = 0;
+  int offsetRear_ = 0;
+  int offsetCenter_ = 0;
+  int offsetSubwoofer_ = 0;
+  void setVolume();
+  void setChannelVolume(int volume, int channel);
 };
 
 } // namespace pt2258

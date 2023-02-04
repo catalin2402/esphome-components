@@ -2,9 +2,9 @@
 #include "esphome/core/log.h"
 
 namespace esphome {
-namespace pt2323 {
+namespace pt2258 {
 
-static const char *const TAG = "pt2323.automation";
+static const char *const TAG = "pt2258.automation";
 
-} // namespace pt2323
+} // namespace pt2258
 } // namespace esphome
