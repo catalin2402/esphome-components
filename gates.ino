@@ -5,12 +5,16 @@
 
 #define PIN_RFINPUT 2
 #define PIN_RFOUT 4
+#define PIN_RELAY 13
 #define I2C_ADDRESS 0x10
 #define CMD_READ_DIGITAL 0x80
 #define CMD_ENABLE_PASSTHROUGH 0x70
 #define CMD_DISABLE_PASSTHROUGH 0x71
 #define CMD_READ_PASSTHROUGH_STATE 0x72
 #define CMD_SEND_CODE 0x73
+#define CMD_RELAY_STATUS 0x74
+#define CMD_RELAY_TURN_ON 0x75
+#define CMD_RELAY_TURN_OFF 0x76
 
 
 byte rollingCodeKeys1[] = {
@@ -52,18 +56,22 @@ byte rollingCodeKeys2[] = {
 int rollingCodeIndex1 = 0;
 int rollingCodeIndex2 = 0;
 bool passthrough_enabled = true;
+bool relay_status = false;
+byte buffer[1] = { 0x00 };
 
 RF_manager receiver(PIN_RFINPUT, 0);
 RfSend *transmitter;
 
-byte buffer[1] = { 0x00 };
+
 
 void setup() {
-  
+
   for (int i = 0; i <= 13; i++) {
     pinMode(i, INPUT);
   }
   pinMode(PIN_RFOUT, OUTPUT);
+  pinMode(PIN_RELAY, OUTPUT);
+  digitalWrite(PIN_RELAY, false);
 
   Wire.begin(I2C_ADDRESS);
   Wire.onRequest(onRequest);
@@ -137,6 +145,17 @@ void onReceive(int numBytes) {
         break;
       case CMD_SEND_CODE:
         sendCode();
+        break;
+      case CMD_RELAY_STATUS:
+        buffer[0] = relay_status;
+        break;
+      case CMD_RELAY_TURN_ON:
+        relay_status = true;
+        digitalWrite(PIN_RELAY, relay_status);
+        break;
+      case CMD_RELAY_TURN_OFF:
+        relay_status = false;
+        digitalWrite(PIN_RELAY, relay_status);
         break;
     }
   }
