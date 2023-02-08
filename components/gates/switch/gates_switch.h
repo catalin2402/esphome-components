@@ -13,11 +13,13 @@ public:
   void setup() override;
   void dump_config() override;
   void set_parent(Gates *parent) { this->parent_ = parent; };
+  void set_type(int type) { this->type_ = type; };
 
 protected:
   void write_state(bool state) override;
   Gates *parent_;
   bool state_;
+  int type_;
 };
 
 } // namespace gates

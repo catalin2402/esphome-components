@@ -14,6 +14,8 @@ public:
   bool read_passthrough_state();
   void send_code();
   void enable_passthrough(bool enable);
+  bool read_relay_state();
+  void enable_relay(bool enable);
 };
 
 } // namespace gates
