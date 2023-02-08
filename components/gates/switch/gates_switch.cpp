@@ -20,6 +20,20 @@ void GatesSwitch::setup() {
   ESP_LOGD(TAG, "Gates switch is: %s", ONOFF(this->state_));
 }
 
+void GatesSwitch::update() {
+  int newState;
+  if (this->type_ == 0) {
+    newState = this->parent_->read_passthrough_state();
+  } else if (this->type_ == 1) {
+    newState = this->parent_->read_relay_state();
+  }
+
+  if (this->state_ != newState) {
+    this->state_ = newState;
+    this->publish_state(this->state_);
+  }
+}
+
 void GatesSwitch::write_state(bool state) {
   if (this->type_ == 0) {
     this->parent_->enable_passthrough(state);

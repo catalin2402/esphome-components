@@ -7,11 +7,13 @@
 namespace esphome {
 namespace gates {
 
-class GatesSwitch : public switch_::Switch, public Component {
+class GatesSwitch : public switch_::Switch, public PollingComponent {
 public:
+  GatesSwitch() : PollingComponent(5000) {}  
   float get_setup_priority() const override;
   void setup() override;
   void dump_config() override;
+  void update() override;
   void set_parent(Gates *parent) { this->parent_ = parent; };
   void set_type(int type) { this->type_ = type; };
 
