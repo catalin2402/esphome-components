@@ -13,7 +13,7 @@ float GatesSwitch::get_setup_priority() const {
 void GatesSwitch::setup() {
   if (this->type_ == 0) {
     this->state_ = this->parent_->read_passthrough_state();
-  } else if (this->type_ == 1) {
+  } else {
     this->state_ = this->parent_->read_relay_state();
   }
   this->publish_state(this->state_);
@@ -21,10 +21,10 @@ void GatesSwitch::setup() {
 }
 
 void GatesSwitch::update() {
-  int newState;
+  int newState = 0;
   if (this->type_ == 0) {
     newState = this->parent_->read_passthrough_state();
-  } else if (this->type_ == 1) {
+  } else {
     newState = this->parent_->read_relay_state();
   }
 
@@ -37,7 +37,7 @@ void GatesSwitch::update() {
 void GatesSwitch::write_state(bool state) {
   if (this->type_ == 0) {
     this->parent_->enable_passthrough(state);
-  } else if (this->type_ == 1) {
+  } else {
     this->parent_->enable_relay(state);
   }
   ESP_LOGD(TAG, "Setting switch: %s", ONOFF(state));
