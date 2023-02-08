@@ -59,7 +59,7 @@ RfSend *transmitter;
 byte buffer[1] = { 0x00 };
 
 void setup() {
-  Serial.begin(115200);
+  
   for (int i = 0; i <= 13; i++) {
     pinMode(i, INPUT);
   }
@@ -122,9 +122,7 @@ void sendCode() {
 
 void onReceive(int numBytes) {
   int cmd = Wire.read();
-  Serial.print("command: ");
-  Serial.println(cmd, HEX);
-  if (cmd >= 0x80 && cmd <= 0xA0) {
+  if (cmd >= 0x80 && cmd <= 0x8D) {
     buffer[0] = digitalRead(cmd - 0x80);
   } else {
     switch (cmd) {

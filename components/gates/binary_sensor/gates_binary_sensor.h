@@ -10,7 +10,7 @@ namespace gates {
 class GatesBinarySensor : public binary_sensor::BinarySensor,
                           public PollingComponent {
 public:
-  GatesBinarySensor() : PollingComponent(200) {}
+  GatesBinarySensor() : PollingComponent(100) {}
   float get_setup_priority() const override;
   void setup() override;
   void dump_config() override;
