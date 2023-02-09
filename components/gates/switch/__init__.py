@@ -1,7 +1,7 @@
 from esphome.components import switch
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_TYPE
 from .. import gates_ns, CONF_GATES, GatesComponent
 
 DEPENDENCIES = ["gates"]
@@ -9,7 +9,7 @@ SWITCH_TYPE = {
     "passthrough": 0,
     "relay": 1
 }
-CONF_TYPE = "type"
+
 
 GatesSwitch = gates_ns.class_("GatesSwitch", switch.Switch, cg.Component)
 

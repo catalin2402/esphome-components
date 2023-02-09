@@ -8,7 +8,7 @@
 #define CMD_RELAY_STATUS 0x74
 #define CMD_RELAY_TURN_ON 0x75
 #define CMD_RELAY_TURN_OFF 0x76
-static const char *TAGape = "gates";
+#define CMD_RETRANSMIT_CODE 0x77
 
 namespace esphome {
 namespace gates {
@@ -65,6 +65,10 @@ void Gates::enable_relay(bool enabled) {
 }
 
 void Gates::send_code() { this->write_register(CMD_SEND_CODE, nullptr, 0); }
+
+void Gates::retransmit_code() {
+  this->write_register(CMD_RETRANSMIT_CODE, nullptr, 0);
+}
 
 } // namespace gates
 } // namespace esphome

@@ -15,6 +15,7 @@
 #define CMD_RELAY_STATUS 0x74
 #define CMD_RELAY_TURN_ON 0x75
 #define CMD_RELAY_TURN_OFF 0x76
+#define CMD_RETRANSMIT_CODE 0x77
 
 uint8_t rollingCodeKeys1[5] = {
   0x25, 0xE1, 0x19, 0x98, 0x67
@@ -94,7 +95,6 @@ void callback_anycode(const BitVector *recorded) {
     if (recorded->get_nb_bits() != 51)
       return;
     codeReceivedTime = millis();
-    sending_code = true;
     transmit_data[0] = recorded->get_nth_byte(6);
     transmit_data[1] = recorded->get_nth_byte(5);
     transmit_data[2] = recorded->get_nth_byte(4);
@@ -102,9 +102,6 @@ void callback_anycode(const BitVector *recorded) {
     transmit_data[4] = recorded->get_nth_byte(2);
     transmit_data[5] = recorded->get_nth_byte(1);
     transmit_data[6] = recorded->get_nth_byte(0);
-
-    transmitter->send(sizeof(transmit_data), transmit_data);
-    sending_code = false;
   }
 }
 
@@ -132,6 +129,16 @@ void sendCode() {
   transmitter->send(sizeof(transmit_data), transmit_data);
   sending_code = false;
   Wire.begin(I2C_ADDRESS);
+}
+
+void retransmitCode() {
+  if (passthrough_enabled) {
+    Wire.end();
+    sending_code = true;
+    transmitter->send(sizeof(transmit_data), transmit_data);
+    sending_code = false;
+    Wire.begin(I2C_ADDRESS);
+  }
 }
 
 void codeReceived() {
@@ -190,6 +197,9 @@ void onReceive(int numBytes) {
     case CMD_RELAY_TURN_OFF:
       relay_status = false;
       digitalWrite(PIN_RELAY, relay_status);
+      break;
+    case CMD_RETRANSMIT_CODE:
+      retransmitCode();
       break;
   }
 }

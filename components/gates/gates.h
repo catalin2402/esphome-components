@@ -13,6 +13,7 @@ public:
   bool read_pin(uint8_t pin);
   bool read_passthrough_state();
   void send_code();
+  void retransmit_code();
   void loop() override;
   void enable_passthrough(bool enable);
   bool read_relay_state();

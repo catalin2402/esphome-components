@@ -10,9 +10,12 @@ float GatesButton::get_setup_priority() const {
   return setup_priority::AFTER_WIFI;
 }
 
-
 void GatesButton::press_action() {
-  this->parent_->send_code();
+  if (this->type_ == 0) {
+    this->parent_->send_code();
+  } else {
+    this->parent_->retransmit_code();
+  }
   ESP_LOGD(TAG, "Sending command");
 }
 
