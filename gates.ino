@@ -53,14 +53,17 @@ uint8_t rollingCodeKeys2[145] = {
 };
 
 uint8_t transmit_data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, 0x00, 0x00 };
+uint8_t buffer[2] = { 0x00, 0x00 };
 
 int rollingCodeIndex1 = 0;
 int rollingCodeIndex2 = 0;
+
 bool passthrough_enabled = true;
 bool relay_status = false;
-uint8_t buffer[2] = { 0x00, 0x00 };
-long codeReceivedTime = 0;
 bool sending_code = false;
+
+long codeReceivedTime = 0;
+
 RF_manager receiver(PIN_RFIN, 0);
 RfSend *transmitter;
 
@@ -132,7 +135,7 @@ void sendCode() {
 }
 
 void codeReceived() {
-  if (millis() - codeReceivedTime >= 3000) {
+  if (millis() - codeReceivedTime >= 1000) {
     buffer[1] |= (0 << 6);
   } else {
     buffer[1] |= (1 << 6);

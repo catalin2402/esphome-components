@@ -23,8 +23,6 @@ void Gates::loop() {
   if (result == i2c::ERROR_OK) {
     this->input_states_[0] = data[0];
     this->input_states_[1] = data[1];
-  } else {
-    ESP_LOGD(TAGape, "Error code:%d", result);
   }
   this->last_update_time_ = millis();
 }
