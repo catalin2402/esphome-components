@@ -2,6 +2,7 @@
 #include "RF433send.h"
 #include <Arduino.h>
 #include <Wire.h>
+#include <avr/wdt.h>
 
 #define PIN_RFIN 2
 #define PIN_RFOUT 4
@@ -69,6 +70,7 @@ RF_manager receiver(PIN_RFIN, 0);
 RfSend *transmitter;
 
 void setup() {
+  wdt_disable();
   for (int i = 0; i <= 13; i++) {
     pinMode(i, INPUT);
   }
@@ -83,11 +85,13 @@ void setup() {
   receiver.register_Receiver(RFMOD_TRIBIT_INVERTED, 25460, 2700, 808, 400, 400, 796, 0, 0, 380, 25460, 51, callback_anycode, 1000);
   transmitter = rfsend_builder(RfSendEncoding::TRIBIT_INVERTED, PIN_RFOUT, 0, 4, nullptr, 25460, 2700, 808, 400, 400, 800, 0, 0, 380, 25460, 51);
   receiver.activate_interrupts_handler();
+  wdt_enable(WDTO_2S);
 }
 
 void loop() {
   receiver.do_events();
   codeReceived();
+  wdt_reset();
 }
 
 void callback_anycode(const BitVector *recorded) {
@@ -107,7 +111,6 @@ void callback_anycode(const BitVector *recorded) {
 
 void sendCode() {
   Wire.end();
-
   sending_code = true;
   transmit_data[0] = 0x06;
   transmit_data[1] = 0xFF;
