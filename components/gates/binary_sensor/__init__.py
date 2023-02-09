@@ -1,12 +1,11 @@
 from esphome.components import binary_sensor
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_ID
+from esphome.const import CONF_PIN
 from .. import gates_ns, CONF_GATES, GatesComponent
 
 DEPENDENCIES = ["gates"]
 
-CONF_PIN = "pin"
 
 GatesBinarySensor = gates_ns.class_(
     "GatesBinarySensor", binary_sensor.BinarySensor, cg.Component
@@ -18,7 +17,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(GatesBinarySensor),
             cv.Required(CONF_GATES): cv.use_id(GatesComponent),
-            cv.Required(CONF_PIN): cv.int_range(min=0, max=13),
+            cv.Required(CONF_PIN): cv.int_range(min=0, max=14),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)

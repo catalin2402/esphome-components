@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#define PIN_RFINPUT 2
+#define PIN_RFIN 2
 #define PIN_RFOUT 4
 #define PIN_RELAY 13
 #define I2C_ADDRESS 0x10
@@ -16,12 +16,11 @@
 #define CMD_RELAY_TURN_ON 0x75
 #define CMD_RELAY_TURN_OFF 0x76
 
-
-byte rollingCodeKeys1[] = {
+uint8_t rollingCodeKeys1[5] = {
   0x25, 0xE1, 0x19, 0x98, 0x67
 };
 
-byte rollingCodeKeys2[] = {
+uint8_t rollingCodeKeys2[145] = {
   0x00, 0xCC, 0x6E, 0xAF, 0x20,
   0x01, 0xD3, 0x7D, 0xCB, 0x6C,
   0xA3, 0x1B, 0x0B, 0xE4, 0x91,
@@ -53,19 +52,19 @@ byte rollingCodeKeys2[] = {
   0x08, 0xDD, 0x8E, 0xEB, 0xA0
 };
 
+uint8_t transmit_data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, 0x00, 0x00 };
+
 int rollingCodeIndex1 = 0;
 int rollingCodeIndex2 = 0;
 bool passthrough_enabled = true;
 bool relay_status = false;
-byte buffer[1] = { 0x00 };
-
-RF_manager receiver(PIN_RFINPUT, 0);
+uint8_t buffer[2] = { 0x00, 0x00 };
+long codeReceivedTime = 0;
+bool sending_code = false;
+RF_manager receiver(PIN_RFIN, 0);
 RfSend *transmitter;
 
-
-
 void setup() {
-
   for (int i = 0; i <= 13; i++) {
     pinMode(i, INPUT);
   }
@@ -82,81 +81,112 @@ void setup() {
   receiver.activate_interrupts_handler();
 }
 
-
 void loop() {
   receiver.do_events();
-}
-
-
-void onRequest() {
-  Wire.write(buffer, 1);
+  codeReceived();
 }
 
 void callback_anycode(const BitVector *recorded) {
   if (passthrough_enabled) {
     if (recorded->get_nb_bits() != 51)
       return;
-    byte data[] = { recorded->get_nth_byte(6),
-                    recorded->get_nth_byte(5),
-                    recorded->get_nth_byte(4),
-                    recorded->get_nth_byte(3),
-                    recorded->get_nth_byte(2),
-                    recorded->get_nth_byte(1),
-                    recorded->get_nth_byte(0) };
+    codeReceivedTime = millis();
+    sending_code = true;
+    transmit_data[0] = recorded->get_nth_byte(6);
+    transmit_data[1] = recorded->get_nth_byte(5);
+    transmit_data[2] = recorded->get_nth_byte(4);
+    transmit_data[3] = recorded->get_nth_byte(3);
+    transmit_data[4] = recorded->get_nth_byte(2);
+    transmit_data[5] = recorded->get_nth_byte(1);
+    transmit_data[6] = recorded->get_nth_byte(0);
 
-    transmitter->send(sizeof(data), data);
+    transmitter->send(sizeof(transmit_data), transmit_data);
+    sending_code = false;
   }
 }
 
 void sendCode() {
   Wire.end();
-  delay(100);
-  byte rollingCode1 = rollingCodeKeys1[rollingCodeIndex1];
-  byte rollingCode2 = rollingCodeKeys2[rollingCodeIndex2 * 5 + rollingCodeIndex1];
+
+  sending_code = true;
+  transmit_data[0] = 0x06;
+  transmit_data[1] = 0xFF;
+  transmit_data[2] = 0xE8;
+  transmit_data[3] = 0xFC;
+  transmit_data[4] = 0xBF;
+  transmit_data[5] = rollingCodeKeys1[rollingCodeIndex1];
+  transmit_data[6] = rollingCodeKeys2[rollingCodeIndex2];
+
   rollingCodeIndex1++;
+  rollingCodeIndex2++;
   if (rollingCodeIndex1 > 4) {
     rollingCodeIndex1 = 0;
-    rollingCodeIndex2++;
-    if (rollingCodeIndex2 > 28) {
-      rollingCodeIndex2 = 0;
-    }
+  }
+  if (rollingCodeIndex2 > 145) {
+    rollingCodeIndex2 = 0;
   }
 
-  byte data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, rollingCode1, rollingCode2 };
-  transmitter->send(sizeof(data), data);
-  delay(100);
+  transmitter->send(sizeof(transmit_data), transmit_data);
+  sending_code = false;
   Wire.begin(I2C_ADDRESS);
 }
 
-void onReceive(int numBytes) {
-  int cmd = Wire.read();
-  if (cmd >= 0x80 && cmd <= 0x8D) {
-    buffer[0] = digitalRead(cmd - 0x80);
+void codeReceived() {
+  if (millis() - codeReceivedTime >= 3000) {
+    buffer[1] |= (0 << 6);
   } else {
-    switch (cmd) {
-      case CMD_ENABLE_PASSTHROUGH:
-        passthrough_enabled = true;
-        break;
-      case CMD_DISABLE_PASSTHROUGH:
-        passthrough_enabled = false;
-        break;
-      case CMD_READ_PASSTHROUGH_STATE:
-        buffer[0] = passthrough_enabled;
-        break;
-      case CMD_SEND_CODE:
-        sendCode();
-        break;
-      case CMD_RELAY_STATUS:
-        buffer[0] = relay_status;
-        break;
-      case CMD_RELAY_TURN_ON:
-        relay_status = true;
-        digitalWrite(PIN_RELAY, relay_status);
-        break;
-      case CMD_RELAY_TURN_OFF:
-        relay_status = false;
-        digitalWrite(PIN_RELAY, relay_status);
-        break;
+    buffer[1] |= (1 << 6);
+  }
+}
+
+void readDigital() {
+  if (!sending_code) {
+    buffer[0] = 0;
+    buffer[1] = 0;
+    for (int i = 0; i < 8; i++) {
+      if (i != PIN_RFIN && i != PIN_RFOUT) {
+        if (digitalRead(i)) buffer[0] |= (1 << i);
+      }
     }
+    for (int i = 0; i < 6; i++) {
+      if (i + 8 != PIN_RELAY) {
+        if (digitalRead(i + 8)) buffer[1] |= (1 << i);
+      }
+    }
+  }
+}
+
+void onRequest() {
+  Wire.write(buffer, 2);
+}
+
+void onReceive(int numBytes) {
+  switch (Wire.read()) {
+    case CMD_READ_DIGITAL:
+      readDigital();
+      break;
+    case CMD_ENABLE_PASSTHROUGH:
+      passthrough_enabled = true;
+      break;
+    case CMD_DISABLE_PASSTHROUGH:
+      passthrough_enabled = false;
+      break;
+    case CMD_READ_PASSTHROUGH_STATE:
+      buffer[0] = passthrough_enabled;
+      break;
+    case CMD_SEND_CODE:
+      sendCode();
+      break;
+    case CMD_RELAY_STATUS:
+      buffer[0] = relay_status;
+      break;
+    case CMD_RELAY_TURN_ON:
+      relay_status = true;
+      digitalWrite(PIN_RELAY, relay_status);
+      break;
+    case CMD_RELAY_TURN_OFF:
+      relay_status = false;
+      digitalWrite(PIN_RELAY, relay_status);
+      break;
   }
 }
