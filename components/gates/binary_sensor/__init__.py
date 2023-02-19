@@ -17,7 +17,6 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(GatesBinarySensor),
             cv.Required(CONF_GATES): cv.use_id(GatesComponent),
-            cv.Required(CONF_PIN): cv.int_range(min=0, max=14),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -29,4 +28,3 @@ async def to_code(config):
     await cg.register_component(var, config)
     parent = await cg.get_variable(config[CONF_GATES])
     cg.add(var.set_parent(parent))
-    cg.add(var.set_pin(config[CONF_PIN]))

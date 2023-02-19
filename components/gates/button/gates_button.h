@@ -9,7 +9,6 @@ namespace gates {
 
 class GatesButton : public button::Button, public Component {
 public:
-  float get_setup_priority() const override;
   void dump_config() override;
   void set_parent(Gates *parent) { this->parent_ = parent; };
   void set_type(int type) { this->type_ = type; };

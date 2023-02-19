@@ -4,19 +4,22 @@
 #include <Wire.h>
 #include <avr/wdt.h>
 
+#define I2C_ADDRESS 0x10
 #define PIN_RFIN 2
 #define PIN_RFOUT 4
-#define PIN_RELAY 13
-#define I2C_ADDRESS 0x10
-#define CMD_READ_DIGITAL 0x80
-#define CMD_ENABLE_PASSTHROUGH 0x70
-#define CMD_DISABLE_PASSTHROUGH 0x71
-#define CMD_READ_PASSTHROUGH_STATE 0x72
-#define CMD_SEND_CODE 0x73
-#define CMD_RELAY_STATUS 0x74
-#define CMD_RELAY_TURN_ON 0x75
-#define CMD_RELAY_TURN_OFF 0x76
-#define CMD_RETRANSMIT_CODE 0x77
+
+#define CMD_READ_DIGITAL 0x01
+#define CMD_SETUP_PINS 0x02
+#define CMD_SETUP_INPUT_PULLUP_PINS 0x04
+#define CMD_WRITE_DIGITAL_HIGH 0x05
+#define CMD_WRITE_DIGITAL_LOW 0x06
+#define CMD_RESTORE_OUTPUTS 0x07
+
+#define CMD_ENABLE_PASSTHROUGH 0x10
+#define CMD_DISABLE_PASSTHROUGH 0x11
+#define CMD_READ_PASSTHROUGH_STATE 0x12
+#define CMD_SEND_CODE 0x13
+#define CMD_RETRANSMIT_CODE 0x14
 
 uint8_t rollingCodeKeys1[5] = {
   0x25, 0xE1, 0x19, 0x98, 0x67
@@ -55,7 +58,7 @@ uint8_t rollingCodeKeys2[145] = {
 };
 
 uint8_t transmit_data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, 0x00, 0x00 };
-uint8_t buffer[2] = { 0x00, 0x00 };
+uint8_t buffer[3] = { 0x00, 0x00 };
 
 int rollingCodeIndex1 = 0;
 int rollingCodeIndex2 = 0;
@@ -64,19 +67,16 @@ bool passthrough_enabled = true;
 bool relay_status = false;
 bool sending_code = false;
 
-long codeReceivedTime = 0;
+long codeReceivedTime = -1000;
 
 RF_manager receiver(PIN_RFIN, 0);
 RfSend *transmitter;
 
 void setup() {
+  Serial.begin(115200);
   wdt_disable();
-  for (int i = 0; i <= 13; i++) {
-    pinMode(i, INPUT);
-  }
+  pinMode(PIN_RFIN, INPUT);
   pinMode(PIN_RFOUT, OUTPUT);
-  pinMode(PIN_RELAY, OUTPUT);
-  digitalWrite(PIN_RELAY, false);
 
   Wire.begin(I2C_ADDRESS);
   Wire.onRequest(onRequest);
@@ -157,14 +157,16 @@ void readDigital() {
     buffer[0] = 0;
     buffer[1] = 0;
     for (int i = 0; i < 8; i++) {
-      if (i != PIN_RFIN && i != PIN_RFOUT) {
+      if (i == PIN_RFIN) {
+        if (digitalRead(A0)) buffer[0] |= (1 << i);
+      } else if (i == PIN_RFOUT) {
+        if (digitalRead(A1)) buffer[0] |= (1 << i);
+      } else {
         if (digitalRead(i)) buffer[0] |= (1 << i);
       }
     }
     for (int i = 0; i < 6; i++) {
-      if (i + 8 != PIN_RELAY) {
-        if (digitalRead(i + 8)) buffer[1] |= (1 << i);
-      }
+      if (digitalRead(i + 8)) buffer[1] |= (1 << i);
     }
   }
 }
@@ -178,6 +180,21 @@ void onReceive(int numBytes) {
     case CMD_READ_DIGITAL:
       readDigital();
       break;
+    case CMD_SETUP_PINS:
+      setupPins(Wire.read(), Wire.read());
+      break;
+    case CMD_SETUP_INPUT_PULLUP_PINS:
+      setupInputPullupPins(Wire.read(), Wire.read());
+      break;
+    case CMD_RESTORE_OUTPUTS:
+      restoreOutputs(Wire.read(), Wire.read());
+      break;
+    case CMD_WRITE_DIGITAL_LOW:
+      digitalWrite(Wire.read(), LOW);
+      break;
+    case CMD_WRITE_DIGITAL_HIGH:
+      digitalWrite(Wire.read(), HIGH);
+      break;
     case CMD_ENABLE_PASSTHROUGH:
       passthrough_enabled = true;
       break;
@@ -190,19 +207,98 @@ void onReceive(int numBytes) {
     case CMD_SEND_CODE:
       sendCode();
       break;
-    case CMD_RELAY_STATUS:
-      buffer[0] = relay_status;
-      break;
-    case CMD_RELAY_TURN_ON:
-      relay_status = true;
-      digitalWrite(PIN_RELAY, relay_status);
-      break;
-    case CMD_RELAY_TURN_OFF:
-      relay_status = false;
-      digitalWrite(PIN_RELAY, relay_status);
-      break;
     case CMD_RETRANSMIT_CODE:
       retransmitCode();
       break;
+  }
+}
+
+void setupPins(uint8_t data1, uint8_t data0) {
+  for (int i = 0; i < 8; i++) {
+    int pin = i;
+    switch (i) {
+      case 2:
+        pin = A0;
+        break;
+      case 4:
+        pin = A1;
+        break;
+      default:
+        pin = i;
+        break;
+    }
+    pinMode(pin, (1 << i));
+  }
+  for (int i = 0; i < 6; i++)
+    pinMode(i + 8, (1 << i));
+}
+
+void setupInputPullupPins(uint8_t data1, uint8_t data0) {
+  Serial.println(data1);
+  Serial.println(data0);
+  for (int i = 0; i < 8; i++) {
+    int pin = i;
+    switch (i) {
+      case 2:
+        pin = A0;
+        break;
+      case 4:
+        pin = A1;
+        break;
+      default:
+        pin = i;
+        break;
+    }
+    Serial.print("Setting pin: ");
+    Serial.println(i);
+    if (data0 & (1 << i)) pinMode(pin, INPUT_PULLUP);
+  }
+
+  for (int i = 0; i < 6; i++) {
+    if (data1 & (1 << i)) pinMode(i + 8, INPUT_PULLUP);
+  }
+}
+
+void setupOutputPins(uint8_t data1, uint8_t data0) {
+  for (int i = 0; i < 8; i++) {
+    int pin = i;
+    switch (i) {
+      case 2:
+        pin = A0;
+        break;
+      case 4:
+        pin = A1;
+        break;
+      default:
+        pin = i;
+        break;
+    }
+    if (data0 & (1 << i)) pinMode(pin, OUTPUT);
+  }
+
+  for (int i = 0; i < 6; i++) {
+    if (data1 & (1 << i)) pinMode(i + 8, OUTPUT);
+  }
+}
+
+void restoreOutputs(uint8_t data1, uint8_t data0) {
+  for (int i = 0; i < 8; i++) {
+    int pin = i;
+    switch (i) {
+      case 2:
+        pin = A0;
+        break;
+      case 4:
+        pin = A1;
+        break;
+      default:
+        pin = i;
+        break;
+    }
+    if (data0 & (1 << i)) digitalWrite(i, HIGH);
+  }
+
+  for (int i = 0; i < 6; i++) {
+    if (data1 & (1 << i)) digitalWrite(i + 8, HIGH);
   }
 }

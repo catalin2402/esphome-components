@@ -6,11 +6,7 @@ from .. import gates_ns, CONF_GATES, GatesComponent
 
 DEPENDENCIES = ["gates"]
 
-BUTTON_TYPE = {
-    "send_code": 0,
-    "retransmit": 1
-}
-
+BUTTON_TYPE = {"send_code": 0, "retransmit": 1}
 
 GatesButton = gates_ns.class_("GatesButton", button.Button, cg.Component)
 
