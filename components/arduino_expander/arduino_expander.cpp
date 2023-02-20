@@ -6,6 +6,7 @@
 #define CMD_WRITE_DIGITAL_HIGH 0x04
 #define CMD_WRITE_DIGITAL_LOW 0x05
 #define CMD_RESTORE_OUTPUTS 0x06
+#define CMD_ADC_SOURCE 0x07
 static const char *TAG = "arduino_expander";
 
 namespace esphome {
@@ -26,6 +27,9 @@ void ArduinoExpander::loop() {
     if (i2c::ERROR_OK == this->read_register(CMD_READ, data, 14)) {
       ESP_LOGD(TAG, "ArduinoExpander found at %#02x", address_);
       uint8_t pin_data[2];
+      pin_data[0] = this->adc_source_;
+      pin_data[1] = this->adc_source_;
+      this->write_register(CMD_ADC_SOURCE, pin_data, 2);
       pin_data[0] = this->pin_modes_;
       pin_data[1] = this->pin_modes_ >> 8;
       this->write_register(CMD_SETUP_PINS, pin_data, 2);
@@ -105,7 +109,7 @@ void ArduinoGPIOPin::digital_write(bool value) {
 }
 std::string ArduinoGPIOPin::dump_summary() const {
   char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%u via ArduinoExpander", pin_);
+  snprintf(buffer, sizeof(buffer), "D%u via ArduinoExpander", pin_);
   return buffer;
 }
 

@@ -10,6 +10,7 @@
 #define CMD_WRITE_DIGITAL_HIGH 0x04
 #define CMD_WRITE_DIGITAL_LOW 0x05
 #define CMD_RESTORE_OUTPUTS 0x06
+#define CMD_ADC_SOURCE 0x07
 
 uint8_t buffer[14] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
@@ -31,11 +32,11 @@ void loop() {
 }
 
 void readData() {
-  for (uint8_t i = 0; i < 14; i++) 
+  for (uint8_t i = 0; i < 14; i++)
     buffer[i] = 0x00;
-  for (uint8_t i = 0; i < 8; i++) 
+  for (uint8_t i = 0; i < 8; i++)
     if (digitalRead(i)) buffer[0] |= (1 << i);
-  for (uint8_t i = 0; i < 6; i++) 
+  for (uint8_t i = 0; i < 6; i++)
     if (digitalRead(i + 8)) buffer[1] |= (1 << i);
   for (uint8_t i = 0; i < 6; i++) {
     uint8_t pin = (i >= 4) ? i + 2 : i;
@@ -69,6 +70,9 @@ void onReceive(uint8_t numBytes) {
     case CMD_WRITE_DIGITAL_HIGH:
       digitalWrite(Wire.read(), HIGH);
       break;
+    case CMD_ADC_SOURCE:
+      setAdcSource(Wire.read(), Wire.read());
+      break;
   }
 }
 
@@ -91,4 +95,18 @@ void restoreOutputs(uint8_t data1, uint8_t data0) {
     if (data0 & (1 << i)) digitalWrite(i, HIGH);
   for (uint8_t i = 0; i < 6; i++)
     if (data1 & (1 << i)) digitalWrite(i + 8, HIGH);
+}
+
+void setAdcSource(uint8_t data1, uint8_t data0) {
+  switch (data1) {
+    case 0:
+      analogReference(DEFAULT);
+      break;
+    case 1:
+      analogReference(INTERNAL);
+      break;
+    case 2:
+      analogReference(EXTERNAL);
+      break;
+  }
 }

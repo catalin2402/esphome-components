@@ -13,6 +13,13 @@ from esphome.const import (
 )
 
 CONF_ARDUINO_EXPANDER = "arduino_expander"
+CONF_ADC = "adc"
+
+ADC_SOURCE = {
+    "DEFAULT": 0,
+    "INTERNAL": 1,
+    "EXTERNAL": 2,
+}
 
 DEPENDENCIES = ["i2c"]
 MULTI_CONF = True
@@ -29,6 +36,7 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.Required(CONF_ID): cv.declare_id(ArduinoExpanderComponent),
+            cv.Optional(CONF_ADC, default="DEFAULT"): cv.enum(ADC_SOURCE),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -40,6 +48,7 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
+    cg.add(var.set_adc_source(config[CONF_ADC]))
 
 
 def validate_mode(value):
