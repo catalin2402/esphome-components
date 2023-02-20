@@ -4,7 +4,6 @@ namespace esphome {
 namespace arduino_expander {
 
 void ArduinoSensor::setup() {
-  this->parent_->set_analog_pin(this->pin_);
   this->state_ = this->parent_->read_analog(this->pin_);
   this->publish_state(this->state_);
 }

@@ -13,7 +13,6 @@ public:
   bool digital_read(uint8_t pin);
   void digital_write(uint8_t pin, bool value);
   uint16_t read_analog(uint8_t pin);
-  void set_analog_pin(uint8_t pin);
   void pin_mode(uint8_t pin, gpio::Flags flags);
   void loop() override;
   void setup() override;
@@ -26,7 +25,6 @@ protected:
   uint16_t pullup_pins_{0};
   uint16_t input_states_{0};
   uint16_t output_states_{0};
-  uint16_t analog_pins_{0};
   uint16_t analog_reads_[6]{0, 0, 0, 0, 0, 0};
 };
 
