@@ -53,7 +53,7 @@ void ArduinoExpander::loop() {
 
 void ArduinoExpander::update() {
   if (!this->status_has_error()) {
-    uint8_t data[14]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t data[14];
     uint8_t result = this->read_register(CMD_READ, data, 14);
     if (result == i2c::ERROR_OK) {
       this->input_states_ = ((uint16_t)data[1] << 8) | data[0];

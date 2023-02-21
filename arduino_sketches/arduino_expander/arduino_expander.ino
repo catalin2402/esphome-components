@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include <avr/wdt.h>
 
+
 #define I2C_ADDRESS 0x10
 
 #define CMD_READ 0x01
@@ -15,12 +16,11 @@
 uint8_t buffer[14] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 void setup() {
+  wdt_disable();
   for (uint8_t i = 0; i < 6; i++) {
     uint8_t pin = (i >= 4) ? i + 2 : i;
     pinMode(A0 + i, INPUT);
   }
-
-  wdt_disable();
   Wire.begin(I2C_ADDRESS);
   Wire.onRequest(onRequest);
   Wire.onReceive(onReceive);
@@ -78,9 +78,9 @@ void onReceive(uint8_t numBytes) {
 
 void setupPins(uint8_t data1, uint8_t data0) {
   for (uint8_t i = 0; i < 8; i++)
-    pinMode(i, (1 << i));
+    pinMode(i, data0 & (1 << i));
   for (uint8_t i = 0; i < 6; i++)
-    pinMode(i + 8, (1 << i));
+    pinMode(i + 8, data1 & (1 << i));
 }
 
 void setupInputPullupPins(uint8_t data1, uint8_t data0) {
