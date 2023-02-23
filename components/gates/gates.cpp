@@ -2,10 +2,10 @@
 
 #define CMD_READ_DIGITAL 0x01
 #define CMD_SETUP_PINS 0x02
-#define CMD_SETUP_INPUT_PULLUP_PINS 0x04
-#define CMD_WRITE_DIGITAL_HIGH 0x05
-#define CMD_WRITE_DIGITAL_LOW 0x06
-#define CMD_RESTORE_OUTPUTS 0x07
+#define CMD_SETUP_INPUT_PULLUP_PINS 0x03
+#define CMD_WRITE_DIGITAL_HIGH 0x04
+#define CMD_WRITE_DIGITAL_LOW 0x05
+#define CMD_RESTORE_OUTPUTS 0x06
 
 #define CMD_ENABLE_PASSTHROUGH 0x10
 #define CMD_DISABLE_PASSTHROUGH 0x11
@@ -86,7 +86,8 @@ bool Gates::digital_read(uint8_t pin) {
 }
 
 void Gates::digital_write(uint8_t pin, bool value) {
-  uint16_t state = this->output_states_ |= (value << pin);
+  uint16_t mask = 1 << pin;
+  uint16_t state = (this->output_states_ & ~mask) | (value << pin);
   this->output_states_ = state;
   this->write_register(value ? CMD_WRITE_DIGITAL_HIGH : CMD_WRITE_DIGITAL_LOW,
                        &pin, 1);

@@ -24,11 +24,10 @@ public:
 protected:
   bool configure_{true};
   long configure_timeout_{0};
-  uint16_t pin_modes_ = {0};
-  uint16_t pullup_pins_ = {0};
-  uint16_t output_pins_ = {0};
-  uint16_t input_states_ = {0};
-  uint16_t output_states_ = {0};
+  uint16_t pin_modes_{0};
+  uint16_t pullup_pins_{0};
+  uint16_t input_states_{0};
+  uint16_t output_states_{0};
   long last_update_time_{0};
   bool passthrough_state_;
 };

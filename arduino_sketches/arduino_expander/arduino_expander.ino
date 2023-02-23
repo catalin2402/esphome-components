@@ -13,7 +13,7 @@
 #define CMD_RESTORE_OUTPUTS 0x06
 #define CMD_ADC_SOURCE 0x07
 
-#define DEBUG
+// #define DEBUG
 
 uint8_t buffer[14] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
@@ -128,8 +128,6 @@ void setupInputPullupPins(uint8_t data1, uint8_t data0) {
 }
 
 void restoreOutputs(uint8_t data1, uint8_t data0) {
-  Serial.println(data0, BIN);
-  Serial.println(data1, BIN);
   for (uint8_t i = 0; i < 8; i++) {
     if (data0 & (1 << i)) {
 #ifdef DEBUG
