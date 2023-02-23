@@ -21,7 +21,7 @@
 #define CMD_SEND_CODE 0x13
 #define CMD_RETRANSMIT_CODE 0x14
 
-// #define DEBUG
+#define DEBUG
 
 uint8_t rollingCodeKeys1[5] = {
   0x25, 0xE1, 0x19, 0x98, 0x67
@@ -105,6 +105,9 @@ void callback_anycode(const BitVector *recorded) {
   if (passthrough_enabled) {
     if (recorded->get_nb_bits() != 51)
       return;
+#ifdef DEBUG
+    Serial.println("Code received");
+#endif
     codeReceivedTime = millis();
     transmit_data[0] = recorded->get_nth_byte(6);
     transmit_data[1] = recorded->get_nth_byte(5);
@@ -117,6 +120,9 @@ void callback_anycode(const BitVector *recorded) {
 }
 
 void sendCode() {
+#ifdef DEBUG
+  Serial.println("Sending code");
+#endif
   Wire.end();
   sending_code = true;
   transmit_data[0] = 0x06;
@@ -142,6 +148,9 @@ void sendCode() {
 }
 
 void retransmitCode() {
+#ifdef DEBUG
+  Serial.println("Retransmitting code");
+#endif
   if (passthrough_enabled) {
     Wire.end();
     sending_code = true;
@@ -187,6 +196,7 @@ void onRequest() {
 }
 
 void onReceive(int numBytes) {
+  uint8_t pin = -1;
   switch (Wire.read()) {
     case CMD_READ:
       readDigital();
@@ -201,19 +211,41 @@ void onReceive(int numBytes) {
       restoreOutputs(Wire.read(), Wire.read());
       break;
     case CMD_WRITE_DIGITAL_LOW:
-      digitalWrite(Wire.read(), LOW);
+      pin = Wire.read();
+#ifdef DEBUG
+      Serial.print("Setting pin: ");
+      Serial.print(pin);
+      Serial.println(" LOW");
+#endif
+      digitalWrite(pin, LOW);
       break;
     case CMD_WRITE_DIGITAL_HIGH:
-      digitalWrite(Wire.read(), HIGH);
+      pin = Wire.read();
+#ifdef DEBUG
+      Serial.print("Setting pin: ");
+      Serial.print(pin);
+      Serial.println(" HIGH");
+#endif
+      digitalWrite(pin, HIGH);
       break;
     case CMD_ENABLE_PASSTHROUGH:
+#ifdef DEBUG
+      Serial.println("Passthrough enabled");
+#endif
       passthrough_enabled = true;
       break;
     case CMD_DISABLE_PASSTHROUGH:
+#ifdef DEBUG
+      Serial.println("Passthrough disabled");
+#endif
       passthrough_enabled = false;
       break;
     case CMD_READ_PASSTHROUGH_STATE:
       buffer[0] = passthrough_enabled;
+#ifdef DEBUG
+      Serial.print("Sending passthrough state: ");
+      Serial.println(passthrough_enabled);
+#endif
       break;
     case CMD_SEND_CODE:
       sendCode();
