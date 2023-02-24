@@ -21,7 +21,7 @@
 #define CMD_SEND_CODE 0x13
 #define CMD_RETRANSMIT_CODE 0x14
 
-#define DEBUG
+// #define DEBUG
 
 uint8_t rollingCodeKeys1[5] = {
   0x25, 0xE1, 0x19, 0x98, 0x67
@@ -60,13 +60,12 @@ uint8_t rollingCodeKeys2[145] = {
 };
 
 uint8_t transmit_data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, 0x00, 0x00 };
-uint8_t buffer[3] = { 0x00, 0x00 };
+uint8_t buffer[2] = { 0x00, 0x00 };
 
 int rollingCodeIndex1 = 0;
 int rollingCodeIndex2 = 0;
 
 bool passthrough_enabled = true;
-bool relay_status = false;
 bool sending_code = false;
 
 long codeReceivedTime = -1000;
@@ -102,21 +101,19 @@ void loop() {
 }
 
 void callback_anycode(const BitVector *recorded) {
-  if (passthrough_enabled) {
-    if (recorded->get_nb_bits() != 51)
-      return;
+  if (recorded->get_nb_bits() != 51)
+    return;
 #ifdef DEBUG
-    Serial.println("Code received");
+  Serial.println("Code received");
 #endif
-    codeReceivedTime = millis();
-    transmit_data[0] = recorded->get_nth_byte(6);
-    transmit_data[1] = recorded->get_nth_byte(5);
-    transmit_data[2] = recorded->get_nth_byte(4);
-    transmit_data[3] = recorded->get_nth_byte(3);
-    transmit_data[4] = recorded->get_nth_byte(2);
-    transmit_data[5] = recorded->get_nth_byte(1);
-    transmit_data[6] = recorded->get_nth_byte(0);
-  }
+  codeReceivedTime = millis();
+  transmit_data[0] = recorded->get_nth_byte(6);
+  transmit_data[1] = recorded->get_nth_byte(5);
+  transmit_data[2] = recorded->get_nth_byte(4);
+  transmit_data[3] = recorded->get_nth_byte(3);
+  transmit_data[4] = recorded->get_nth_byte(2);
+  transmit_data[5] = recorded->get_nth_byte(1);
+  transmit_data[6] = recorded->get_nth_byte(0);
 }
 
 void sendCode() {
@@ -148,10 +145,10 @@ void sendCode() {
 }
 
 void retransmitCode() {
-#ifdef DEBUG
-  Serial.println("Retransmitting code");
-#endif
   if (passthrough_enabled) {
+#ifdef DEBUG
+    Serial.println("Retransmitting code");
+#endif
     Wire.end();
     sending_code = true;
     transmitter->send(sizeof(transmit_data), transmit_data);
@@ -287,7 +284,7 @@ void setupPins(uint8_t data1, uint8_t data0) {
     Serial.print(" as: ");
     Serial.println((mode) ? "OUTPUT" : "INPUT");
 #endif
-    pinMode(i + 8, (1 << i));
+    pinMode(i + 8, mode);
   }
 }
 
