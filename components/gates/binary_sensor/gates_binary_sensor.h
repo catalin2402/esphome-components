@@ -14,10 +14,12 @@ public:
   void setup() override;
   void update() override;
   void set_parent(Gates *parent) { this->parent_ = parent; }
+  void set_type(uint8_t type) { this->type_ = type; }
 
 protected:
   Gates *parent_;
   bool state_;
+  uint8_t type_;
 };
 
 } // namespace gates
