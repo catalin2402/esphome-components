@@ -9,7 +9,7 @@ namespace gates {
 
 class Gates : public PollingComponent, public i2c::I2CDevice {
 public:
-  Gates() : PollingComponent(10) {}
+  Gates() : PollingComponent(100) {}
   void setup() override;
   void loop() override;
   void update() override;

@@ -172,7 +172,7 @@ void readDigital() {
   if (!sending_code) {
     buffer[0] = 0;
     buffer[1] = 0;
-    for (int i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < 8; i++) {
       if (i == PIN_RFIN) {
         if (digitalRead(A0))
           buffer[0] |= (1 << i);
@@ -184,7 +184,7 @@ void readDigital() {
           buffer[0] |= (1 << i);
       }
     }
-    for (int i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < 6; i++) {
       if (digitalRead(i + 8))
         buffer[1] |= (1 << i);
     }
@@ -256,21 +256,21 @@ void onReceive(int numBytes) {
   }
 }
 
+uint8_t getPin(uint8_t pin) {
+  switch (pin) {
+    case 2:
+      return A0;
+    case 4:
+      return A1;
+    default:
+      return pin;
+  }
+}
+
 void setupPins(uint8_t data1, uint8_t data0) {
-  for (int i = 0; i < 8; i++) {
+  for (uint8_t i = 0; i < 8; i++) {
     bool mode = data0 & (1 << i);
-    int pin = i;
-    switch (i) {
-      case 2:
-        pin = A0;
-        break;
-      case 4:
-        pin = A1;
-        break;
-      default:
-        pin = i;
-        break;
-    }
+    uint8_t pin = getPin(i);
 #ifdef DEBUG
     Serial.print("Setting pin: ");
     Serial.print(pin);
@@ -279,7 +279,7 @@ void setupPins(uint8_t data1, uint8_t data0) {
 #endif
     pinMode(pin, mode);
   }
-  for (int i = 0; i < 6; i++) {
+  for (uint8_t i = 0; i < 6; i++) {
     bool mode = data1 & (1 << i);
 #ifdef DEBUG
     Serial.print("Setting pin: ");
@@ -292,19 +292,8 @@ void setupPins(uint8_t data1, uint8_t data0) {
 }
 
 void setupInputPullupPins(uint8_t data1, uint8_t data0) {
-  for (int i = 0; i < 8; i++) {
-    int pin = i;
-    switch (i) {
-      case 2:
-        pin = A0;
-        break;
-      case 4:
-        pin = A1;
-        break;
-      default:
-        pin = i;
-        break;
-    }
+  for (uint8_t i = 0; i < 8; i++) {
+    uint8_t pin = getPin(i);
     if (data0 & (1 << i)) {
 #ifdef DEBUG
       Serial.print("Setting pin: ");
@@ -315,7 +304,7 @@ void setupInputPullupPins(uint8_t data1, uint8_t data0) {
     }
   }
 
-  for (int i = 0; i < 6; i++) {
+  for (uint8_t i = 0; i < 6; i++) {
     if (data1 & (1 << i)) {
 #ifdef DEBUG
       Serial.print("Setting pin: ");
@@ -328,19 +317,8 @@ void setupInputPullupPins(uint8_t data1, uint8_t data0) {
 }
 
 void restoreOutputs(uint8_t data1, uint8_t data0) {
-  for (int i = 0; i < 8; i++) {
-    int pin = i;
-    switch (i) {
-      case 2:
-        pin = A0;
-        break;
-      case 4:
-        pin = A1;
-        break;
-      default:
-        pin = i;
-        break;
-    }
+  for (uint8_t i = 0; i < 8; i++) {
+    uint8_t pin = getPin(i);
     if (data0 & (1 << i)) {
 #ifdef DEBUG
       Serial.print("Restoring pin: ");
@@ -351,7 +329,7 @@ void restoreOutputs(uint8_t data1, uint8_t data0) {
     }
   }
 
-  for (int i = 0; i < 6; i++) {
+  for (uint8_t i = 0; i < 6; i++) {
     if (data1 & (1 << i)) {
 #ifdef DEBUG
       Serial.print("Restoring pin: ");

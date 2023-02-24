@@ -20,7 +20,7 @@ namespace gates {
 
 void Gates::setup() {
   ESP_LOGD(TAG, "Setting up GatesController at %#02x ...", address_);
-  this->configure_timeout_ = millis() + 5000;
+  this->configure_timeout_ = millis() + 10000;
 }
 
 void Gates::loop() {
@@ -62,7 +62,7 @@ void Gates::update() {
       this->input_states_ = ((uint16_t)data[1] << 8) | data[0];
     } else {
       this->status_set_error();
-      this->configure_timeout_ = millis() + 5000;
+      this->configure_timeout_ = millis() + 10000;
       ESP_LOGD(TAG, "Reconfiguring GatesController");
     }
   }
@@ -86,8 +86,7 @@ bool Gates::digital_read(uint8_t pin) {
 }
 
 void Gates::digital_write(uint8_t pin, bool value) {
-  uint16_t mask = 1 << pin;
-  uint16_t state = (this->output_states_ & ~mask) | (value << pin);
+  uint16_t state = (this->output_states_ & ~(1 << pin)) | (value << pin);
   this->output_states_ = state;
   this->write_register(value ? CMD_WRITE_DIGITAL_HIGH : CMD_WRITE_DIGITAL_LOW,
                        &pin, 1);
