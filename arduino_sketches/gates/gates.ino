@@ -15,60 +15,17 @@
 #define CMD_WRITE_DIGITAL_LOW 0x05
 #define CMD_RESTORE_OUTPUTS 0x06
 
-#define CMD_ENABLE_PASSTHROUGH 0x10
-#define CMD_DISABLE_PASSTHROUGH 0x11
-#define CMD_READ_PASSTHROUGH_STATE 0x12
-#define CMD_SEND_CODE 0x13
 #define CMD_RETRANSMIT_CODE 0x14
 
-// #define DEBUG
-
-uint8_t rollingCodeKeys1[5] = {
-  0x25, 0xE1, 0x19, 0x98, 0x67
-};
-
-uint8_t rollingCodeKeys2[145] = {
-  0x00, 0xCC, 0x6E, 0xAF, 0x20,
-  0x01, 0xD3, 0x7D, 0xCB, 0x6C,
-  0xA3, 0x1B, 0x0B, 0xE4, 0x91,
-  0xF0, 0xAA, 0x2E, 0x27, 0x12,
-  0xF3, 0xB1, 0x3D, 0x43, 0x5E,
-  0x8D, 0xE9, 0xA4, 0x19, 0x0F,
-  0xEC, 0xA2, 0x1D, 0x07, 0xDF,
-  0x8A, 0xE3, 0x93, 0xF4, 0xB3,
-  0x39, 0x4B, 0x6D, 0xAD, 0x24,
-  0x18, 0xFF, 0xCE, 0x62, 0x94,
-  0xF6, 0xBF, 0x46, 0x50, 0x67,
-  0x9A, 0x0C, 0xE6, 0x9D, 0x06,
-  0xD9, 0x86, 0xD8, 0x77, 0xB8,
-  0x33, 0x38, 0x32, 0x3E, 0x41,
-  0x5A, 0x85, 0xDA, 0x84, 0xD4,
-  0x7F, 0xCF, 0x64, 0x90, 0xEF,
-  0xA8, 0x11, 0xF1, 0xB5, 0x35,
-  0x34, 0x3A, 0x49, 0x69, 0xA5,
-  0x17, 0xFD, 0xCA, 0x6A, 0xA7,
-  0x13, 0xF5, 0xBD, 0x42, 0x58,
-  0x76, 0xBE, 0x40, 0x45, 0x52,
-  0x7A, 0xC1, 0x5B, 0x83, 0xD6,
-  0x73, 0xB0, 0x22, 0x1C, 0x09,
-  0xE0, 0x88, 0xDC, 0x80, 0xCD,
-  0x60, 0x89, 0xE1, 0x97, 0xFC,
-  0xC4, 0x5D, 0x8F, 0xED, 0xAC,
-  0x2A, 0x2F, 0x21, 0x1E, 0x05,
-  0xDB, 0x82, 0xD0, 0x66, 0x9C,
-  0x08, 0xDD, 0x8E, 0xEB, 0xA0
-};
+//#define DEBUG
 
 uint8_t transmit_data[] = { 0x06, 0xFF, 0xE8, 0xFC, 0xBF, 0x00, 0x00 };
 uint8_t buffer[2] = { 0x00, 0x00 };
 
-int rollingCodeIndex1 = 0;
-int rollingCodeIndex2 = 0;
-
-bool passthrough_enabled = true;
 bool sending_code = false;
 
 long codeReceivedTime = -1000;
+long singleGateReceivedTime = -1000;
 
 RF_manager receiver(PIN_RFIN, 0);
 RfSend *transmitter;
@@ -97,6 +54,7 @@ void setup() {
 void loop() {
   receiver.do_events();
   codeReceived();
+  singleGateReceived();
   wdt_reset();
 }
 
@@ -106,7 +64,7 @@ void callback_anycode(const BitVector *recorded) {
 #ifdef DEBUG
   Serial.println("Code received");
 #endif
-  codeReceivedTime = millis();
+
   transmit_data[0] = recorded->get_nth_byte(6);
   transmit_data[1] = recorded->get_nth_byte(5);
   transmit_data[2] = recorded->get_nth_byte(4);
@@ -114,38 +72,38 @@ void callback_anycode(const BitVector *recorded) {
   transmit_data[4] = recorded->get_nth_byte(2);
   transmit_data[5] = recorded->get_nth_byte(1);
   transmit_data[6] = recorded->get_nth_byte(0);
-}
 
-void sendCode() {
+  switch (transmit_data[4]) {
+    case 0xBF:
+    case 0xEF:
+      singleGateReceivedTime = millis();
+      break;
+    case 0x7F:
+    case 0xDF:
+      codeReceivedTime = millis();
+      break;
+  }
+
 #ifdef DEBUG
-  Serial.println("Sending code");
+  Serial.print("Code received: ");
+  Serial.print(transmit_data[0], HEX);
+  Serial.print(" ");
+  Serial.print(transmit_data[1], HEX);
+  Serial.print(" ");
+  Serial.print(transmit_data[2], HEX);
+  Serial.print(" ");
+  Serial.print(transmit_data[3], HEX);
+  Serial.print(" ");
+  Serial.print(transmit_data[4], HEX);
+  Serial.print(" ");
+  Serial.print(transmit_data[5], HEX);
+  Serial.print(" ");
+  Serial.println(transmit_data[6], HEX);
 #endif
-  Wire.end();
-  sending_code = true;
-  transmit_data[0] = 0x06;
-  transmit_data[1] = 0xFF;
-  transmit_data[2] = 0xE8;
-  transmit_data[3] = 0xFC;
-  transmit_data[4] = 0xBF;
-  transmit_data[5] = rollingCodeKeys1[rollingCodeIndex1];
-  transmit_data[6] = rollingCodeKeys2[rollingCodeIndex2];
-
-  rollingCodeIndex1++;
-  rollingCodeIndex2++;
-  if (rollingCodeIndex1 > 4) {
-    rollingCodeIndex1 = 0;
-  }
-  if (rollingCodeIndex2 > 145) {
-    rollingCodeIndex2 = 0;
-  }
-
-  transmitter->send(sizeof(transmit_data), transmit_data);
-  sending_code = false;
-  Wire.begin(I2C_ADDRESS);
 }
+
 
 void retransmitCode() {
-  if (passthrough_enabled) {
 #ifdef DEBUG
     Serial.println("Retransmitting code");
 #endif
@@ -154,7 +112,6 @@ void retransmitCode() {
     transmitter->send(sizeof(transmit_data), transmit_data);
     sending_code = false;
     Wire.begin(I2C_ADDRESS);
-  }
 }
 
 void codeReceived() {
@@ -162,6 +119,14 @@ void codeReceived() {
     buffer[1] |= (0 << 6);
   } else {
     buffer[1] |= (1 << 6);
+  }
+}
+
+void singleGateReceived() {
+  if (millis() - singleGateReceivedTime >= 1000) {
+    buffer[1] |= (0 << 7);
+  } else {
+    buffer[1] |= (1 << 7);
   }
 }
 
@@ -224,28 +189,6 @@ void onReceive(int numBytes) {
       Serial.println(" HIGH");
 #endif
       digitalWrite(pin, HIGH);
-      break;
-    case CMD_ENABLE_PASSTHROUGH:
-#ifdef DEBUG
-      Serial.println("Passthrough enabled");
-#endif
-      passthrough_enabled = true;
-      break;
-    case CMD_DISABLE_PASSTHROUGH:
-#ifdef DEBUG
-      Serial.println("Passthrough disabled");
-#endif
-      passthrough_enabled = false;
-      break;
-    case CMD_READ_PASSTHROUGH_STATE:
-      buffer[0] = passthrough_enabled;
-#ifdef DEBUG
-      Serial.print("Sending passthrough state: ");
-      Serial.println(passthrough_enabled);
-#endif
-      break;
-    case CMD_SEND_CODE:
-      sendCode();
       break;
     case CMD_RETRANSMIT_CODE:
       retransmitCode();

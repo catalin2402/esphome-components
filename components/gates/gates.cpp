@@ -7,10 +7,6 @@
 #define CMD_WRITE_DIGITAL_LOW 0x05
 #define CMD_RESTORE_OUTPUTS 0x06
 
-#define CMD_ENABLE_PASSTHROUGH 0x10
-#define CMD_DISABLE_PASSTHROUGH 0x11
-#define CMD_READ_PASSTHROUGH_STATE 0x12
-#define CMD_SEND_CODE 0x13
 #define CMD_RETRANSMIT_CODE 0x14
 
 static const char *TAG = "gates";
@@ -91,22 +87,6 @@ void Gates::digital_write(uint8_t pin, bool value) {
   this->write_register(value ? CMD_WRITE_DIGITAL_HIGH : CMD_WRITE_DIGITAL_LOW,
                        &pin, 1);
 }
-
-bool Gates::read_passthrough_state() {
-  uint8_t data[1]{0};
-  if (this->read_register(CMD_READ_PASSTHROUGH_STATE, data, 1) ==
-      i2c::ERROR_OK) {
-    this->passthrough_state_ = data[0];
-  }
-  return this->passthrough_state_;
-}
-
-void Gates::enable_passthrough(bool enabled) {
-  this->write_register(
-      enabled ? CMD_ENABLE_PASSTHROUGH : CMD_DISABLE_PASSTHROUGH, nullptr, 0);
-}
-
-void Gates::send_code() { this->write_register(CMD_SEND_CODE, nullptr, 0); }
 
 void Gates::retransmit_code() {
   this->write_register(CMD_RETRANSMIT_CODE, nullptr, 0);

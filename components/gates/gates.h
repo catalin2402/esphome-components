@@ -16,9 +16,6 @@ public:
   void pin_mode(uint8_t pin, gpio::Flags flags);
   bool digital_read(uint8_t pin);
   void digital_write(uint8_t pin, bool value);
-  bool read_passthrough_state();
-  void enable_passthrough(bool enabled);
-  void send_code();
   void retransmit_code();
 
 protected:

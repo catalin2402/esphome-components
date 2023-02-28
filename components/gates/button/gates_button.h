@@ -11,12 +11,10 @@ class GatesButton : public button::Button, public Component {
 public:
   void dump_config() override;
   void set_parent(Gates *parent) { this->parent_ = parent; };
-  void set_type(int type) { this->type_ = type; };
 
 protected:
   void press_action() override;
-  Gates *parent_;
-  int type_{0};
+  Gates *parent_; 
 };
 
 } // namespace gates
