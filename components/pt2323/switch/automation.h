@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PT2323Switch.h"
+#include "pt2323_switch.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 
