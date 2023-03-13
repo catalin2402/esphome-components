@@ -48,10 +48,10 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
-    cg.add(var.setInput(config[CONF_INPUT]))   
-    cg.add(var.setEnhance(config[CONF_ENAHNCE]))
-    cg.add(var.setBoost(config[CONF_BOOST]))
-    cg.add(var.muteAllChannels(config[CONF_MUTE]))        
+    cg.add(var.set_input(config[CONF_INPUT]))   
+    cg.add(var.set_enhance(config[CONF_ENAHNCE]))
+    cg.add(var.set_boost(config[CONF_BOOST]))
+    cg.add(var.mute_all_channels(config[CONF_MUTE]))        
 
 @automation.register_action(
     "pt2323.set_input",

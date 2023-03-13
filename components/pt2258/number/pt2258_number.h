@@ -1,31 +1,33 @@
 #pragma once
 
-#include "../pt2323.h"
-#include "esphome/components/switch/switch.h"
+#include "../pt2258.h"
+#include "esphome/components/number/number.h"
 #include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
 
 namespace esphome {
-namespace pt2323 {
+namespace pt2258 {
 
-class PT2323Switch : public switch_::Switch, public PollingComponent {
+class PT2258Number : public number::Number, public PollingComponent {
 public:
-  PT2323Switch() : PollingComponent(1000) {}
+  PT2258Number() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
   void update() override;
   void set_type(uint8_t type) { this->type_ = type; }
   void set_channel_a(uint8_t channel_a) { this->channel_a_ = channel_a; }
   void set_channel_b(uint8_t channel_b) { this->channel_b_ = channel_b; }
-  void set_parent(PT2323 *parent) { this->parent_ = parent; }
+  void set_parent(PT2258 *parent) { this->parent_ = parent; }
 
 protected:
-  void write_state(bool state) override;
+  void control(float value) override;
+  float get_new_state();
 
-  PT2323 *parent_;
+  PT2258 *parent_;
   uint8_t type_{0};
   uint8_t channel_a_{0};
   uint8_t channel_b_{0};
 };
 
-} // namespace pt2323
+} // namespace pt2258
 } // namespace esphome

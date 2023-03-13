@@ -13,77 +13,77 @@ void PT2323Switch::dump_config() {
     ESP_LOGCONFIG(TAG, "  Channel A: %u", this->channel_a_);
     ESP_LOGCONFIG(TAG, "  Channel B: %u", this->channel_b_);
   }
-  ESP_LOGCONFIG(TAG, "  State: %s", ONOFF(this->state_));
+  ESP_LOGCONFIG(TAG, "  State: %s", ONOFF(this->state));
 }
 
 void PT2323Switch::setup() {
   switch (this->type_) {
   case 0:
-    this->state_ = this->parent_->getEnhance();
+    this->state = this->parent_->get_enhance();
     break;
   case 1:
-    this->state_ = this->parent_->getBoost();
+    this->state = this->parent_->get_boost();
     break;
   case 2:
     if (this->channel_a_ != 0)
-      this->state_ = this->parent_->getChannelMute(this->channel_a_);
+      this->state = this->parent_->get_channel_mute(this->channel_a_);
     if (this->channel_b_ != 0)
-      this->state_ = this->parent_->getChannelMute(this->channel_b_);
+      this->state = this->parent_->get_channel_mute(this->channel_b_);
     break;
   case 3:
-    this->state_ = this->parent_->getMute();
+    this->state = this->parent_->get_mute();
     break;
   }
-  this->publish_state(this->state_);
+  this->publish_state(this->state);
 }
 
 void PT2323Switch::update() {
   bool newState;
   switch (this->type_) {
   case 0:
-    newState = this->parent_->getEnhance();
+    newState = this->parent_->get_enhance();
     break;
   case 1:
-    newState = this->parent_->getBoost();
+    newState = this->parent_->get_boost();
     break;
   case 2:
     if (this->channel_a_ != 0)
-      newState = this->parent_->getChannelMute(this->channel_a_);
+      newState = this->parent_->get_channel_mute(this->channel_a_);
     if (this->channel_b_ != 0)
-      newState = this->parent_->getChannelMute(this->channel_b_);
+      newState = this->parent_->get_channel_mute(this->channel_b_);
     break;
   case 3:
-    newState = this->parent_->getMute();
+    newState = this->parent_->get_mute();
     break;
   }
-  if (this->state_ != newState) {
-    this->state_ = newState;
-    this->publish_state(this->state_);
+  if (this->state != newState) {
+    this->state = newState;
+    this->publish_state(this->state);
   }
 }
 
 void PT2323Switch::write_state(bool state) {
   switch (this->type_) {
   case 0:
-    parent_->setEnhance(state);
+    parent_->set_enhance(state);
     break;
   case 1:
-    parent_->setBoost(state);
+    parent_->set_boost(state);
     break;
   case 2:
     if (this->channel_a_ != 0)
-      parent_->muteChannel(this->channel_a_, state);
+      parent_->mute_channel(this->channel_a_, state);
     if (this->channel_b_ != 0)
-      parent_->muteChannel(this->channel_b_, state);
+      parent_->mute_channel(this->channel_b_, state);
     break;
   case 3:
-    parent_->muteAllChannels(state);
+    parent_->mute_all_channels(state);
     break;
   }
 
   ESP_LOGD(TAG, "Setting switch: %s", ONOFF(state));
-  this->state_ = state;
-  this->publish_state(this->state_);
+  this->state = state;
+  this->publish_state(this->state);
 }
 
 } // namespace pt2323

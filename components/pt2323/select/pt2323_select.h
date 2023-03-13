@@ -17,7 +17,6 @@ public:
 
 protected:
   void control(const std::string &value) override;
-  std::string state_;
   PT2323 *parent_;
 };
 

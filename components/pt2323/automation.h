@@ -4,7 +4,6 @@
 #include "esphome/core/component.h"
 #include "pt2323.h"
 
-
 namespace esphome {
 namespace pt2323 {
 
@@ -13,7 +12,7 @@ public:
   explicit SetInputAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
   TEMPLATABLE_VALUE(int, input);
   void play(Ts... x) override {
-    this->pt2323_->setInput(this->input_.value(x...));
+    this->pt2323_->set_input(this->input_.value(x...));
   }
 
 protected:
@@ -23,7 +22,7 @@ protected:
 template <typename... Ts> class SetMuteAction : public Action<Ts...> {
 public:
   explicit SetMuteAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
-  void play(Ts... x) override { this->pt2323_->muteAllChannels(true); }
+  void play(Ts... x) override { this->pt2323_->mute_all_channels(true); }
 
 protected:
   PT2323 *pt2323_;
@@ -32,7 +31,7 @@ protected:
 template <typename... Ts> class SetUnmuteAction : public Action<Ts...> {
 public:
   explicit SetUnmuteAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
-  void play(Ts... x) override { this->pt2323_->muteAllChannels(false); }
+  void play(Ts... x) override { this->pt2323_->mute_all_channels(false); }
 
 protected:
   PT2323 *pt2323_;
@@ -43,7 +42,7 @@ public:
   explicit SetMuteChannelAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
   TEMPLATABLE_VALUE(int, channel);
   void play(Ts... x) override {
-    this->pt2323_->muteChannel(this->channel_.value(x...), true);
+    this->pt2323_->mute_channel(this->channel_.value(x...), true);
   }
 
 protected:
@@ -55,7 +54,7 @@ public:
   explicit SetUnmuteChannelAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
   TEMPLATABLE_VALUE(int, channel);
   void play(Ts... x) override {
-    this->pt2323_->muteChannel(this->channel_.value(x...), false);
+    this->pt2323_->mute_channel(this->channel_.value(x...), false);
   }
 
 protected:
@@ -67,7 +66,7 @@ public:
   explicit SetEnhanceAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
   TEMPLATABLE_VALUE(bool, enhance);
   void play(Ts... x) override {
-    this->pt2323_->setEnhance(this->enhance_.value(x...));
+    this->pt2323_->set_enhance(this->enhance_.value(x...));
   }
 
 protected:
@@ -79,7 +78,7 @@ public:
   explicit SetBoostAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
   TEMPLATABLE_VALUE(bool, boost);
   void play(Ts... x) override {
-    this->pt2323_->setBoost(this->boost_.value(x...));
+    this->pt2323_->set_boost(this->boost_.value(x...));
   }
 
 protected:

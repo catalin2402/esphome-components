@@ -15,60 +15,60 @@ void PT2323::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mute: %s", ONOFF(this->mute_));
 }
 
-void PT2323::setup() { setDefaults(); }
+void PT2323::setup() { set_defaults(); }
 
-void PT2323::setInput(int input) {
+void PT2323::set_input(uint8_t input) {
   this->input_ = input;
-  sendData(0xC7 + this->input_);
+  send_data(0xC7 + this->input_);
 }
 
-void PT2323::setEnhance(bool enhance) {
+void PT2323::set_enhance(bool enhance) {
   this->enhance_ = enhance;
-  sendData((this->enhance_) ? 0xD0 : 0xD1);
+  send_data((this->enhance_) ? 0xD0 : 0xD1);
 }
 
-void PT2323::setBoost(bool boost) {
+void PT2323::set_boost(bool boost) {
   this->boost_ = boost;
-  sendData((this->boost_) ? 0x91 : 0x90);
+  send_data((this->boost_) ? 0x91 : 0x90);
 }
 
-void PT2323::muteAllChannels(bool mute) {
+void PT2323::mute_all_channels(bool mute) {
   this->mute_ = mute;
-  sendData((this->mute_) ? 0xFF : 0xFE);
+  send_data((this->mute_) ? 0xFF : 0xFE);
 }
 
-void PT2323::muteChannel(int channel, bool mute) {
-  this->channelsMuted_[channel] = mute;
+void PT2323::mute_channel(uint8_t channel, bool mute) {
+  this->channels_muted_[channel] = mute;
   switch (channel) {
   case 1:
-    sendData(mute ? 0xF1 : 0xF0);
+    send_data(mute ? 0xF1 : 0xF0);
     break;
   case 2:
-    sendData(mute ? 0xF3 : 0xF2);
+    send_data(mute ? 0xF3 : 0xF2);
     break;
   case 3:
-    sendData(mute ? 0xF9 : 0xF8);
+    send_data(mute ? 0xF9 : 0xF8);
     break;
   case 4:
-    sendData(mute ? 0xFB : 0xFA);
+    send_data(mute ? 0xFB : 0xFA);
     break;
   case 5:
-    sendData(mute ? 0xF7 : 0xF6);
+    send_data(mute ? 0xF7 : 0xF6);
     break;
   case 6:
-    sendData(mute ? 0xF5 : 0xF4);
+    send_data(mute ? 0xF5 : 0xF4);
     break;
   }
 }
 
-void PT2323::setDefaults() {
-  setInput(this->input_);
-  setEnhance(this->enhance_);
-  setBoost(this->boost_);
-  muteAllChannels(this->mute_);
+void PT2323::set_defaults() {
+  set_input(this->input_);
+  set_enhance(this->enhance_);
+  set_boost(this->boost_);
+  mute_all_channels(this->mute_);
 }
 
-void PT2323::sendData(uint8_t data) {
+void PT2323::send_data(uint8_t data) {
   if (!this->write_bytes(data, nullptr, 0)) {
     ESP_LOGE(TAG, "Error writing data");
     this->status_set_warning();
