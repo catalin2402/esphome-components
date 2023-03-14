@@ -63,4 +63,3 @@ async def to_code(config):
         cg.add(var.set_channel_a(config[CONF_CHANNEL_A]))
     if CONF_CHANNEL_B in config:
         cg.add(var.set_channel_b(config[CONF_CHANNEL_B]))
- 

@@ -74,8 +74,7 @@ bool ArduinoExpander::digital_read(uint8_t pin) {
 }
 
 void ArduinoExpander::digital_write(uint8_t pin, bool value) {
-  uint16_t mask = 1 << pin;
-  uint16_t state = (this->output_states_ & ~mask) | (value << pin);
+  uint16_t state = (this->output_states_ & ~(1 << pin)) | (value << pin);
   this->output_states_ = state;
   this->write_register(value ? CMD_WRITE_DIGITAL_HIGH : CMD_WRITE_DIGITAL_LOW,
                        &pin, 1);

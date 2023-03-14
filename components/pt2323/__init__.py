@@ -23,7 +23,6 @@ SetEnhanceAction = pt2323_ns.class_("SetEnhanceAction", automation.Action)
 SetBoostAction = pt2323_ns.class_("SetBoostAction", automation.Action)
 
 
-
 CONFIG_SCHEMA = (
     cv.Schema(
         {
@@ -40,18 +39,20 @@ CONFIG_SCHEMA = (
 
 OPERATION_BASE_SCHEMA = cv.Schema(
     {
-       cv.Required(CONF_ID): cv.use_id(PT2323),
+        cv.Required(CONF_ID): cv.use_id(PT2323),
     }
 )
+
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
-    cg.add(var.set_input(config[CONF_INPUT]))   
+    cg.add(var.set_input(config[CONF_INPUT]))
     cg.add(var.set_enhance(config[CONF_ENAHNCE]))
     cg.add(var.set_boost(config[CONF_BOOST]))
-    cg.add(var.mute_all_channels(config[CONF_MUTE]))        
+    cg.add(var.mute_all_channels(config[CONF_MUTE]))
+
 
 @automation.register_action(
     "pt2323.set_input",
@@ -71,25 +72,24 @@ async def pt2323_set_input_to_code(config, action_id, template_arg, args):
     cg.add(var.set_input(template_))
     return var
 
+
 @automation.register_action(
-    "pt2323.mute",
-    SetMuteAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+    "pt2323.mute", SetMuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
 )
 async def pt2323_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
 
+
 @automation.register_action(
-    "pt2323.unmute",
-    SetUnmuteAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+    "pt2323.unmute", SetUnmuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
 )
 async def pt2323_unmute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     return var
+
 
 @automation.register_action(
     "pt2323.mute_channel",
@@ -109,6 +109,7 @@ async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
     cg.add(var.set_channel(template_))
     return var
 
+
 @automation.register_action(
     "pt2323.unmute_channel",
     SetUnmuteChannelAction,
@@ -127,6 +128,7 @@ async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
     cg.add(var.set_channel(template_))
     return var
 
+
 @automation.register_action(
     "pt2323.set_enhance",
     SetEnhanceAction,
@@ -144,6 +146,7 @@ async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
     template_ = await cg.templatable(config[CONF_ENAHNCE], args, cg.bool_)
     cg.add(var.set_enhance(template_))
     return var
+
 
 @automation.register_action(
     "pt2323.set_boost",

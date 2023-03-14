@@ -8,7 +8,6 @@ namespace silvercrest {
 
 class Silvercrest : public Component {
 public:
-
   void setup() override;
   void set_transmitter_pin(GPIOPin *transmitter_pin) {
     transmitter_pin_ = transmitter_pin;
@@ -39,7 +38,6 @@ private:
   GPIOPin *transmitter_pin_;
 
   void SendCode(const bool _code[24], uint8_t _repeatTimes);
-
 };
 
 } // namespace silvercrest

@@ -15,7 +15,9 @@ CHANNEL_ID = {
     "MASTER": 4,
 }
 
-SilvercrestButton = silvercrest_ns.class_("SilvercrestSwitch", switch.Switch, cg.Component)
+SilvercrestButton = silvercrest_ns.class_(
+    "SilvercrestSwitch", switch.Switch, cg.Component
+)
 
 CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
     {

@@ -11,12 +11,15 @@ void CD405x::setup() {
 
   this->pin_a_->setup();
   this->pin_a_->digital_write(false);
+
   this->pin_b_->setup();
   this->pin_b_->digital_write(false);
+
   if (this->pin_c_ != nullptr) {
     this->pin_c_->setup();
     this->pin_c_->digital_write(false);
   }
+
   if (this->pin_inhibit_ != nullptr) {
     this->pin_inhibit_->setup();
     this->pin_inhibit_->digital_write(false);

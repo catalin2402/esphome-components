@@ -68,6 +68,7 @@ GATES_PIN_SCHEMA = cv.All(
     }
 )
 
+
 @pins.PIN_SCHEMA_REGISTRY.register("gates", GATES_PIN_SCHEMA)
 async def gates_pins_to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])

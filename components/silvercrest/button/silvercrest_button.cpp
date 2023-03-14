@@ -48,9 +48,13 @@ void SilvercrestButton::dump_config() {
   ESP_LOGCONFIG(TAG, "  Button: %u", this->button_type_);
 }
 
-void SilvercrestButton::set_button(uint8_t button_type) { this->button_type_ = button_type; }
+void SilvercrestButton::set_button(uint8_t button_type) {
+  this->button_type_ = button_type;
+}
 
-void SilvercrestButton::set_parent(Silvercrest *parent) { this->parent_ = parent; }
+void SilvercrestButton::set_parent(Silvercrest *parent) {
+  this->parent_ = parent;
+}
 
 } // namespace silvercrest
 } // namespace esphome

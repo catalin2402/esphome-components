@@ -7,7 +7,7 @@
 namespace esphome {
 namespace silvercrest {
 
-class SilvercrestButton :  public button::Button, public Component {
+class SilvercrestButton : public button::Button, public Component {
 public:
   void dump_config() override;
   void set_button(uint8_t button_type);

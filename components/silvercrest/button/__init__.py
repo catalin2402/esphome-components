@@ -17,10 +17,12 @@ BUTTON_TYPE = {
     "B_OFF": 6,
     "C_OFF": 7,
     "D_OFF": 8,
-    "M_OFF": 9
+    "M_OFF": 9,
 }
 
-SilvercrestButton = silvercrest_ns.class_("SilvercrestButton", button.Button, cg.Component)
+SilvercrestButton = silvercrest_ns.class_(
+    "SilvercrestButton", button.Button, cg.Component
+)
 
 CONFIG_SCHEMA = cv.All(
     button.BUTTON_SCHEMA.extend(cv.COMPONENT_SCHEMA).extend(
@@ -29,12 +31,12 @@ CONFIG_SCHEMA = cv.All(
                 cv.GenerateID(): cv.declare_id(SilvercrestButton),
                 cv.GenerateID(CONF_SILVERCREST_ID): cv.use_id(Silvercrest),
                 cv.Required(BUTTON): cv.enum(BUTTON_TYPE),
-                
             }
         ),
     ),
     cv.only_with_arduino,
 )
+
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])

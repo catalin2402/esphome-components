@@ -3,7 +3,6 @@ import esphome.config_validation as cv
 import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_TYPE
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
-from esphome import automation
 
 DEPENDENCIES = ["pt2323"]
 
