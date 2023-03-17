@@ -15,9 +15,9 @@ void PT2323Select::setup() {
 }
 
 void PT2323Select::update() {
-  auto newState = this->traits.get_options().at(this->parent_->get_input());
-  if (this->state != newState) {
-    this->state = newState;
+  auto new_state = this->traits.get_options().at(this->parent_->get_input());
+  if (this->state != new_state) {
+    this->state = new_state;
     this->publish_state(this->state);
   }
 }

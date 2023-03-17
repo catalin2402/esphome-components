@@ -22,9 +22,9 @@ void PT2323Switch::setup() {
 }
 
 void PT2323Switch::update() {
-  bool newState = get_new_state_();
-  if (this->state != newState) {
-    this->state = newState;
+  bool new_state = get_new_state_();
+  if (this->state != new_state) {
+    this->state = new_state;
     this->publish_state(this->state);
   }
 }

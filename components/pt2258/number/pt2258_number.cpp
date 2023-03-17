@@ -21,9 +21,9 @@ void PT2258Number::setup() {
 }
 
 void PT2258Number::update() {
-  float newState = get_new_state_();
-  if (newState != this->state) {
-    this->state = newState;
+  float new_state = get_new_state_();
+  if (new_state != this->state) {
+    this->state = new_state;
     this->publish_state(this->state);
   }
 }
@@ -56,27 +56,23 @@ void PT2258Number::control(float value) {
 }
 
 float PT2258Number::get_new_state_() {
-  float newState = 0;
   switch (this->type_) {
   case MASTER:
-    newState = this->parent_->get_channel_volume(0);
-    break;
+    return this->parent_->get_channel_volume(0);
   case VOLUME:
     if (this->channel_a_ != 0)
-      newState = this->parent_->get_channel_volume(this->channel_a_);
+      return this->parent_->get_channel_volume(this->channel_a_);
     if (this->channel_b_ != 0)
-      newState = this->parent_->get_channel_volume(this->channel_b_);
-    break;
+      return this->parent_->get_channel_volume(this->channel_b_);
   case OFFSET:
     if (this->channel_a_ != 0)
-      newState = this->parent_->get_channel_volume(this->channel_a_, true) -
-                 this->parent_->get_channel_volume(0, true);
+      return this->parent_->get_channel_volume(this->channel_a_, true) -
+             this->parent_->get_channel_volume(0, true);
     if (this->channel_b_ != 0)
-      newState = this->parent_->get_channel_volume(this->channel_b_, true) -
-                 this->parent_->get_channel_volume(0, true);
-    break;
+      return this->parent_->get_channel_volume(this->channel_b_, true) -
+             this->parent_->get_channel_volume(0, true);
   }
-  return newState;
+  return 0;
 }
 
 } // namespace pt2258

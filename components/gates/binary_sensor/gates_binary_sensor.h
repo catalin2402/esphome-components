@@ -7,6 +7,8 @@
 namespace esphome {
 namespace gates {
 
+enum SensorType { DUAL_GATE, SINGLE_GATE };
+
 class GatesBinarySensor : public binary_sensor::BinarySensor,
                           public PollingComponent {
 public:
@@ -14,12 +16,12 @@ public:
   void setup() override;
   void update() override;
   void set_parent(Gates *parent) { this->parent_ = parent; }
-  void set_type(uint8_t type) { this->type_ = type; }
+  void set_type(SensorType type) { this->type_ = type; }
 
 protected:
+  bool get_new_state_();
   Gates *parent_;
-  bool state_;
-  uint8_t type_;
+  SensorType type_{DUAL_GATE};
 };
 
 } // namespace gates

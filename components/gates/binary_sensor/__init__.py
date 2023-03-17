@@ -6,11 +6,17 @@ from .. import gates_ns, CONF_GATES, GatesComponent
 
 DEPENDENCIES = ["gates"]
 
-SENSOR_TYPE = {"both_gates": 0, "single_gate": 1}
 
 GatesBinarySensor = gates_ns.class_(
     "GatesBinarySensor", binary_sensor.BinarySensor, cg.Component
 )
+SensorType = gates_ns.enum("SensorType")
+
+SENSOR_TYPE = {
+    "DUAL_GATE": SensorType.DUAL_GATE,
+    "SINGLE_GATE": SensorType.SINGLE_GATE,
+}
+
 
 CONFIG_SCHEMA = (
     binary_sensor.binary_sensor_schema(GatesBinarySensor)
@@ -18,7 +24,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(GatesBinarySensor),
             cv.Required(CONF_GATES): cv.use_id(GatesComponent),
-            cv.Required(CONF_TYPE): cv.enum(SENSOR_TYPE),
+            cv.Required(CONF_TYPE): cv.enum(SENSOR_TYPE, upper=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
