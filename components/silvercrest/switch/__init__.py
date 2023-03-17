@@ -1,18 +1,19 @@
 from esphome.components import switch
 import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_CHANNEL
 from .. import silvercrest_ns, CONF_SILVERCREST_ID, Silvercrest
 
 DEPENDENCIES = ["silvercrest"]
 
-CONF_CHANNEL = "channel"
-CHANNEL_ID = {
-    "A": 0,
-    "B": 1,
-    "C": 2,
-    "D": 3,
-    "MASTER": 4,
+Channel = silvercrest_ns.enum("Channel")
+
+CHANNELS = {
+    "A": Channel.A,
+    "B": Channel.B,
+    "C": Channel.C,
+    "D": Channel.D,
+    "MASTER": Channel.MASTER,
 }
 
 SilvercrestButton = silvercrest_ns.class_(
@@ -23,7 +24,7 @@ CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(SilvercrestButton),
         cv.GenerateID(CONF_SILVERCREST_ID): cv.use_id(Silvercrest),
-        cv.Required(CONF_CHANNEL): cv.enum(CHANNEL_ID),
+        cv.Required(CONF_CHANNEL): cv.enum(CHANNELS, upper=True),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 

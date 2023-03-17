@@ -9,7 +9,6 @@ MULTI_CONF = True
 cd405x_ns = cg.esphome_ns.namespace("cd405x")
 
 CD405xComponent = cd405x_ns.class_("CD405x", cg.Component, cg.PollingComponent)
-
 ActivateChannelAction = cd405x_ns.class_("ActivateChannelAction", automation.Action)
 InhibitAction = cd405x_ns.class_("InhibitAction", automation.Action)
 
@@ -28,7 +27,6 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_PIN_INHIBIT): pins.gpio_output_pin_schema,
     }
 ).extend(cv.COMPONENT_SCHEMA)
-
 
 
 async def to_code(config):

@@ -10,15 +10,15 @@ namespace silvercrest {
 class SilvercrestSwitch : public switch_::Switch, public Component {
 public:
   void dump_config() override;
-  void set_channel(uint8_t channel);
-  void set_parent(Silvercrest *parent);
+  void set_channel(Channel channel) { this->channel_ = channel; };
+  void set_parent(Silvercrest *parent) { this->parent_ = parent; };
 
 protected:
   void write_state(bool state) override;
   bool assumed_state() override;
 
   Silvercrest *parent_;
-  uint8_t channel_{0};
+  Channel channel_{MASTER};
 };
 
 } // namespace silvercrest

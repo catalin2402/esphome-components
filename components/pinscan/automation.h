@@ -7,13 +7,23 @@
 namespace esphome {
 namespace pinscan {
 
-template <typename... Ts> class SetInputAction : public Action<Ts...> {
+template <typename... Ts> class SetPinAction : public Action<Ts...> {
 public:
-  explicit SetInputAction(Pinscan *a_pinscan) : pinscan_(a_pinscan) {}
+  explicit SetPinAction(Pinscan *a_pinscan) : pinscan_(a_pinscan) {}
   TEMPLATABLE_VALUE(int, pin);
-  TEMPLATABLE_VALUE(int, mode);
   void play(Ts... x) override {
     this->pinscan_->set_pin(this->pin_.value(x...));
+  }
+
+protected:
+  Pinscan *pinscan_;
+};
+
+template <typename... Ts> class SetModeAction : public Action<Ts...> {
+public:
+  explicit SetModeAction(Pinscan *a_pinscan) : pinscan_(a_pinscan) {}
+  TEMPLATABLE_VALUE(int, mode);
+  void play(Ts... x) override {
     this->pinscan_->set_mode(this->mode_.value(x...));
   }
 

@@ -7,23 +7,27 @@ from .. import pt2258_ns, CONF_PT2258_ID, PT2258
 DEPENDENCIES = ["pt2258"]
 
 PT2258Number = pt2258_ns.class_("PT2258Number", number.Number, cg.Component)
+NumberType = pt2258_ns.enum("NumberType")
 
 CONF_NUMBER_TYPE = "number_type"
-CONF_ON_MUTE = "on_mute"
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
 
-NUMBER_TYPE = {"master": 0, "volume": 1, "offset": 2}
+NUMBER_TYPE = {
+    "MASTER": NumberType.MASTER,
+    "VOLUME": NumberType.VOLUME,
+    "OFFSET": NumberType.OFFSET,
+}
 
 
 def vaildate(value):
     if (
-        value[CONF_TYPE] != "master"
+        value[CONF_TYPE] != "MASTER"
         and CONF_CHANNEL_A not in value
         and CONF_CHANNEL_B not in value
     ):
         raise cv.Invalid("At least one channel is needed")
-    if value[CONF_TYPE] == "master" and (
+    if value[CONF_TYPE] == "MASTER" and (
         CONF_CHANNEL_A in value or CONF_CHANNEL_B in value
     ):
         raise cv.Invalid("Please remove channel_a and channel_b from config")
@@ -35,7 +39,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(PT2258Number),
             cv.GenerateID(CONF_PT2258_ID): cv.use_id(PT2258),
-            cv.Optional(CONF_TYPE, default="master"): cv.enum(NUMBER_TYPE),
+            cv.Optional(CONF_TYPE, default="master"): cv.enum(NUMBER_TYPE, upper=True),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
             cv.Optional(CONF_MIN_VALUE, default=0): cv.int_range(min=-79, max=79),

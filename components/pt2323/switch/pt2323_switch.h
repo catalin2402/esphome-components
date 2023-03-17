@@ -7,22 +7,25 @@
 namespace esphome {
 namespace pt2323 {
 
+enum SwitchType { ENHANCE, BOOST, MUTE, MUTE_ALL };
+
 class PT2323Switch : public switch_::Switch, public PollingComponent {
 public:
   PT2323Switch() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
   void update() override;
-  void set_type(uint8_t type) { this->type_ = type; }
+  void set_type(SwitchType type) { this->type_ = type; }
   void set_channel_a(uint8_t channel_a) { this->channel_a_ = channel_a; }
   void set_channel_b(uint8_t channel_b) { this->channel_b_ = channel_b; }
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
 
 protected:
   void write_state(bool state) override;
+  bool get_new_state_();
 
   PT2323 *parent_;
-  uint8_t type_{0};
+  SwitchType type_{ENHANCE};
   uint8_t channel_a_{0};
   uint8_t channel_b_{0};
 };

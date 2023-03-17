@@ -10,7 +10,7 @@ namespace pinscan {
 
 class Pinscan : public PollingComponent {
 public:
-  Pinscan() : PollingComponent(1) {}
+  Pinscan() : PollingComponent(50) {}
   void setup() override;
   void dump_config() override;
   void update() override;

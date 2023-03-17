@@ -12,31 +12,31 @@ from esphome.const import (
     CONF_PULLUP,
 )
 
-CONF_ARDUINO_EXPANDER = "arduino_expander"
-CONF_ADC = "adc"
-
-ADC_SOURCE = {
-    "DEFAULT": 0,
-    "INTERNAL": 1,
-    "EXTERNAL": 2,
-}
-
 DEPENDENCIES = ["i2c"]
 MULTI_CONF = True
 
 arduino_expander_ns = cg.esphome_ns.namespace("arduino_expander")
-
 ArduinoExpanderComponent = arduino_expander_ns.class_(
     "ArduinoExpander", cg.Component, i2c.I2CDevice
 )
 ArduinoGPIOPin = arduino_expander_ns.class_("ArduinoGPIOPin", cg.GPIOPin)
 
+AdcSource = arduino_expander_ns.enum("AdcSource")
+
+CONF_ARDUINO_EXPANDER = "arduino_expander"
+CONF_ADC_SOURCE = "adc_source"
+
+ADC_SOURCES = {
+    "DEFAULT": AdcSource.DEFAULT,
+    "INTERNAL": AdcSource.INTERNAL,
+    "EXTERNAL": AdcSource.EXTERNAL,
+}
 
 CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.Required(CONF_ID): cv.declare_id(ArduinoExpanderComponent),
-            cv.Optional(CONF_ADC, default="DEFAULT"): cv.enum(ADC_SOURCE),
+            cv.Optional(CONF_ADC_SOURCE): cv.enum(ADC_SOURCES, upper=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -48,7 +48,8 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
-    cg.add(var.set_adc_source(config[CONF_ADC]))
+    if CONF_ADC_SOURCE in config:
+        cg.add(var.set_adc_source(config[CONF_ADC_SOURCE]))
 
 
 def validate_mode(value):

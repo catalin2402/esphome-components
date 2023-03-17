@@ -9,19 +9,20 @@ DEPENDENCIES = ["pt2323"]
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
 
-SWITCH_TYPE = {
-    "enhance": 0,
-    "boost": 1,
-    "mute": 2,
-    "mute_all": 3,
-}
-
 PT2323Switch = pt2323_ns.class_("PT2323Switch", switch.Switch, cg.Component)
+SwitchType = pt2323_ns.enum("SwitchType")
+
+SWITCH_TYPE = {
+    "ENHANCE": SwitchType.ENHANCE,
+    "BOOST": SwitchType.BOOST,
+    "MUTE": SwitchType.MUTE,
+    "MUTE_ALL": SwitchType.MUTE_ALL,
+}
 
 
 def vaildate(value):
     if (
-        value[CONF_TYPE] == "mute"
+        value[CONF_TYPE] == "MUTE"
         and CONF_CHANNEL_A not in value
         and CONF_CHANNEL_B not in value
     ):
@@ -34,7 +35,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(PT2323Switch),
             cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
-            cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE),
+            cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE, upper=True),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
         }

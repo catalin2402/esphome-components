@@ -7,6 +7,12 @@
 namespace esphome {
 namespace arduino_expander {
 
+enum AdcSource {
+  DEFAULT,
+  INTERNAL,
+  EXTERNAL,
+};
+
 class ArduinoExpander : public PollingComponent, public i2c::I2CDevice {
 public:
   ArduinoExpander() : PollingComponent(1) {}
@@ -17,12 +23,12 @@ public:
   void digital_write(uint8_t pin, bool value);
   uint16_t read_analog(uint8_t pin);
   void pin_mode(uint8_t pin, gpio::Flags flags);
-  void set_adc_source(uint8_t adc_source) { this->adc_source_ = adc_source; };
+  void set_adc_source(AdcSource adc_source) { this->adc_source_ = adc_source; };
 
 protected:
   bool configure_{true};
   long configure_timeout_{0};
-  uint8_t adc_source_{0};
+  AdcSource adc_source_{DEFAULT};
   uint16_t pin_modes_{0};
   uint16_t pullup_pins_{0};
   uint16_t input_states_{0};

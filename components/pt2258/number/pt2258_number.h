@@ -8,23 +8,25 @@
 namespace esphome {
 namespace pt2258 {
 
+enum NumberType { MASTER, VOLUME, OFFSET };
+
 class PT2258Number : public number::Number, public PollingComponent {
 public:
   PT2258Number() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
   void update() override;
-  void set_type(uint8_t type) { this->type_ = type; }
+  void set_type(NumberType type) { this->type_ = type; }
   void set_channel_a(uint8_t channel_a) { this->channel_a_ = channel_a; }
   void set_channel_b(uint8_t channel_b) { this->channel_b_ = channel_b; }
   void set_parent(PT2258 *parent) { this->parent_ = parent; }
 
 protected:
   void control(float value) override;
-  float get_new_state();
+  float get_new_state_();
 
   PT2258 *parent_;
-  uint8_t type_{0};
+  NumberType type_{MASTER};
   uint8_t channel_a_{0};
   uint8_t channel_b_{0};
 };

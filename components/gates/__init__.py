@@ -12,17 +12,14 @@ from esphome.const import (
     CONF_PULLUP,
 )
 
-
-CONF_GATES = "gates"
-
 DEPENDENCIES = ["i2c"]
 MULTI_CONF = True
 
 gates_ns = cg.esphome_ns.namespace("gates")
-
 GatesComponent = gates_ns.class_("Gates", cg.Component, i2c.I2CDevice)
 GatesGPIOPin = gates_ns.class_("GatesGPIOPin", cg.GPIOPin)
 
+CONF_GATES = "gates"
 
 CONFIG_SCHEMA = (
     cv.Schema(

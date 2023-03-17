@@ -53,7 +53,8 @@ void Pinscan::set_mode(int mode) {
       modeStr = "OUTPUT_HIGH";
       break;
     }
-    ESP_LOGD(TAG, "Changed pin to %d, mode: %s", this->current_pin_, modeStr.c_str());
+    ESP_LOGD(TAG, "Changed pin to %d, mode: %s", this->current_pin_,
+             modeStr.c_str());
   }
 }
 
