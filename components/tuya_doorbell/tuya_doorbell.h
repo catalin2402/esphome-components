@@ -3,6 +3,10 @@
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
 
+#ifdef USE_TIME
+#include "esphome/components/time/real_time_clock.h"
+#endif
+
 namespace esphome {
 namespace tuya_doorbell {
 
@@ -50,6 +54,7 @@ enum class TuyaCommandTypeV3 : uint8_t {
   DATAPOINT_REPORT = 0x07,
   DATAPOINT_QUERY = 0x08,
   WIFI_TEST = 0x0E,
+  LOCAL_TIME_QUERY = 0x1C,
 };
 
 enum class TuyaInitState : uint8_t {
@@ -72,12 +77,14 @@ public:
   void dump_config() override;
   void register_listener(uint8_t datapoint_id,
                          const std::function<void(TuyaDatapoint)> &func);
-  void set_datapoint_value(TuyaDatapoint datapoint);
+  void set_datapoint_value(TuyaDatapoint datapoint, bool force);
   void setRingMode(uint8_t mode);
   void setVolume(uint8_t volume);
   void setSound(uint8_t sound);
   void ring();
-
+#ifdef USE_TIME
+  void set_time_id(time::RealTimeClock *time_id) { this->time_id_ = time_id; }
+#endif
 protected:
   void handle_char_(uint8_t c);
   void handle_datapoints_(const uint8_t *buffer, size_t len);
@@ -107,6 +114,11 @@ protected:
   std::vector<TuyaDatapointListener> listeners_;
   std::vector<TuyaDatapoint> datapoints_;
   std::vector<uint8_t> rx_message_;
+
+#ifdef USE_TIME
+  void send_local_time_();
+  optional<time::RealTimeClock *> time_id_{};
+#endif
 };
 
 } // namespace tuya_doorbell

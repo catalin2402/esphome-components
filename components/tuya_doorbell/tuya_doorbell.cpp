@@ -199,6 +199,22 @@ void TuyaDoorbell::handle_command_(TuyaCommandTypeV3 command, uint8_t version,
     this->send_command_(TuyaCommandTypeV3::WIFI_TEST, c, 2);
     break;
   }
+  case TuyaCommandTypeV3::LOCAL_TIME_QUERY:
+#ifdef USE_TIME
+    if (this->time_id_.has_value()) {
+      this->send_local_time_();
+      auto *time_id = *this->time_id_;
+      time_id->add_on_time_sync_callback([this] { this->send_local_time_(); });
+    } else {
+      ESP_LOGW(
+          TAG,
+          "LOCAL_TIME_QUERY is not handled because time is not configured");
+    }
+#else
+    ESP_LOGE(TAG, "LOCAL_TIME_QUERY is not handled");
+
+#endif
+    break;
   default:
     ESP_LOGE(TAG, "invalid command (%02x) received", command);
   }
@@ -303,15 +319,17 @@ void TuyaDoorbell::send_command_(uint8_t command, const uint8_t *buffer,
   this->write_byte(checksum);
 }
 
-void TuyaDoorbell::set_datapoint_value(TuyaDatapoint datapoint) {
+void TuyaDoorbell::set_datapoint_value(TuyaDatapoint datapoint,
+                                       bool force = false) {
   std::vector<uint8_t> buffer;
-  ESP_LOGV(TAG, "Datapoint %u set to %u", datapoint.id, datapoint.value_uint);
+  ESP_LOGD(TAG, "Datapoint %u set to %u", datapoint.id, datapoint.value_uint);
   for (auto &other : this->datapoints_) {
-    if (other.value_uint == datapoint.value_uint) {
-      ESP_LOGV(TAG, "Not sending unchanged value");
+    if (other.value_uint == datapoint.value_uint && !force) {
+      ESP_LOGD(TAG, "Not sending unchanged value");
       return;
     }
   }
+  ESP_LOGD(TAG, "Sending datapoint value");
   buffer.push_back(datapoint.id);
   buffer.push_back(static_cast<uint8_t>(datapoint.type));
 
@@ -360,7 +378,7 @@ void TuyaDoorbell::setVolume(uint8_t volume) {
   } else {
     set_datapoint_value(datapoint);
   }
-  updateDoorbell();
+  // updateDoorbell();
 }
 
 void TuyaDoorbell::setSound(uint8_t sound) {
@@ -374,7 +392,7 @@ void TuyaDoorbell::setSound(uint8_t sound) {
   } else {
     set_datapoint_value(datapoint);
   }
-  updateDoorbell();
+  // updateDoorbell();
 }
 
 void TuyaDoorbell::ring() {
@@ -382,8 +400,8 @@ void TuyaDoorbell::ring() {
   datapoint.id = 2;
   datapoint.type = TuyaDatapointType::INTEGER;
   datapoint.value_int = this->sound_;
-  set_datapoint_value(datapoint);
-  updateDoorbell();
+  set_datapoint_value(datapoint, true);
+  // updateDoorbell();
 }
 
 void TuyaDoorbell::updateDoorbell() {
@@ -406,6 +424,36 @@ void TuyaDoorbell::register_listener(
     if (datapoint.id == datapoint_id)
       func(datapoint);
 }
+
+#ifdef USE_TIME
+void TuyaDoorbell::send_local_time_() {
+  auto *time_id = *this->time_id_;
+  time::ESPTime now = time_id->now();
+  if (now.is_valid()) {
+    uint8_t year = now.year - 2000;
+    uint8_t month = now.month;
+    uint8_t day_of_month = now.day_of_month;
+    uint8_t hour = now.hour;
+    uint8_t minute = now.minute;
+    uint8_t second = now.second;
+    // Tuya days starts from Monday, esphome uses Sunday as day 1
+    uint8_t day_of_week = now.day_of_week - 1;
+    if (day_of_week == 0) {
+      day_of_week = 7;
+    }
+    ESP_LOGD(TAG, "Sending local time");
+    uint8_t payload[] = {0x01, year,   month,  day_of_month,
+                         hour, minute, second, day_of_week};
+    this->send_command_(TuyaCommandTypeV3::LOCAL_TIME_QUERY, payload, 8);
+  } else {
+    // By spec we need to notify MCU that the time was not obtained if this is a
+    // response to a query
+    ESP_LOGW(TAG, "Sending missing local time");
+    uint8_t payload[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    this->send_command_(TuyaCommandTypeV3::LOCAL_TIME_QUERY, payload, 8);
+  }
+}
+#endif
 
 } // namespace tuya_doorbell
 } // namespace esphome
