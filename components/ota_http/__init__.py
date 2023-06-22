@@ -5,10 +5,7 @@ import esphome.config_validation as cv
 from esphome import automation
 from esphome.const import (
     CONF_ID,
-    CONF_TIMEOUT,
     CONF_URL,
-    CONF_METHOD,
-    CONF_ESP8266_DISABLE_SSL_SUPPORT,
 )
 from esphome.core import Lambda, CORE
 
@@ -21,10 +18,11 @@ OtaHttpComponent = ota_http_ns.class_("OtaHttpComponent", cg.Component)
 OtaHttpFlashAction = ota_http_ns.class_("OtaHttpFlashAction", automation.Action)
 
 CONFIG_SCHEMA = cv.Schema(
-        {
-            cv.GenerateID(): cv.declare_id(OtaHttpComponent),
-        }
-    ).extend(cv.COMPONENT_SCHEMA)
+    {
+        cv.GenerateID(): cv.declare_id(OtaHttpComponent),
+    }
+).extend(cv.COMPONENT_SCHEMA)
+
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
@@ -36,13 +34,20 @@ async def to_code(config):
     await cg.register_component(var, config)
 
 
-OTA_HTTP_FLASH_ACTION_SCHEMA = automation.maybe_conf(
-    CONF_URL
-)
+OTA_HTTP_FLASH_ACTION_SCHEMA = automation.maybe_conf(CONF_URL)
 
 
 @automation.register_action(
-    "ota_http.flash", OtaHttpFlashAction, OTA_HTTP_FLASH_ACTION_SCHEMA
+    "ota_http.flash",
+    OtaHttpFlashAction,
+    automation.maybe_simple_id(
+        cv.Schema(
+            {
+                cv.Required(CONF_ID): cv.use_id(OtaHttpComponent),
+                cv.Required(CONF_URL): cv.templatable(cv.string),
+            }
+        )
+    ),
 )
 async def ota_http_action_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
