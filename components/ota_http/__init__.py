@@ -20,91 +20,24 @@ OtaHttpComponent = ota_http_ns.class_("OtaHttpComponent", cg.Component)
 
 OtaHttpFlashAction = ota_http_ns.class_("OtaHttpFlashAction", automation.Action)
 
-CONF_VERIFY_SSL = "verify_ssl"
-
-
-def validate_url(value):
-    value = cv.string(value)
-    try:
-        parsed = list(urlparse.urlparse(value))
-    except Exception as err:
-        raise cv.Invalid("Invalid URL") from err
-
-    if not parsed[0] or not parsed[1]:
-        raise cv.Invalid("URL must have a URL scheme and host")
-
-    if parsed[0] not in ["http", "https"]:
-        raise cv.Invalid("Scheme must be http or https")
-
-    if not parsed[2]:
-        parsed[2] = "/"
-
-    return urlparse.urlunparse(parsed)
-
-
-def validate_secure_url(config):
-    url_ = config[CONF_URL]
-    if (
-        config.get(CONF_VERIFY_SSL)
-        and not isinstance(url_, Lambda)
-        and url_.lower().startswith("https:")
-    ):
-        raise cv.Invalid(
-            "Currently ESPHome doesn't support SSL verification. "
-            "Set 'verify_ssl: false' to make insecure HTTPS requests."
-        )
-    return config
-
-
-CONFIG_SCHEMA = cv.All(
-    cv.Schema(
+CONFIG_SCHEMA = cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(OtaHttpComponent),
-            cv.Optional(
-                CONF_TIMEOUT, default="5min"
-            ): cv.positive_time_period_milliseconds,
-            cv.SplitDefault(CONF_ESP8266_DISABLE_SSL_SUPPORT, esp8266=False): cv.All(
-                cv.only_on_esp8266, cv.boolean
-            ),
         }
-    ).extend(cv.COMPONENT_SCHEMA),
-    cv.require_framework_version(
-        esp8266_arduino=cv.Version(2, 5, 1),
-        esp32_arduino=cv.Version(0, 0, 0),
-    ),
-)
-
+    ).extend(cv.COMPONENT_SCHEMA)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    cg.add(var.set_timeout(config[CONF_TIMEOUT]))
 
-    if CORE.is_esp8266 and not config[CONF_ESP8266_DISABLE_SSL_SUPPORT]:
-        cg.add_define("USE_HTTP_REQUEST_ESP8266_HTTPS")
-
-    if CORE.is_esp32:
-        cg.add_library("WiFiClientSecure", None)
-        cg.add_library("HTTPClient", None)
     if CORE.is_esp8266:
         cg.add_library("ESP8266HTTPClient", None)
+        cg.add_library("ESP8266httpUpdate", None)
 
     await cg.register_component(var, config)
 
 
-OTA_HTTP_ACTION_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.use_id(OtaHttpComponent),
-        cv.Required(CONF_URL): cv.templatable(validate_url),
-        cv.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
-    }
-).add_extra(validate_secure_url)
 OTA_HTTP_FLASH_ACTION_SCHEMA = automation.maybe_conf(
-    CONF_URL,
-    OTA_HTTP_ACTION_SCHEMA.extend(
-        {
-            cv.Optional(CONF_METHOD, default="flash"): cv.string,
-        }
-    ),
+    CONF_URL
 )
 
 
