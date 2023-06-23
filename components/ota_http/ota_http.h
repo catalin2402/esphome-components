@@ -2,16 +2,14 @@
 
 #ifdef USE_ARDUINO
 
+#include "esphome/core/application.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/defines.h"
-#include "esphome/core/application.h"
 #include "esphome/core/log.h"
 
+
 #ifdef USE_ESP8266
-#include <ESP8266HTTPClient.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WiFiMulti.h>
 #include <ESP8266httpUpdate.h>
 #endif
 
@@ -25,12 +23,13 @@ public:
   float get_setup_priority() const override {
     return setup_priority::AFTER_WIFI;
   }
-  void set_url(std::string url){ this->url_ = url;};
+  void set_url(std::string url);
   void flash();
+  WiFiClient* get_client();
 
 protected:
-  WiFiClient client_;
   std::string url_;
+  bool secure_;
 };
 
 } // namespace ota_http
