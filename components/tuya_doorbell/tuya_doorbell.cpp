@@ -428,7 +428,7 @@ void TuyaDoorbell::register_listener(
 #ifdef USE_TIME
 void TuyaDoorbell::send_local_time_() {
   auto *time_id = *this->time_id_;
-  time::ESPTime now = time_id->now();
+  ESPTime now = time_id->now();
   if (now.is_valid()) {
     uint8_t year = now.year - 2000;
     uint8_t month = now.month;
