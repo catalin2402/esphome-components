@@ -1,45 +1,15 @@
 #pragma once
 
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/i2c/i2c.h"
+#include "esphome/components/sensor/sensor.h"
 #include "esphome/core/component.h"
 
 namespace esphome {
 namespace tea5767 {
 
-enum RADIO_BAND {
-  RADIO_BAND_NONE = 0, ///< No band selected.
-
-  RADIO_BAND_FM = 0x01, ///< FM band 87.5 - 108 MHz (USA, Europe) selected.
-  RADIO_BAND_FMWORLD =
-      0x02, ///< FM band 76 - 108 MHz (Japan, Worldwide) selected.
-
-};
-
 #define QUARTZ 32768
 #define FILTER 225000
-
-#define REG_1 0x00
-#define REG_1_MUTE 0x80
-#define REG_1_SM 0x40
-#define REG_1_PLL 0x3F
-
-#define REG_2 0x01
-#define REG_2_PLL 0xFF
-
-#define REG_3 0x02
-#define REG_3_MS 0x08
-#define REG_3_SSL 0x60
-#define REG_3_SUD 0x80
-
-#define REG_4 0x03
-#define REG_4_SMUTE 0x08
-#define REG_4_XTAL 0x10
-#define REG_4_BL 0x20
-#define REG_4_STBY 0x40
-
-#define REG_5 0x04
-#define REG_5_PLLREF 0x80
-#define REG_5_DTC 0x40
 
 #define STAT_3 0x02
 #define STAT_3_STEREO 0x80
@@ -47,25 +17,41 @@ enum RADIO_BAND {
 #define STAT_4 0x03
 #define STAT_4_ADC 0xF0
 
-class TEA5767 : public Component, public i2c::I2CDevice {
+class TEA5767 : public PollingComponent, public i2c::I2CDevice {
 
 public:
+  TEA5767() : PollingComponent() {}
   void dump_config() override;
   void setup() override;
+  void update() override;
+  void set_mono_sensor(binary_sensor::BinarySensor *mono_sensor) {
+    mono_sensor_ = mono_sensor;
+  }
+  void set_level_sensor(sensor::Sensor *level_sensor) {
+    level_sensor_ = level_sensor;
+  }
+  void set_frequency_sensor(sensor::Sensor *frequency_sensor) {
+    frequency_sensor_ = frequency_sensor;
+  }
 
-  void setMono(bool switchOn);
-  void setMute(bool switchOn);
-  void setFrequency(uint16_t newF);
-  void setInEurope(bool inEurope) { this->inEurope_ = inEurope; };
+  void set_in_japan(bool in_japan) { this->in_japan_ = in_japan; };
+  void set_frequency(uint64_t frequency);
+  void set_mono(bool mono);
+  void set_mute(bool mute);
 
-  uint16_t getFrequency(void);
+  uint64_t get_frequency(void);
+  uint8_t get_level(void);
+  bool is_stereo(void);
 
 protected:
-  uint8_t registers[5];
-  uint8_t status[5];
-  bool inEurope_ = false;
-  void readRegisters();
-  void saveRegisters();
+  uint8_t registers_[5];
+  uint8_t status_[5];
+  bool in_japan_ = false;
+  bool read_registers_();
+  void save_registers_();
+  binary_sensor::BinarySensor *mono_sensor_{nullptr};
+  sensor::Sensor *level_sensor_{nullptr};
+  sensor::Sensor *frequency_sensor_{nullptr};
 };
 
 } // namespace tea5767
