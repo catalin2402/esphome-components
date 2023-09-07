@@ -17,7 +17,7 @@ void TEA5767::setup() {
   registers[1] = 0x00;
   registers[2] = 0xB0;
   registers[REG_4] = REG_4_XTAL | REG_4_SMUTE;
-  
+
   if (inEurope_) {
     registers[REG_4] &= ~REG_4_BL;
     registers[REG_5] = 0;
@@ -25,6 +25,7 @@ void TEA5767::setup() {
     registers[REG_4] |= REG_4_BL;
     registers[REG_5] = REG_5_DTC;
   }
+  saveRegisters();
 }
 
 void TEA5767::setMono(bool switchOn) {
