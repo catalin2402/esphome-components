@@ -53,24 +53,51 @@ void TEA5767::set_frequency(uint64_t frequency) {
   this->registers_[0] = frequencyB >> 8;
   this->registers_[1] = frequencyB & 0XFF;
   this->save_registers_();
+  this->update();
 }
 
 void TEA5767::set_mono(bool mono) {
-  if (mono) {
+  this->is_mono_ = mono;
+  if (mono)
     this->registers_[2] |= 0x08;
-  } else {
+  else
     this->registers_[2] &= ~0x08;
-  }
+
   this->save_registers_();
 }
 
 void TEA5767::set_mute(bool mute) {
-  if (mute) {
+  this->is_muted_ = mute;
+  if (mute)
     this->registers_[0] |= 0x80;
-  } else {
+  else
     this->registers_[0] &= ~0x80;
-  }
+
   this->save_registers_();
+}
+
+void TEA5767::set_soft_mute(bool soft_mute) {
+  this->is_soft_muted_ = soft_mute;
+  if (soft_mute)
+    this->registers_[3] |= 0x08;
+  else
+    this->registers_[3] &= ~0x08;
+}
+
+void TEA5767::set_high_cut_control(bool high_cut_control) {
+  this->high_cut_control_ = high_cut_control;
+  if (high_cut_control)
+    this->registers_[3] |= 0x04;
+  else
+    this->registers_[3] &= ~0x04;
+}
+
+void TEA5767::set_stereo_noise_canceling(bool stereo_noise_canceling) {
+  this->stereo_noise_canceling_ = stereo_noise_canceling;
+  if (stereo_noise_canceling)
+    this->registers_[3] |= 0x02;
+  else
+    this->registers_[3] &= ~0x02;
 }
 
 uint64_t TEA5767::get_frequency() {

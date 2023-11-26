@@ -38,15 +38,30 @@ public:
   void set_frequency(uint64_t frequency);
   void set_mono(bool mono);
   void set_mute(bool mute);
+  void set_soft_mute(bool soft_mute);
+  void set_high_cut_control(bool high_cut_control);
+  void set_stereo_noise_canceling(bool stereo_noise_canceling);
 
   uint64_t get_frequency(void);
   uint8_t get_level(void);
   bool is_stereo(void);
+  bool is_muted(void) { return this->is_muted_; };
+  bool is_mono(void) { return this->is_mono_; };
+  bool is_soft_muted(void) { return this->is_soft_muted_; };
+  bool get_high_cut_control(void) { return this->high_cut_control_; };
+  bool get_stereo_noise_canceling(void) {
+    return this->stereo_noise_canceling_;
+  };
 
 protected:
   uint8_t registers_[5];
   uint8_t status_[5];
   bool in_japan_ = false;
+  bool is_muted_ = false;
+  bool is_mono_ = false;
+  bool is_soft_muted_ = false;
+  bool high_cut_control_ = false;
+  bool stereo_noise_canceling_ = false;
   bool read_registers_();
   void save_registers_();
   binary_sensor::BinarySensor *mono_sensor_{nullptr};
