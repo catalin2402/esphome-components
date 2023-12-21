@@ -33,7 +33,6 @@ CLK_PIN = "CLK_pin"
 LATCH_BLANKING = "latch_blanking"
 
 
-
 CONFIG_SCHEMA = display.FULL_DISPLAY_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(HUB75_ICN2053),
@@ -81,7 +80,7 @@ async def to_code(config):
     LAT_pin = await cg.gpio_pin_expression(config[LAT_PIN])
     OE_pin = await cg.gpio_pin_expression(config[OE_PIN])
     CLK_pin = await cg.gpio_pin_expression(config[CLK_PIN])
-   
+
     if D_PIN in config:
         D_pin = await cg.gpio_pin_expression(config[D_PIN])
     else:
@@ -114,7 +113,6 @@ async def to_code(config):
     if LATCH_BLANKING in config:
         cg.add(var.set_latch_blanking(config[LATCH_BLANKING]))
 
-    await cg.register_component(var, config)
     await display.register_display(var, config)
 
     if CONF_LAMBDA in config:
