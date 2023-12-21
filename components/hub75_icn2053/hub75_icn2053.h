@@ -3,7 +3,6 @@
 #include <utility>
 
 #include "esphome/components/display/display_buffer.h"
-#include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
@@ -11,7 +10,7 @@
 
 namespace esphome {
 namespace hub75_icn2053 {
-class HUB75_ICN2053 : public PollingComponent, public display::DisplayBuffer {
+class HUB75_ICN2053 : public display::DisplayBuffer {
 public:
   void setup() override;
 
