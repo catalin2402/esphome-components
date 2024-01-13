@@ -50,4 +50,4 @@ async def to_code(config):
     var.set_bandwidth(config[CONF_BANDWIDTH])
     var.set_frequency(config[CONF_FREQUENCY])
     
-    await cg.register_component(var, config)
+    #await cg.register_component(var, config)
