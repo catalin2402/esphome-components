@@ -38,7 +38,7 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     cg.add_library("SmartRC-CC1101-Driver-Lib", "2.5.7")
     var = cg.new_Pvariable(config[CONF_ID])
-  
+    await cg.register_component(var, config)
     CLK_PIN = await cg.gpio_pin_expression(config[CONF_CLK_PIN])
     MISO_PIN = await cg.gpio_pin_expression(config[CONF_MISO_PIN])
     MOSI_PIN = await cg.gpio_pin_expression(config[CONF_MOSI_PIN])
@@ -50,4 +50,4 @@ async def to_code(config):
     var.set_bandwidth(config[CONF_BANDWIDTH])
     var.set_frequency(config[CONF_FREQUENCY])
     
-    #await cg.register_component(var, config)
+   
