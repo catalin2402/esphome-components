@@ -31,7 +31,7 @@ private:
   uint8_t mosi_pin_;
   uint8_t cs_pin_;
   uint8_t d0_pin_;
-  uint8_t module_number_{0};
+  uint8_t module_number_{1};
   uint32_t bandwidth_;
   uint32_t frequency_;
 };
