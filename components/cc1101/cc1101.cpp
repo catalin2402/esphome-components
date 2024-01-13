@@ -22,7 +22,7 @@ void CC1101::setup() {
   ELECHOUSE_cc1101.setModul(this->module_number_);
   ELECHOUSE_cc1101.Init();
   ELECHOUSE_cc1101.setRxBW(this->bandwidth_ / 1000);
-  ELECHOUSE_cc1101.setMHZ(this->frequency_ / 100000);
+  ELECHOUSE_cc1101.setMHZ(this->frequency_ / 1000000);
   ELECHOUSE_cc1101.SetRx();
 }
 
