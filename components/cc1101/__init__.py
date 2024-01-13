@@ -23,12 +23,11 @@ cc1101 = cc1101_ns.class_("CC1101", cg.Component)
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.Required(CONF_ID): cv.declare_id(cc1101),
-        cv.Required(CONF_CLK_PIN): pins.gpio_output_pin_schema,
-        cv.Required(CONF_MISO_PIN): pins.gpio_input_pin_schema,
-        cv.Required(CONF_MOSI_PIN): pins.gpio_output_pin_schema,
-        cv.Required(CONF_CS_PIN): pins.gpio_output_pin_schema,
-        cv.Required(CONF_D0_PIN): pins.gpio_input_pin_schema,
-        cv.Optional(CONF_MODULE_NUMBER, default=0): cv.uint8_t,
+        cv.Required(CONF_CLK_PIN): pins.internal_gpio_output_pin_schema,
+        cv.Required(CONF_MISO_PIN): pins.internal_gpio_input_pin_schema,
+        cv.Required(CONF_MOSI_PIN): pins.internal_gpio_output_pin_schema,
+        cv.Required(CONF_CS_PIN): pins.internal_gpio_output_pin_schema,
+        cv.Required(CONF_D0_PIN): pins.internal_gpio_input_pin_schema,
         cv.Optional(CONF_BANDWIDTH, default="200kHz"): cv.frequency,
         cv.Optional(CONF_FREQUENCY, default="433.92MHz"): cv.frequency,
     }
@@ -44,10 +43,9 @@ async def to_code(config):
     MOSI_PIN = await cg.gpio_pin_expression(config[CONF_MOSI_PIN])
     CS_PIN = await cg.gpio_pin_expression(config[CONF_CS_PIN])
     D0_PIN = await cg.gpio_pin_expression(config[CONF_D0_PIN])
-    var.set_spi_pins(CLK_PIN, MISO_PIN, MOSI_PIN, CS_PIN)
-    var.set_d0_pin(D0_PIN)
-    var.set_module_number(config[CONF_MODULE_NUMBER])
-    var.set_bandwidth(config[CONF_BANDWIDTH])
-    var.set_frequency(config[CONF_FREQUENCY])
+    cg.add(var.set_spi_pins(CLK_PIN, MISO_PIN, MOSI_PIN, CS_PIN))
+    cg.add(var.set_d0_pin(D0_PIN))
+    cg.add(var.set_bandwidth(config[CONF_BANDWIDTH]))
+    cg.add(var.set_frequency(config[CONF_FREQUENCY]))
     
    

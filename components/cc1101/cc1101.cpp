@@ -12,6 +12,7 @@ void CC1101::dump_config() {
                 this->d0_pin_);
   ESP_LOGCONFIG(TAG, "  Frequency:%u", this->frequency_);
   ESP_LOGCONFIG(TAG, "  Bandwidth:%u", this->bandwidth_);
+  ESP_LOGCONFIG(TAG, "  Module number:%f", this->module_number_);
 }
 
 void CC1101::setup() {
