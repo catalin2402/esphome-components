@@ -16,6 +16,7 @@ public:
   void dump_config() override;
   void backlight();
   void no_backlight();
+  void print_digit(int column, int row, int digit);
   void print_big_time(ESPTime time, bool show_seconds = true);
 
 protected:
@@ -24,7 +25,6 @@ protected:
   void send(uint8_t value, bool rs) override;
 
   void call_writer() override { this->writer_(*this); }
-  void print_digit(int column, int row, int digit);
 
   // Stores the current state of the backlight.
   uint8_t backlight_value_;
