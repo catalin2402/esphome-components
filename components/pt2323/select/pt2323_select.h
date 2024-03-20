@@ -11,6 +11,7 @@ class PT2323Select : public select::Select, public PollingComponent {
 public:
   PT2323Select() : PollingComponent(1000) {}
   void setup() override;
+  float get_setup_priority() const override { return setup_priority::DATA; }
   void dump_config() override;
   void update() override;
   void set_parent(PT2323 *parent) { this->parent_ = parent; }
