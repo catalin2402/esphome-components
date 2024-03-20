@@ -69,12 +69,14 @@ void PT2323::set_defaults() {
 }
 
 void PT2323::send_data(uint8_t data) {
-  if (!this->write_bytes(data, nullptr, 0)) {
-    ESP_LOGE(TAG, "Error writing data");
-    this->status_set_warning();
-  } else {
-    ESP_LOGD(TAG, "Sent data: %X", data);
-    this->status_clear_warning();
+  if (this->is_ready()) {
+    if (!this->write_bytes(data, nullptr, 0)) {
+      ESP_LOGE(TAG, "Error writing data");
+      this->status_set_warning();
+    } else {
+      ESP_LOGD(TAG, "Sent data: %X", data);
+      this->status_clear_warning();
+    }
   }
 }
 

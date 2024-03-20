@@ -122,12 +122,14 @@ void PT2258::send_channel_volume(int volume, int channel) {
     x1 = x1 + 0xB0;
     x10 = x10 + 0xA0;
   }
-  for (uint8_t i = 0; i < 2; i++) {
-    if (!this->write_byte(x10, x1)) {
-      ESP_LOGE(TAG, "Error writing data");
-      this->status_set_warning();
-    } else {
-      this->status_clear_warning();
+  if (this->is_ready()) {
+    for (uint8_t i = 0; i < 2; i++) {
+      if (!this->write_byte(x10, x1)) {
+        ESP_LOGE(TAG, "Error writing data");
+        this->status_set_warning();
+      } else {
+        this->status_clear_warning();
+      }
     }
   }
 }
