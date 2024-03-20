@@ -13,6 +13,7 @@ class PT2323Switch : public switch_::Switch, public PollingComponent {
 public:
   PT2323Switch() : PollingComponent(1000) {}
   void setup() override;
+  float get_setup_priority() const override { return setup_priority::DATA; }
   void dump_config() override;
   void update() override;
   void set_type(SwitchType type) { this->type_ = type; }
