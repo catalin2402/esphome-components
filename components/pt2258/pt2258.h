@@ -9,7 +9,7 @@ namespace pt2258 {
 class PT2258 : public Component, public i2c::I2CDevice {
 public:
   void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::HARDWARE_LATE; }
+  float get_setup_priority() const override { return setup_priority::LATE; }
   void setup() override;
   void set_default_volume(int volume);
   void set_master_volume(int volume);
