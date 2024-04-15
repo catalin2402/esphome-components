@@ -109,21 +109,26 @@ uint8_t TEA5767::get_level() { return this->status_[3] >> 4; }
 bool TEA5767::is_stereo() { return this->status_[2] & 0x80; }
 
 bool TEA5767::read_registers_() {
-  uint8_t result = this->read(this->status_, 5);
-  if (result != i2c::ERROR_OK) {
-    this->status_set_warning();
-    return false;
+  if (this->is_ready()) {
+    uint8_t result = this->read(this->status_, 5);
+    if (result != i2c::ERROR_OK) {
+      this->status_set_warning();
+      return false;
+    }
+    this->status_clear_warning();
+    return true;
   }
-  this->status_clear_warning();
-  return true;
+  return false;
 }
 
 void TEA5767::save_registers_() {
-  uint8_t result = this->write(this->registers_, 5);
-  if (result != i2c::ERROR_OK) {
-    this->status_set_warning();
+  if (this->is_ready()) {
+    uint8_t result = this->write(this->registers_, 5);
+    if (result != i2c::ERROR_OK) {
+      this->status_set_warning();
+    }
+    this->status_clear_warning();
   }
-  this->status_clear_warning();
 }
 
 } // namespace tea5767
