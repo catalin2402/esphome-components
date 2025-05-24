@@ -170,20 +170,16 @@ void TuyaDoorbell::handle_command_(TuyaCommandTypeV3 command, uint8_t version,
       // If we were following the spec to the letter we would send
       // state updates until connected to both WiFi and API/MQTT.
       // Instead we just claim to be connected immediately and move on.
-      uint8_t c[] = {0x03};
+      uint8_t c[] = {0x04};
       this->init_state_ = TuyaInitState::INIT_WIFI;
-      this->send_empty_command_(TuyaCommandTypeV3::DATAPOINT_QUERY);
       this->send_command_(TuyaCommandTypeV3::WIFI_STATE, c, 1);
     }
     break;
   }
   case TuyaCommandTypeV3::WIFI_STATE:
     if (this->init_state_ == TuyaInitState::INIT_WIFI) {
-     // this->init_state_ = TuyaInitState::INIT_DATAPOINT;
-      uint8_t c[] = {0x04};
-      this->send_command_(TuyaCommandTypeV3::WIFI_STATE, c, 1);
+      this->init_state_ = TuyaInitState::INIT_DATAPOINT;
       this->send_empty_command_(TuyaCommandTypeV3::DATAPOINT_QUERY);
-      this->init_state_ = TuyaInitState::INIT_DONE;
     }
     break;
   case TuyaCommandTypeV3::DATAPOINT_DELIVER:
