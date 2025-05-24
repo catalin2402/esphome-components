@@ -8,14 +8,18 @@ HUB75_ICN2053_NUMBER = hub75_icn2053_ns.class_(
     "HUB75_ICN2053Brightness", number.Number, cg.Component
 )
 
-CONFIG_SCHEMA = number.NUMBER_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(HUB75_ICN2053_NUMBER),
-        cv.GenerateID(HUB75_ICN2053_ID): cv.use_id(HUB75_ICN2053),
-        cv.Optional(CONF_MIN_VALUE, default=0): cv.int_range(min=0, max=255),
-        cv.Optional(CONF_MAX_VALUE, default=255): cv.int_range(min=0, max=255),
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = (
+    number.number_schema(HUB75_ICN2053_NUMBER)
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(HUB75_ICN2053_NUMBER),
+            cv.GenerateID(HUB75_ICN2053_ID): cv.use_id(HUB75_ICN2053),
+            cv.Optional(CONF_MIN_VALUE, default=0): cv.int_range(min=0, max=255),
+            cv.Optional(CONF_MAX_VALUE, default=255): cv.int_range(min=0, max=255),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 
 async def to_code(config):

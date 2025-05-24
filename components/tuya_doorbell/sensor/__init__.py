@@ -10,14 +10,17 @@ CONF_SENSOR_DATAPOINT = "sensor_datapoint"
 
 Tuya2Sensor = tuya_doorbell.class_("Tuya2Sensor", sensor.Sensor, cg.Component)
 
-CONFIG_SCHEMA = sensor.SENSOR_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(Tuya2Sensor),
-        cv.GenerateID(CONF_TUYA2_ID): cv.use_id(TuyaDoorbell),
-        cv.Required(CONF_SENSOR_DATAPOINT): cv.uint8_t,
-    }
-).extend(cv.COMPONENT_SCHEMA)
-
+CONFIG_SCHEMA = (
+    sensor.sensor_schema
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(Tuya2Sensor),
+            cv.GenerateID(CONF_TUYA2_ID): cv.use_id(TuyaDoorbell),
+            cv.Required(CONF_SENSOR_DATAPOINT): cv.uint8_t,
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])

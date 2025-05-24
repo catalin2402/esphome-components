@@ -18,7 +18,7 @@ CONFIG_SCHEMA = (
             cv.Required(CONF_PIN): cv.one_of(0, 1, 2, 3, 6, 7, int=True),
         }
     )
-    .extend(cv.polling_component_schema("60s"))
+    .extend(cv.polling_component_schema("10ms"))
 )
 
 

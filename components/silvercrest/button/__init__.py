@@ -24,7 +24,8 @@ BUTTON_TYPE = {
 SilvercrestButton = silvercrest_ns.class_("SilvercrestButton", button.Button, cg.Component)
 
 CONFIG_SCHEMA = cv.All(
-    button.BUTTON_SCHEMA.extend(cv.COMPONENT_SCHEMA).extend(
+    button.button.button_schema(SilvercrestButton)
+    .extend(
         cv.Schema(
             {
                 cv.GenerateID(): cv.declare_id(SilvercrestButton),
@@ -33,7 +34,8 @@ CONFIG_SCHEMA = cv.All(
                 
             }
         ),
-    ),
+    )
+    .extend(cv.COMPONENT_SCHEMA),
     cv.only_with_arduino,
 )
 

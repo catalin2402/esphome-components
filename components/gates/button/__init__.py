@@ -9,12 +9,16 @@ DEPENDENCIES = ["gates"]
 
 GatesButton = gates_ns.class_("GatesButton", button.Button, cg.Component)
 
-CONFIG_SCHEMA = button.BUTTON_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(GatesButton),
-        cv.Required(CONF_GATES): cv.use_id(GatesComponent),
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = (
+    button.button_schema
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(GatesButton),
+            cv.Required(CONF_GATES): cv.use_id(GatesComponent),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 
 async def to_code(config):

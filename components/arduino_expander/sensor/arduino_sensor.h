@@ -9,7 +9,6 @@ namespace arduino_expander {
 
 class ArduinoSensor : public sensor::Sensor, public PollingComponent {
 public:
-  ArduinoSensor() : PollingComponent(1) {}
   void dump_config() override;
   void setup() override;
   void update() override;

@@ -19,13 +19,15 @@ SWITCH_TYPE = {
 
 
 CONFIG_SCHEMA = cv.All(
-    switch.SWITCH_SCHEMA.extend(
+    switch.switch_schema(TEA5767Switch)
+    .extend(
         {
             cv.GenerateID(): cv.declare_id(TEA5767Switch),
             cv.GenerateID(CONF_TEA5767_ID): cv.use_id(TEA5767),
             cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE, upper=True),
         }
-    ).extend(cv.COMPONENT_SCHEMA)
+    )
+    .extend(cv.COMPONENT_SCHEMA)
 )
 
 

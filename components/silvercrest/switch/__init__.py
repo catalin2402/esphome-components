@@ -20,14 +20,17 @@ SilvercrestButton = silvercrest_ns.class_(
     "SilvercrestSwitch", switch.Switch, cg.Component
 )
 
-CONFIG_SCHEMA = switch.SWITCH_SCHEMA.extend(
-    {
-        cv.GenerateID(): cv.declare_id(SilvercrestButton),
-        cv.GenerateID(CONF_SILVERCREST_ID): cv.use_id(Silvercrest),
-        cv.Required(CONF_CHANNEL): cv.enum(CHANNELS, upper=True),
-    }
-).extend(cv.COMPONENT_SCHEMA)
-
+CONFIG_SCHEMA = (
+    switch.switch_schema(SilvercrestButton)
+    .extend(
+        {
+            cv.GenerateID(): cv.declare_id(SilvercrestButton),
+            cv.GenerateID(CONF_SILVERCREST_ID): cv.use_id(Silvercrest),
+            cv.Required(CONF_CHANNEL): cv.enum(CHANNELS, upper=True),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
