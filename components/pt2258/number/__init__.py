@@ -35,7 +35,8 @@ def vaildate(value):
 
 
 CONFIG_SCHEMA = cv.All(
-    number.NUMBER_SCHEMA.extend(
+    number.number_schema(PT2258Number)
+    .extend(
         {
             cv.GenerateID(): cv.declare_id(PT2258Number),
             cv.GenerateID(CONF_PT2258_ID): cv.use_id(PT2258),
@@ -45,7 +46,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_MIN_VALUE, default=0): cv.int_range(min=-79, max=79),
             cv.Optional(CONF_MAX_VALUE, default=79): cv.int_range(min=-79, max=79),
         }
-    ).extend(cv.COMPONENT_SCHEMA),
+    )
+    .extend(cv.polling_component_schema("1s")),
     vaildate,
 )
 

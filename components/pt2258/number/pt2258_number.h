@@ -12,7 +12,6 @@ enum NumberType { MASTER, VOLUME, OFFSET };
 
 class PT2258Number : public number::Number, public PollingComponent {
 public:
-  PT2258Number() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
   void update() override;
