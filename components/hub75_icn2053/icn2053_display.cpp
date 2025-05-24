@@ -1,5 +1,5 @@
 #include "icn2053_display.h"
-#include <Arduino.h>
+//#include <Arduino.h>
 
 #define offset_prefix dma_buff.all_row_data_cnt
 #define offset_suffix dma_buff.all_row_data_cnt + dma_buff.frame_prefix_cnt
