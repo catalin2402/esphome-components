@@ -9,7 +9,7 @@ DEPENDENCIES = ["pt2323"]
 
 PT2323Select = pt2323_ns.class_("PT2323Select", select.Select, cg.Component)
 
-CONFIG_SCHEMA = 
+CONFIG_SCHEMA = (
     select.select_schema(PT2323Select)
     .extend(
         {
@@ -20,7 +20,7 @@ CONFIG_SCHEMA =
             ),
         }
     )
-    .extend(cv.polling_component_schema("1s")
+    .extend(cv.polling_component_schema("1s"))
 )
 
 
