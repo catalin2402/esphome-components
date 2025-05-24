@@ -31,7 +31,7 @@ def vaildate(value):
 
 
 CONFIG_SCHEMA = cv.All(
-    switch.SWITCH_SCHEMA.extend(
+    switch.switch_schema.extend(
         {
             cv.GenerateID(): cv.declare_id(PT2323Switch),
             cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
@@ -39,7 +39,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
         }
-    ).extend(cv.COMPONENT_SCHEMA),
+    ).extend(cv.polling_component_schema("1s")),
     vaildate,
 )
 

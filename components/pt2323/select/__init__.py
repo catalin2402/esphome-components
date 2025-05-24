@@ -9,7 +9,7 @@ DEPENDENCIES = ["pt2323"]
 
 PT2323Select = pt2323_ns.class_("PT2323Select", select.Select, cg.Component)
 
-CONFIG_SCHEMA = select.SELECT_SCHEMA.extend(
+CONFIG_SCHEMA = select.select_schema.extend(
     {
         cv.GenerateID(): cv.declare_id(PT2323Select),
         cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
@@ -17,7 +17,7 @@ CONFIG_SCHEMA = select.SELECT_SCHEMA.extend(
             cv.ensure_list(cv.string_strict), cv.Length(min=1, max=5)
         ),
     }
-).extend(cv.COMPONENT_SCHEMA)
+).extend(cv.polling_component_schema("1s"))
 
 
 async def to_code(config):

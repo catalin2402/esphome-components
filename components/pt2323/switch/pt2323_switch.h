@@ -11,7 +11,6 @@ enum SwitchType { ENHANCE, BOOST, MUTE, MUTE_ALL };
 
 class PT2323Switch : public switch_::Switch, public PollingComponent {
 public:
-  PT2323Switch() : PollingComponent(1000) {}
   void setup() override;
   void dump_config() override;
   void update() override;
