@@ -11,7 +11,7 @@ CONF_SENSOR_DATAPOINT = "sensor_datapoint"
 Tuya2Sensor = tuya_doorbell.class_("Tuya2Sensor", sensor.Sensor, cg.Component)
 
 CONFIG_SCHEMA = (
-    sensor.sensor_schema
+    sensor.sensor_schema(Tuya2Sensor)
     .extend(
         {
             cv.GenerateID(): cv.declare_id(Tuya2Sensor),
