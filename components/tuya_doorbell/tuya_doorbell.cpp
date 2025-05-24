@@ -172,14 +172,17 @@ void TuyaDoorbell::handle_command_(TuyaCommandTypeV3 command, uint8_t version,
       // Instead we just claim to be connected immediately and move on.
       uint8_t c[] = {0x04};
       this->init_state_ = TuyaInitState::INIT_WIFI;
-      this->send_command_(TuyaCommandTypeV3::WIFI_STATE, c, 1);
+      this->send_empty_command_(TuyaCommandTypeV3::DATAPOINT_QUERY);
+      this->send_command_(TuyaCommandTypeV3::WIFI_STATE, CONNECTED, 1);
     }
     break;
   }
   case TuyaCommandTypeV3::WIFI_STATE:
     if (this->init_state_ == TuyaInitState::INIT_WIFI) {
-      this->init_state_ = TuyaInitState::INIT_DATAPOINT;
+     // this->init_state_ = TuyaInitState::INIT_DATAPOINT;
+      this->send_command_(TuyaCommandTypeV3::WIFI_STATE, CONNECTED_DATA, 1);
       this->send_empty_command_(TuyaCommandTypeV3::DATAPOINT_QUERY);
+      this->init_state_ = TuyaInitState::INIT_DONE;
     }
     break;
   case TuyaCommandTypeV3::DATAPOINT_DELIVER:
