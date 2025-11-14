@@ -56,6 +56,7 @@ class RemoteReceiverComponent : public remote_base::RemoteReceiverBase,
 
   bool no_init_pin_{false};
 };
+#endif
 
 }  // namespace remote_receiver
 }  // namespace esphome
