@@ -64,6 +64,7 @@ async def to_code(config):
             }
         )
     ),
+    synchronous=True,
 )
 async def pt2323_set_input_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -74,7 +75,7 @@ async def pt2323_set_input_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "pt2323.mute", SetMuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+    "pt2323.mute", SetMuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA), synchronous=True,
 )
 async def pt2323_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -83,7 +84,7 @@ async def pt2323_mute_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "pt2323.unmute", SetUnmuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA)
+    "pt2323.unmute", SetUnmuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA), synchronous=True,
 )
 async def pt2323_unmute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -101,6 +102,7 @@ async def pt2323_unmute_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -120,6 +122,7 @@ async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -139,6 +142,7 @@ async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -158,6 +162,7 @@ async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
