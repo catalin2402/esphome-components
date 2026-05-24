@@ -9,26 +9,38 @@ static const char *const TAG = "pt2323.select";
 void PT2323Select::dump_config() { LOG_SELECT("", "PT2323 Select", this); }
 
 void PT2323Select::setup() {
-  auto value = this->traits.get_options().at(this->parent_->get_input());
-  this->state = value;
-  this->publish_state(this->state);
+  size_t idx = this->parent_->get_input();
+  auto &options = this->traits.get_options();
+
+  if (idx < options.size()) {
+    this->publish_state(options[idx]);
+  } else {
+    ESP_LOGW(TAG, "Invalid initial index %u", (unsigned)idx);
+  }
 }
 
 void PT2323Select::update() {
-  auto new_state = this->traits.get_options().at(this->parent_->get_input());
-  if (this->state != new_state) {
-    this->state = new_state;
-    this->publish_state(this->state);
+  size_t idx = this->parent_->get_input();
+  auto &options = this->traits.get_options();
+
+  if (idx < options.size()) {
+    std::string new_state = options[idx];
+    if (this->current_option() != new_state) {
+      this->publish_state(new_state);
+    }
   }
 }
 
 void PT2323Select::control(const std::string &value) {
-  auto options = this->traits.get_options();
-  auto opt_it = std::find(options.cbegin(), options.cend(), value);
-  size_t idx = std::distance(options.cbegin(), opt_it);
+  auto &options = this->traits.get_options();
+  auto it = std::find(options.begin(), options.end(), value);
+  if (it == options.end()) {
+    ESP_LOGW(TAG, "Invalid option selected: %s", value.c_str());
+    return;
+  }
+  size_t idx = std::distance(options.begin(), it);
   this->parent_->set_input(idx);
-  this->state = value;
-  this->publish_state(this->state);
+  this->publish_state(value);
 }
 
 } // namespace pt2323
