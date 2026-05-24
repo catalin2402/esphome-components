@@ -17,6 +17,7 @@ public:
   void set_boost(bool boost);
   void mute_all_channels(bool mute);
   void mute_channel(uint8_t channel, bool mute);
+  void resend_data();
 
   uint8_t get_input() { return input_; }
   bool get_enhance() { return enhance_; }

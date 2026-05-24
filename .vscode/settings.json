@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.yaml": "yaml",
         "optional": "cpp",
         "ostream": "cpp",
         "ratio": "cpp",
@@ -9,6 +10,7 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "variant": "cpp"
     }
 }

@@ -85,5 +85,14 @@ protected:
   PT2323 *pt2323_;
 };
 
+template <typename... Ts> class ResendDataAction : public Action<Ts...> {
+public:
+  explicit ResendDataAction(PT2323 *a_pt2323) : pt2323_(a_pt2323) {}
+  void play(Ts... x) override { this->pt2323_->resend_data(); }
+
+protected:
+  PT2323 *pt2323_;
+};
+
 } // namespace pt2323
 } // namespace esphome

@@ -67,6 +67,8 @@ bool PT2258::send_individual_channels() {
   return false;
 }
 
+void PT2258::resend_data() { this->send_data(); }
+
 void PT2258::send_data() {
   ESP_LOGD(TAG,
            "Sending volumes: Master: %d, Channel 1: %d, Channel 2: %d, "
@@ -85,7 +87,12 @@ void PT2258::send_data() {
         send_channel_volume(this->volumes_[i], i);
     }
   } else {
-    send_channel_volume(this->volumes_[0], 0);
+    if (this->volumes_[0] > 79)
+      send_channel_volume(79, 0);
+    else if (this->volumes_[0] < 0)
+      send_channel_volume(0, 0);
+    else
+      send_channel_volume(this->volumes_[0], 0);
   }
 }
 

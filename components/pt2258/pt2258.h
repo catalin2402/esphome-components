@@ -14,6 +14,7 @@ public:
   void set_master_volume(int volume);
   void set_channel_volume(int volume, int channel);
   int get_channel_volume(int channel, bool is_offset = false);
+  void resend_data();
 
 protected:
   int default_volume_ = 40;

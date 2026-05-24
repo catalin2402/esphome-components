@@ -47,55 +47,25 @@ const uint16_t BITS = 56;
 
 class HyundaiIrClimate : public climate_ir::ClimateIR {
 public:
-  HyundaiIrClimate()
-      : climate_ir::ClimateIR(
-            TEMP_MIN, TEMP_MAX, 1.0f, true, true,
-            {climate::CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM,
-             climate::CLIMATE_FAN_HIGH},
-            {climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_VERTICAL},
-            {climate::CLIMATE_PRESET_NONE, climate::CLIMATE_PRESET_SLEEP}) {}
+  HyundaiIrClimate(): climate_ir::ClimateIR(
+          TEMP_MIN, TEMP_MAX, 1.0f, true, true,
+          {climate::CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM,
+            climate::CLIMATE_FAN_HIGH},
+          {climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_VERTICAL},
+          {climate::CLIMATE_PRESET_NONE, climate::CLIMATE_PRESET_SLEEP}) {}
 
   void set_fahrenheit(bool value) {
     this->fahrenheit_ = value;
   }
 
+  void set_sensor(sensor::Sensor *sensor);
+
 protected:
   void transmit_state() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
-
   void calc_checksum_(uint64_t &value);
   void transmit_(uint64_t value);
-
-  climate::ClimateTraits traits() override {
-    climate::ClimateTraits traits{};
-    traits.set_supports_current_temperature(this->sensor_ != nullptr);
-    traits.set_supports_current_temperature(false);
-    traits.set_supported_modes({
-        climate::CLIMATE_MODE_OFF,
-        climate::CLIMATE_MODE_HEAT,
-        climate::CLIMATE_MODE_COOL,
-        climate::CLIMATE_MODE_DRY,
-        climate::CLIMATE_MODE_FAN_ONLY,
-    });
-    traits.set_supports_action(true);
-    traits.set_supported_fan_modes(this->fan_modes_);
-    traits.set_supported_swing_modes(this->swing_modes_);
-    traits.set_supports_two_point_target_temperature(false);
-    traits.set_visual_min_temperature(this->minimum_temperature_);
-    traits.set_visual_max_temperature(this->maximum_temperature_);
-    traits.set_visual_temperature_step(this->temperature_step_);
-    traits.set_supported_presets(this->presets_);
-
-    return traits;
-  }
-
-  uint32_t header_high_;
-  uint32_t header_low_;
-  uint32_t bit_high_;
-  uint32_t bit_one_low_;
-  uint32_t bit_zero_low_;
   bool fahrenheit_{false};
-
   uint64_t mode_before_{MODE_COOL};
 };
 

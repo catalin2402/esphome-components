@@ -68,6 +68,13 @@ void PT2323::set_defaults() {
   mute_all_channels(this->mute_);
 }
 
+void PT2323::resend_data() {
+  set_input(this->input_);
+  set_enhance(this->enhance_);
+  set_boost(this->boost_);
+  mute_all_channels(this->mute_);
+}
+
 void PT2323::send_data(uint8_t data) {
   if (this->is_ready()) {
     if (!this->write_bytes(data, nullptr, 0)) {
