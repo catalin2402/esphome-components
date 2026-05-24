@@ -58,8 +58,6 @@ public:
     this->fahrenheit_ = value;
   }
 
-  void set_sensor(sensor::Sensor *sensor);
-
 protected:
   void transmit_state() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
