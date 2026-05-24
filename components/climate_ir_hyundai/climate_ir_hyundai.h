@@ -52,22 +52,31 @@ public:
           {climate::CLIMATE_FAN_LOW, climate::CLIMATE_FAN_MEDIUM,
             climate::CLIMATE_FAN_HIGH},
           {climate::CLIMATE_SWING_OFF, climate::CLIMATE_SWING_VERTICAL},
-          {climate::CLIMATE_PRESET_NONE, climate::CLIMATE_PRESET_SLEEP}) {}
+          {climate::CLIMATE_PRESET_NONE, climate::CLIMATE_PRESET_SLEEP}) {
+
+            traits.set_supported_modes({
+              climate::CLIMATE_MODE_OFF,
+              climate::CLIMATE_MODE_HEAT,
+              climate::CLIMATE_MODE_COOL,
+              climate::CLIMATE_MODE_DRY,
+              climate::CLIMATE_MODE_FAN_ONLY,
+            });
+          }
 
   void set_fahrenheit(bool value) {
     this->fahrenheit_ = value;
   }
 
-   climate::ClimateTraits traits() override {
-    auto traits = climate::ClimateTraits();
-    traits.set_supported_modes({
-        climate::CLIMATE_MODE_OFF,
-        climate::CLIMATE_MODE_HEAT,
-        climate::CLIMATE_MODE_COOL,
-        climate::CLIMATE_MODE_DRY,
-        climate::CLIMATE_MODE_FAN_ONLY,
-    });
-    return traits;
+  //  climate::ClimateTraits traits() override {
+  //   auto traits = climate::ClimateTraits();
+  //   traits.set_supported_modes({
+  //       climate::CLIMATE_MODE_OFF,
+  //       climate::CLIMATE_MODE_HEAT,
+  //       climate::CLIMATE_MODE_COOL,
+  //       climate::CLIMATE_MODE_DRY,
+  //       climate::CLIMATE_MODE_FAN_ONLY,
+  //   });
+  //   return traits;
   }
 
 
