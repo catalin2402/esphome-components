@@ -58,6 +58,20 @@ public:
     this->fahrenheit_ = value;
   }
 
+   climate::ClimateTraits traits() override {
+    auto traits = climate::ClimateTraits();
+    traits.set_supported_modes({
+        climate::CLIMATE_MODE_OFF,
+        climate::CLIMATE_MODE_HEAT,
+        climate::CLIMATE_MODE_COOL,
+        climate::CLIMATE_MODE_DRY,
+        climate::CLIMATE_MODE_FAN_ONLY,
+    });
+    return traits;
+  }
+
+
+
 protected:
   void transmit_state() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
