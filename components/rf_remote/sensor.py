@@ -24,7 +24,7 @@ CONFIG_SCHEMA = (
             cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(remote_base.RemoteReceiverBase),
             cv.Required(CONF_REMOTE_ID): validate_remote_id,
             cv.Optional(
-                CONF_RESET_TIME, default="100ms"
+                CONF_RESET_TIME, default="50ms"
             ): cv.positive_time_period_milliseconds,
         }
     )

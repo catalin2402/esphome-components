@@ -21,7 +21,7 @@ CONFIG_SCHEMA = (
             cv.Required(CONF_REMOTE_ID): validate_remote_id,
             cv.Required(CONF_REMOTE_BUTTON): cv.int_range(min=0, max=255),
             cv.Optional(
-                CONF_RESET_TIME, default="100ms"
+                CONF_RESET_TIME, default="50ms"
             ): cv.positive_time_period_milliseconds,
         }
     )
