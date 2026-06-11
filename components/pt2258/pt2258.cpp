@@ -7,10 +7,15 @@ namespace pt2258 {
 
 static const char *const TAG = "pt2258";
 
+// PT2258 all-channel mute commands (datasheet: 1111100M).
+static const uint8_t PT2258_MUTE_OFF = 0xF8;
+static const uint8_t PT2258_MUTE_ON = 0xF9;
+
 void PT2258::dump_config() {
   ESP_LOGCONFIG(TAG, "PT2258:");
   LOG_I2C_DEVICE(this);
   ESP_LOGCONFIG(TAG, "  Default volume: %d", this->default_volume_);
+  ESP_LOGCONFIG(TAG, "  Muted: %s", YESNO(this->muted_));
 }
 
 void PT2258::setup() { set_master_volume(this->default_volume_); }
@@ -47,6 +52,14 @@ void PT2258::set_master_volume(int volume) {
     this->volumes_[i] = volume + offset;
   }
   send_data();
+}
+
+void PT2258::set_mute(bool mute) {
+  if (this->muted_ == mute)
+    return;
+
+  this->muted_ = mute;
+  this->send_mute_state();
 }
 
 uint8_t PT2258::calculate_x1(int volume) {
@@ -93,6 +106,24 @@ void PT2258::send_data() {
       send_channel_volume(0, 0);
     else
       send_channel_volume(this->volumes_[0], 0);
+  }
+
+  // Re-apply mute after volume data, including during setup/resend.
+  this->send_mute_state();
+}
+
+void PT2258::send_mute_state() {
+  const uint8_t command = this->muted_ ? PT2258_MUTE_ON : PT2258_MUTE_OFF;
+  ESP_LOGD(TAG, "Setting mute: %s (0x%02X)", YESNO(this->muted_), command);
+
+  if (!this->is_ready())
+    return;
+
+  if (this->write(&command, 1) != i2c::ERROR_OK) {
+    ESP_LOGE(TAG, "Error writing mute command");
+    this->status_set_warning();
+  } else {
+    this->status_clear_warning();
   }
 }
 

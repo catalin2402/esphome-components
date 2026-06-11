@@ -16,5 +16,26 @@ protected:
   PT2258 *pt2258_;
 };
 
+template <typename... Ts> class SetMuteAction : public Action<Ts...> {
+public:
+  explicit SetMuteAction(PT2258 *a_pt2258) : pt2258_(a_pt2258) {}
+
+  TEMPLATABLE_VALUE(bool, mute)
+
+  void play(Ts... x) override { this->pt2258_->set_mute(this->mute_.value(x...)); }
+
+protected:
+  PT2258 *pt2258_;
+};
+
+template <typename... Ts> class ToggleMuteAction : public Action<Ts...> {
+public:
+  explicit ToggleMuteAction(PT2258 *a_pt2258) : pt2258_(a_pt2258) {}
+  void play(Ts... x) override { this->pt2258_->toggle_mute(); }
+
+protected:
+  PT2258 *pt2258_;
+};
+
 } // namespace pt2258
 } // namespace esphome
