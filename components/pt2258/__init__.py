@@ -27,13 +27,11 @@ CONFIG_SCHEMA = (
     .extend(i2c.i2c_device_schema(0x44))
 )
 
-OPERATION_BASE_SCHEMA = cv.Schema(
-    {
-        cv.Required(CONF_ID): cv.use_id(PT2258),
-    }
-)
+OPERATION_BASE_SCHEMA = {
+    cv.Required(CONF_ID): cv.use_id(PT2258),
+}
 
-SET_MUTE_SCHEMA = OPERATION_BASE_SCHEMA.extend(
+SET_MUTE_SCHEMA = cv.Schema(OPERATION_BASE_SCHEMA).extend(
     {
         cv.Required(CONF_MUTE): cv.templatable(cv.boolean),
     }
@@ -51,7 +49,7 @@ async def to_code(config):
 @automation.register_action(
     "pt2258.resend_data",
     ResendDataAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
     synchronous=True,
 )
 async def pt2258_resend_data_to_code(config, action_id, template_arg, args):
@@ -76,7 +74,7 @@ async def pt2258_set_mute_to_code(config, action_id, template_arg, args):
 @automation.register_action(
     "pt2258.toggle_mute",
     ToggleMuteAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
     synchronous=True,
 )
 async def pt2258_toggle_mute_to_code(config, action_id, template_arg, args):
