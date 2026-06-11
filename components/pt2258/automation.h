@@ -19,23 +19,20 @@ protected:
 template <typename... Ts> class SetMuteAction : public Action<Ts...> {
 public:
   explicit SetMuteAction(PT2258 *a_pt2258) : pt2258_(a_pt2258) {}
-
   void play(Ts... x) override { this->pt2258_->set_mute(true); }
 
 protected:
   PT2258 *pt2258_;
 };
 
-template <typename... Ts> class SetUnMuteAction : public Action<Ts...> {
+template <typename... Ts> class SetUnmuteAction : public Action<Ts...> {
 public:
-  explicit SetUnMuteAction(PT2258 *a_pt2258) : pt2258_(a_pt2258) {}
-
+  explicit SetUnmuteAction(PT2258 *a_pt2258) : pt2258_(a_pt2258) {}
   void play(Ts... x) override { this->pt2258_->set_mute(false); }
 
 protected:
   PT2258 *pt2258_;
 };
-
 
 } // namespace pt2258
 } // namespace esphome

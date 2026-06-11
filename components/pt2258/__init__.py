@@ -10,8 +10,8 @@ pt2258_ns = cg.esphome_ns.namespace("pt2258")
 PT2258 = pt2258_ns.class_("PT2258", cg.Component, i2c.I2CDevice)
 
 ResendDataAction = pt2258_ns.class_("ResendDataAction", automation.Automation)
-MuteAction = pt2258_ns.class_("MuteAction", automation.Automation)
-UnmuteAction = pt2258_ns.class_("UnmuteAction", automation.Automation)
+SetMuteAction = pt2323_ns.class_("SetMuteAction", automation.Action)
+SetUnmuteAction = pt2323_ns.class_("SetUnmuteAction", automation.Action)
 
 CONF_DEFAULT_VOLUME = "default_volume"
 CONF_PT2258_ID = "pt2258_id"
@@ -52,26 +52,21 @@ async def pt2258_resend_data_to_code(config, action_id, template_arg, args):
     cg.add(var.resend_data())
     return var
 
+
 @automation.register_action(
-    "pt2258.mute",
-    MuteAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
-    synchronous=True,
+    "pt2258.mute", SetMuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA), synchronous=True,
 )
 async def pt2258_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    cg.add(var.mute())
-    return var    
+    return var
+
 
 @automation.register_action(
-    "pt2258.unmute",
-    UnmuteAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
-    synchronous=True,
+    "pt2258.unmute", SetUnmuteAction, automation.maybe_simple_id(OPERATION_BASE_SCHEMA), synchronous=True,
 )
 async def pt2258_unmute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    cg.add(var.unmute())
-    return var    
+    return var
+
