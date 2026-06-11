@@ -119,12 +119,12 @@ void PT2258::send_mute_state() {
   if (!this->is_ready())
     return;
 
-  if (this->write(&command, 1) != i2c::ERROR_OK) {
-    ESP_LOGE(TAG, "Error writing mute command");
-    this->status_set_warning();
-  } else {
-    this->status_clear_warning();
-  }
+   if (!this->write_byte(command)) {
+        ESP_LOGE(TAG, "Error writing data");
+        this->status_set_warning();
+      } else {
+        this->status_clear_warning();
+      }
 }
 
 void PT2258::send_channel_volume(int volume, int channel) {
