@@ -14,6 +14,7 @@ SetMuteAction = pt2258_ns.class_("SetMuteAction", automation.Action)
 ToggleMuteAction = pt2258_ns.class_("ToggleMuteAction", automation.Action)
 
 CONF_DEFAULT_VOLUME = "default_volume"
+CONF_PT2258_ID = "pt2258_id"  # Required by the number platform.
 CONF_MUTE = "mute"
 CONFIG_SCHEMA = (
     cv.Schema(
