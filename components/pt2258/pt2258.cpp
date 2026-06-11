@@ -119,7 +119,7 @@ void PT2258::send_mute_state() {
   if (!this->is_ready())
     return;
 
-   if (!this->write_byte(command)) {
+   if (!this->write_bytes(command, nullptr, 0)) {
         ESP_LOGE(TAG, "Error writing data");
         this->status_set_warning();
       } else {
