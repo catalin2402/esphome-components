@@ -176,7 +176,7 @@ async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
 @automation.register_action(
     "pt2323.resend_data",
     ResendDataAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
     synchronous=True,
 )
 async def pt2323_resend_data_to_code(config, action_id, template_arg, args):

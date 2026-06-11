@@ -43,7 +43,7 @@ async def to_code(config):
 @automation.register_action(
     "pt2258.resend_data",
     ResendDataAction,
-    automation.maybe_simple_id(OPERATION_BASE_SCHEMA.extend),
+    automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
     synchronous=True,
 )
 async def pt2258_resend_data_to_code(config, action_id, template_arg, args):
