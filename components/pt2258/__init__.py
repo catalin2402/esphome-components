@@ -10,8 +10,8 @@ pt2258_ns = cg.esphome_ns.namespace("pt2258")
 PT2258 = pt2258_ns.class_("PT2258", cg.Component, i2c.I2CDevice)
 
 ResendDataAction = pt2258_ns.class_("ResendDataAction", automation.Automation)
-SetMuteAction = pt2323_ns.class_("SetMuteAction", automation.Action)
-SetUnmuteAction = pt2323_ns.class_("SetUnmuteAction", automation.Action)
+SetMuteAction = pt2258_ns.class_("SetMuteAction", automation.Action)
+SetUnmuteAction = pt2258_ns.class_("SetUnmuteAction", automation.Action)
 
 CONF_DEFAULT_VOLUME = "default_volume"
 CONF_PT2258_ID = "pt2258_id"
