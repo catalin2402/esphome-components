@@ -9,7 +9,7 @@ DEPENDENCIES = ["i2c"]
 pt2258_ns = cg.esphome_ns.namespace("pt2258")
 PT2258 = pt2258_ns.class_("PT2258", cg.Component, i2c.I2CDevice)
 
-ResendDataAction = pt2258_ns.class_("ResendDataAction", automation.Automation)
+ResendDataAction = pt2258_ns.class_("ResendDataAction", automation.Action)
 SetMuteAction = pt2258_ns.class_("SetMuteAction", automation.Action)
 SetUnmuteAction = pt2258_ns.class_("SetUnmuteAction", automation.Action)
 
@@ -49,7 +49,6 @@ async def to_code(config):
 async def pt2258_resend_data_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    cg.add(var.resend_data())
     return var
 
 

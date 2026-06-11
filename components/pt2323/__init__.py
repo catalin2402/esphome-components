@@ -21,7 +21,7 @@ SetMuteChannelAction = pt2323_ns.class_("SetMuteChannelAction", automation.Actio
 SetUnmuteChannelAction = pt2323_ns.class_("SetUnmuteChannelAction", automation.Action)
 SetEnhanceAction = pt2323_ns.class_("SetEnhanceAction", automation.Action)
 SetBoostAction = pt2323_ns.class_("SetBoostAction", automation.Action)
-ResendDataAction = pt2323_ns.class_("ResendDataAction", automation.Automation)
+ResendDataAction = pt2323_ns.class_("ResendDataAction", automation.Action)
 
 
 CONFIG_SCHEMA = (
@@ -182,5 +182,4 @@ async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
 async def pt2323_resend_data_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    cg.add(var.resend_data())
     return var
