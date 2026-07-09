@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "esphome/components/gpio_expander/cached_gpio.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 
@@ -12,7 +13,8 @@ namespace esphome::esp32_hosted_gpio {
 
 class ESP32HostedGPIOPin;
 
-class ESP32HostedGPIOComponent final : public Component {
+class ESP32HostedGPIOComponent final : public Component,
+                                       public gpio_expander::CachedGpioExpander<uint8_t, 64> {
  public:
   void setup() override;
   void loop() override;
@@ -20,13 +22,16 @@ class ESP32HostedGPIOComponent final : public Component {
   float get_setup_priority() const override;
 
   void register_pin(ESP32HostedGPIOPin *pin);
-  esp_err_t pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags);
-  esp_err_t digital_write(ESP32HostedGPIOPin *pin, bool value);
-  esp_err_t digital_read(ESP32HostedGPIOPin *pin, int *value);
+  void pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags);
 
  protected:
+  bool digital_read_hw(uint8_t pin) override;
+  bool digital_read_cache(uint8_t pin) override;
+  void digital_write_hw(uint8_t pin, bool value) override;
+
   esp_err_t probe_link_();
   esp_err_t configure_pin_(uint8_t pin, gpio::Flags flags);
+  ESP32HostedGPIOPin *find_pin_(uint8_t pin) const;
   void apply_pending_();
   bool has_pending_() const;
   void mark_link_down_();
@@ -65,6 +70,7 @@ class ESP32HostedGPIOPin final : public GPIOPin {
   bool pending_write_{false};
   bool has_output_state_{false};
   bool output_state_{false};
+  bool input_state_{false};
 };
 
 }  // namespace esphome::esp32_hosted_gpio
