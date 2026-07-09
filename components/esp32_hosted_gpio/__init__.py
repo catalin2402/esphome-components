@@ -70,44 +70,6 @@ SDIO_SLAVE_PINS = {
     },
 }
 
-# Best-effort map for custom full-duplex SPI slave builds using ESP-Hosted's
-# "No specific development board" defaults. ESPHome's prebuilt slave firmware
-# currently builds SDIO targets only.
-SPI_SLAVE_PINS = {
-    "ESP32": {
-        "mosi": 13,
-        "miso": 12,
-        "clk": 14,
-        "cs": 15,
-        "handshake": 26,
-        "data_ready": 4,
-    },
-    "ESP32C5": {
-        "mosi": 7,
-        "miso": 2,
-        "clk": 3,
-        "cs": 10,
-        "handshake": 1,
-        "data_ready": 4,
-    },
-    "ESP32C6": {
-        "mosi": 7,
-        "miso": 2,
-        "clk": 6,
-        "cs": 10,
-        "handshake": 3,
-        "data_ready": 4,
-    },
-    "ESP32C61": {
-        "mosi": 7,
-        "miso": 2,
-        "clk": 6,
-        "cs": 8,
-        "handshake": 22,
-        "data_ready": 23,
-    },
-}
-
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(ESP32HostedGPIOComponent),
@@ -148,20 +110,13 @@ def _slave_transport_pin_map(config):
     pin_map = {}
     transport_type = config.get(CONF_TYPE, "sdio")
     variant = config.get(CONF_VARIANT)
-    if variant is None:
+    if variant is None or transport_type != "sdio":
         return pin_map
 
-    if transport_type == "sdio":
-        pins_for_variant = SDIO_SLAVE_PINS.get(variant, {})
-        names = ["cmd", "clk", "d0", "d1"]
-        if config.get(CONF_BUS_WIDTH, 4) == 4:
-            names.extend(["d2", "d3"])
-    elif transport_type == "spi":
-        pins_for_variant = SPI_SLAVE_PINS.get(variant, {})
-        names = ["mosi", "miso", "clk", "cs", "handshake", "data_ready"]
-    else:
-        pins_for_variant = {}
-        names = []
+    pins_for_variant = SDIO_SLAVE_PINS.get(variant, {})
+    names = ["cmd", "clk", "d0", "d1"]
+    if config.get(CONF_BUS_WIDTH, 4) == 4:
+        names.extend(["d2", "d3"])
 
     for name in names:
         if name in pins_for_variant:

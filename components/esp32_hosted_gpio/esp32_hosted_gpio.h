@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-#include "esphome/components/network/util.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 
@@ -23,16 +22,21 @@ class ESP32HostedGPIOComponent final : public Component {
   esp_err_t digital_read(uint8_t pin, int *value);
 
  protected:
-  bool transport_ready_() const;
+  static void hosted_event_handler_(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
+  esp_err_t probe_link_();
   esp_err_t configure_pin_(uint8_t pin, gpio::Flags flags);
   void apply_pending_();
+  void mark_link_down_();
 
   gpio::Flags pin_flags_[64]{};
   uint64_t pending_config_{0};
   uint64_t configured_pins_{0};
   uint64_t pending_writes_{0};
+  uint64_t written_pins_{0};
   uint64_t output_states_{0};
   uint32_t next_retry_{0};
+  bool link_ready_{false};
   bool waiting_logged_{false};
 };
 

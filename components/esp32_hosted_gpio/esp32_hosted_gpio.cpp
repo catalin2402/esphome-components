@@ -6,10 +6,17 @@
 namespace esphome::esp32_hosted_gpio {
 
 static const char *const TAG = "esp32_hosted_gpio";
-static constexpr uint32_t RETRY_INTERVAL_MS = 250;
+static constexpr uint32_t LINK_RETRY_INTERVAL_MS = 1000;
+static constexpr uint32_t APPLY_RETRY_INTERVAL_MS = 250;
 
 void ESP32HostedGPIOComponent::setup() {
   ESP_LOGCONFIG(TAG, "ESP32 Hosted GPIO expander enabled");
+  esp_err_t err =
+      esp_event_handler_register(ESP_HOSTED_EVENT, ESP_EVENT_ANY_ID, &ESP32HostedGPIOComponent::hosted_event_handler_,
+                                 this);
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "Failed to register ESP-Hosted event handler: %s", esp_err_to_name(err));
+  }
 }
 
 void ESP32HostedGPIOComponent::loop() { this->apply_pending_(); }
@@ -47,8 +54,9 @@ esp_err_t ESP32HostedGPIOComponent::digital_write(uint8_t pin, bool value) {
   } else {
     this->output_states_ &= ~pin_mask;
   }
+  this->written_pins_ |= pin_mask;
 
-  if ((this->configured_pins_ & pin_mask) == 0 || !this->transport_ready_()) {
+  if ((this->configured_pins_ & pin_mask) == 0 || !this->link_ready_) {
     this->pending_writes_ |= pin_mask;
     this->status_set_warning();
     return ESP_ERR_INVALID_STATE;
@@ -57,6 +65,7 @@ esp_err_t ESP32HostedGPIOComponent::digital_write(uint8_t pin, bool value) {
   esp_err_t err = esp_hosted_cp_gpio_set_level(pin, value ? 1 : 0);
   if (err != ESP_OK) {
     this->pending_writes_ |= pin_mask;
+    this->mark_link_down_();
     this->status_set_warning();
     ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin, esp_err_to_name(err));
   }
@@ -70,19 +79,45 @@ esp_err_t ESP32HostedGPIOComponent::digital_read(uint8_t pin, int *value) {
   }
 
   const uint64_t pin_mask = 1ULL << pin;
-  if ((this->configured_pins_ & pin_mask) == 0 || !this->transport_ready_()) {
+  if ((this->configured_pins_ & pin_mask) == 0 || !this->link_ready_) {
     return ESP_ERR_INVALID_STATE;
   }
 
   esp_err_t err = esp_hosted_cp_gpio_get_level(pin, value);
   if (err != ESP_OK) {
+    this->mark_link_down_();
     ESP_LOGW(TAG, "Failed to read co-processor GPIO%u: %s", pin, esp_err_to_name(err));
   }
   return err;
 }
 
-bool ESP32HostedGPIOComponent::transport_ready_() const {
-  return network::is_connected();
+void ESP32HostedGPIOComponent::hosted_event_handler_(void *arg, esp_event_base_t event_base, int32_t event_id,
+                                                     void *event_data) {
+  (void) event_data;
+  auto *component = static_cast<ESP32HostedGPIOComponent *>(arg);
+  if (component == nullptr || event_base != ESP_HOSTED_EVENT) {
+    return;
+  }
+
+  switch (event_id) {
+    case ESP_HOSTED_EVENT_TRANSPORT_UP:
+      component->link_ready_ = true;
+      component->next_retry_ = 0;
+      break;
+    case ESP_HOSTED_EVENT_CP_INIT:
+    case ESP_HOSTED_EVENT_TRANSPORT_FAILURE:
+    case ESP_HOSTED_EVENT_TRANSPORT_DOWN:
+      component->mark_link_down_();
+      component->next_retry_ = 0;
+      break;
+    default:
+      break;
+  }
+}
+
+esp_err_t ESP32HostedGPIOComponent::probe_link_() {
+  esp_hosted_coprocessor_fwver_t version{};
+  return static_cast<esp_err_t>(esp_hosted_get_coprocessor_fwversion(&version));
 }
 
 esp_err_t ESP32HostedGPIOComponent::configure_pin_(uint8_t pin, gpio::Flags flags) {
@@ -118,6 +153,13 @@ esp_err_t ESP32HostedGPIOComponent::configure_pin_(uint8_t pin, gpio::Flags flag
   return err;
 }
 
+void ESP32HostedGPIOComponent::mark_link_down_() {
+  this->link_ready_ = false;
+  this->pending_config_ |= this->configured_pins_;
+  this->pending_writes_ |= this->written_pins_;
+  this->configured_pins_ = 0;
+}
+
 void ESP32HostedGPIOComponent::apply_pending_() {
   if (this->pending_config_ == 0 && this->pending_writes_ == 0) {
     this->status_clear_warning();
@@ -128,19 +170,27 @@ void ESP32HostedGPIOComponent::apply_pending_() {
   if (now < this->next_retry_) {
     return;
   }
-  this->next_retry_ = now + RETRY_INTERVAL_MS;
 
-  if (!this->transport_ready_()) {
-    if (!this->waiting_logged_) {
-      ESP_LOGD(TAG, "Waiting for ESP-Hosted transport before configuring co-processor GPIOs");
-      this->waiting_logged_ = true;
+  if (!this->link_ready_) {
+    esp_err_t err = this->probe_link_();
+    if (err == ESP_OK) {
+      this->link_ready_ = true;
+      this->next_retry_ = now + APPLY_RETRY_INTERVAL_MS;
+    } else {
+      this->next_retry_ = now + LINK_RETRY_INTERVAL_MS;
+      if (!this->waiting_logged_) {
+        ESP_LOGD(TAG, "Waiting for ESP-Hosted link before configuring co-processor GPIOs");
+        this->waiting_logged_ = true;
+      }
+      this->status_set_warning();
+      return;
     }
-    this->status_set_warning();
-    return;
+  } else {
+    this->next_retry_ = now + APPLY_RETRY_INTERVAL_MS;
   }
 
   if (this->waiting_logged_) {
-    ESP_LOGD(TAG, "ESP-Hosted transport is ready; applying co-processor GPIO state");
+    ESP_LOGD(TAG, "ESP-Hosted link is ready; applying co-processor GPIO state");
     this->waiting_logged_ = false;
   }
 
@@ -152,6 +202,7 @@ void ESP32HostedGPIOComponent::apply_pending_() {
 
     esp_err_t err = this->configure_pin_(pin, this->pin_flags_[pin]);
     if (err != ESP_OK) {
+      this->mark_link_down_();
       this->status_set_warning();
       return;
     }
@@ -170,6 +221,7 @@ void ESP32HostedGPIOComponent::apply_pending_() {
     const bool value = (this->output_states_ & pin_mask) != 0;
     esp_err_t err = esp_hosted_cp_gpio_set_level(pin, value ? 1 : 0);
     if (err != ESP_OK) {
+      this->mark_link_down_();
       this->status_set_warning();
       ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin, esp_err_to_name(err));
       return;
