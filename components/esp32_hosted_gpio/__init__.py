@@ -131,7 +131,19 @@ def _primary_esp32_hosted_config():
 
 
 def _final_validate(config):
-    interface_pins = _slave_transport_pin_map(_primary_esp32_hosted_config())
+    hosted_config = _primary_esp32_hosted_config()
+    if hosted_config.get(CONF_TYPE) == "spi" and not config.get(CONF_RESERVED_PINS):
+        raise cv.Invalid(
+            "reserved_pins is required when esp32_hosted uses SPI because "
+            "the ESP-Hosted slave-side SPI GPIOs are firmware/config dependent "
+            "and cannot be inferred. Set reserved_pins to every co-processor "
+            "GPIO used by the ESP-Hosted SPI transport: MOSI, MISO, CLK, CS, "
+            "handshake, and data_ready, plus any other co-processor GPIOs that "
+            "must not be exposed through esp32_hosted_gpio.",
+            path=[CONF_RESERVED_PINS],
+        )
+
+    interface_pins = _slave_transport_pin_map(hosted_config)
 
     hub_id = config[CONF_ID]
     for (key, client_id, number), pin_list in pins.PIN_SCHEMA_REGISTRY.pins_used.items():
