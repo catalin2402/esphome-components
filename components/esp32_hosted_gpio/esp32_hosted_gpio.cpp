@@ -11,12 +11,7 @@ static constexpr uint32_t APPLY_RETRY_INTERVAL_MS = 250;
 
 void ESP32HostedGPIOComponent::setup() {
   ESP_LOGCONFIG(TAG, "ESP32 Hosted GPIO expander enabled");
-  esp_err_t err =
-      esp_event_handler_register(ESP_HOSTED_EVENT, ESP_EVENT_ANY_ID, &ESP32HostedGPIOComponent::hosted_event_handler_,
-                                 this);
-  if (err != ESP_OK) {
-    ESP_LOGW(TAG, "Failed to register ESP-Hosted event handler: %s", esp_err_to_name(err));
-  }
+  this->next_retry_ = millis() + LINK_RETRY_INTERVAL_MS;
 }
 
 void ESP32HostedGPIOComponent::loop() { this->apply_pending_(); }
@@ -89,30 +84,6 @@ esp_err_t ESP32HostedGPIOComponent::digital_read(uint8_t pin, int *value) {
     ESP_LOGW(TAG, "Failed to read co-processor GPIO%u: %s", pin, esp_err_to_name(err));
   }
   return err;
-}
-
-void ESP32HostedGPIOComponent::hosted_event_handler_(void *arg, esp_event_base_t event_base, int32_t event_id,
-                                                     void *event_data) {
-  (void) event_data;
-  auto *component = static_cast<ESP32HostedGPIOComponent *>(arg);
-  if (component == nullptr || event_base != ESP_HOSTED_EVENT) {
-    return;
-  }
-
-  switch (event_id) {
-    case ESP_HOSTED_EVENT_TRANSPORT_UP:
-      component->link_ready_ = true;
-      component->next_retry_ = 0;
-      break;
-    case ESP_HOSTED_EVENT_CP_INIT:
-    case ESP_HOSTED_EVENT_TRANSPORT_FAILURE:
-    case ESP_HOSTED_EVENT_TRANSPORT_DOWN:
-      component->mark_link_down_();
-      component->next_retry_ = 0;
-      break;
-    default:
-      break;
-  }
 }
 
 esp_err_t ESP32HostedGPIOComponent::probe_link_() {

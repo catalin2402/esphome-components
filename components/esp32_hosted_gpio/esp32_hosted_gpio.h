@@ -22,8 +22,6 @@ class ESP32HostedGPIOComponent final : public Component {
   esp_err_t digital_read(uint8_t pin, int *value);
 
  protected:
-  static void hosted_event_handler_(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
-
   esp_err_t probe_link_();
   esp_err_t configure_pin_(uint8_t pin, gpio::Flags flags);
   void apply_pending_();
