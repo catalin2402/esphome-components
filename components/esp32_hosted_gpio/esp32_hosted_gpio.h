@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+
+#include "esphome/components/network/util.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
 
@@ -11,12 +14,26 @@ namespace esphome::esp32_hosted_gpio {
 class ESP32HostedGPIOComponent final : public Component {
  public:
   void setup() override;
+  void loop() override;
   void dump_config() override;
   float get_setup_priority() const override;
 
   esp_err_t pin_mode(uint8_t pin, gpio::Flags flags);
   esp_err_t digital_write(uint8_t pin, bool value);
   esp_err_t digital_read(uint8_t pin, int *value);
+
+ protected:
+  bool transport_ready_() const;
+  esp_err_t configure_pin_(uint8_t pin, gpio::Flags flags);
+  void apply_pending_();
+
+  gpio::Flags pin_flags_[64]{};
+  uint64_t pending_config_{0};
+  uint64_t configured_pins_{0};
+  uint64_t pending_writes_{0};
+  uint64_t output_states_{0};
+  uint32_t next_retry_{0};
+  bool waiting_logged_{false};
 };
 
 class ESP32HostedGPIOPin final : public GPIOPin {
