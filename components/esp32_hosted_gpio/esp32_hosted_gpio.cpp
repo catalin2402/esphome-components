@@ -23,65 +23,77 @@ void ESP32HostedGPIOComponent::dump_config() {
 
 float ESP32HostedGPIOComponent::get_setup_priority() const { return setup_priority::IO; }
 
-esp_err_t ESP32HostedGPIOComponent::pin_mode(uint8_t pin, gpio::Flags flags) {
-  if (pin >= 64) {
-    ESP_LOGW(TAG, "Invalid co-processor GPIO%u", pin);
+void ESP32HostedGPIOComponent::register_pin(ESP32HostedGPIOPin *pin) {
+  if (pin == nullptr || pin->registered_) {
+    return;
+  }
+  pin->next_ = this->pins_;
+  this->pins_ = pin;
+  pin->registered_ = true;
+}
+
+esp_err_t ESP32HostedGPIOComponent::pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags) {
+  if (pin == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (pin->pin_ >= 64) {
+    ESP_LOGW(TAG, "Invalid co-processor GPIO%u", pin->pin_);
     return ESP_ERR_INVALID_ARG;
   }
 
-  const uint64_t pin_mask = 1ULL << pin;
-  this->pin_flags_[pin] = flags;
-  this->pending_config_ |= pin_mask;
-  this->configured_pins_ &= ~pin_mask;
+  this->register_pin(pin);
+  pin->flags_ = flags;
+  pin->configured_ = false;
   this->status_set_warning();
   return ESP_OK;
 }
 
-esp_err_t ESP32HostedGPIOComponent::digital_write(uint8_t pin, bool value) {
-  if (pin >= 64) {
-    ESP_LOGW(TAG, "Invalid co-processor GPIO%u", pin);
+esp_err_t ESP32HostedGPIOComponent::digital_write(ESP32HostedGPIOPin *pin, bool value) {
+  if (pin == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (pin->pin_ >= 64) {
+    ESP_LOGW(TAG, "Invalid co-processor GPIO%u", pin->pin_);
     return ESP_ERR_INVALID_ARG;
   }
 
-  const uint64_t pin_mask = 1ULL << pin;
-  if (value) {
-    this->output_states_ |= pin_mask;
-  } else {
-    this->output_states_ &= ~pin_mask;
-  }
-  this->written_pins_ |= pin_mask;
+  this->register_pin(pin);
+  pin->output_state_ = value;
+  pin->has_output_state_ = true;
 
-  if ((this->configured_pins_ & pin_mask) == 0 || !this->link_ready_) {
-    this->pending_writes_ |= pin_mask;
+  if (!pin->configured_ || !this->link_ready_) {
+    pin->pending_write_ = true;
     this->status_set_warning();
     return ESP_ERR_INVALID_STATE;
   }
 
-  esp_err_t err = esp_hosted_cp_gpio_set_level(pin, value ? 1 : 0);
+  esp_err_t err = esp_hosted_cp_gpio_set_level(pin->pin_, value ? 1 : 0);
   if (err != ESP_OK) {
-    this->pending_writes_ |= pin_mask;
+    pin->pending_write_ = true;
     this->mark_link_down_();
     this->status_set_warning();
-    ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin, esp_err_to_name(err));
+    ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin->pin_, esp_err_to_name(err));
   }
   return err;
 }
 
-esp_err_t ESP32HostedGPIOComponent::digital_read(uint8_t pin, int *value) {
-  if (pin >= 64 || value == nullptr) {
-    ESP_LOGW(TAG, "Invalid co-processor GPIO%u read", pin);
+esp_err_t ESP32HostedGPIOComponent::digital_read(ESP32HostedGPIOPin *pin, int *value) {
+  if (pin == nullptr || value == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (pin->pin_ >= 64) {
+    ESP_LOGW(TAG, "Invalid co-processor GPIO%u read", pin->pin_);
     return ESP_ERR_INVALID_ARG;
   }
 
-  const uint64_t pin_mask = 1ULL << pin;
-  if ((this->configured_pins_ & pin_mask) == 0 || !this->link_ready_) {
+  if (!pin->configured_ || !this->link_ready_) {
     return ESP_ERR_INVALID_STATE;
   }
 
-  esp_err_t err = esp_hosted_cp_gpio_get_level(pin, value);
+  esp_err_t err = esp_hosted_cp_gpio_get_level(pin->pin_, value);
   if (err != ESP_OK) {
     this->mark_link_down_();
-    ESP_LOGW(TAG, "Failed to read co-processor GPIO%u: %s", pin, esp_err_to_name(err));
+    ESP_LOGW(TAG, "Failed to read co-processor GPIO%u: %s", pin->pin_, esp_err_to_name(err));
   }
   return err;
 }
@@ -126,13 +138,25 @@ esp_err_t ESP32HostedGPIOComponent::configure_pin_(uint8_t pin, gpio::Flags flag
 
 void ESP32HostedGPIOComponent::mark_link_down_() {
   this->link_ready_ = false;
-  this->pending_config_ |= this->configured_pins_;
-  this->pending_writes_ |= this->written_pins_;
-  this->configured_pins_ = 0;
+  for (auto *pin = this->pins_; pin != nullptr; pin = pin->next_) {
+    pin->configured_ = false;
+    if (pin->has_output_state_) {
+      pin->pending_write_ = true;
+    }
+  }
+}
+
+bool ESP32HostedGPIOComponent::has_pending_() const {
+  for (auto *pin = this->pins_; pin != nullptr; pin = pin->next_) {
+    if (!pin->configured_ || pin->pending_write_) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void ESP32HostedGPIOComponent::apply_pending_() {
-  if (this->pending_config_ == 0 && this->pending_writes_ == 0) {
+  if (!this->has_pending_()) {
     this->status_clear_warning();
     return;
   }
@@ -165,40 +189,36 @@ void ESP32HostedGPIOComponent::apply_pending_() {
     this->waiting_logged_ = false;
   }
 
-  for (uint8_t pin = 0; pin < 64; pin++) {
-    const uint64_t pin_mask = 1ULL << pin;
-    if ((this->pending_config_ & pin_mask) == 0) {
+  for (auto *pin = this->pins_; pin != nullptr; pin = pin->next_) {
+    if (pin->configured_) {
       continue;
     }
 
-    esp_err_t err = this->configure_pin_(pin, this->pin_flags_[pin]);
+    esp_err_t err = this->configure_pin_(pin->pin_, pin->flags_);
     if (err != ESP_OK) {
       this->mark_link_down_();
       this->status_set_warning();
       return;
     }
 
-    this->pending_config_ &= ~pin_mask;
-    this->configured_pins_ |= pin_mask;
+    pin->configured_ = true;
     return;
   }
 
-  for (uint8_t pin = 0; pin < 64; pin++) {
-    const uint64_t pin_mask = 1ULL << pin;
-    if ((this->pending_writes_ & pin_mask) == 0) {
+  for (auto *pin = this->pins_; pin != nullptr; pin = pin->next_) {
+    if (!pin->pending_write_) {
       continue;
     }
 
-    const bool value = (this->output_states_ & pin_mask) != 0;
-    esp_err_t err = esp_hosted_cp_gpio_set_level(pin, value ? 1 : 0);
+    esp_err_t err = esp_hosted_cp_gpio_set_level(pin->pin_, pin->output_state_ ? 1 : 0);
     if (err != ESP_OK) {
       this->mark_link_down_();
       this->status_set_warning();
-      ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin, esp_err_to_name(err));
+      ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin->pin_, esp_err_to_name(err));
       return;
     }
 
-    this->pending_writes_ &= ~pin_mask;
+    pin->pending_write_ = false;
     return;
   }
 }
@@ -208,13 +228,13 @@ void ESP32HostedGPIOPin::setup() { this->pin_mode(this->flags_); }
 void ESP32HostedGPIOPin::pin_mode(gpio::Flags flags) {
   this->flags_ = flags;
   if (this->parent_ != nullptr) {
-    this->parent_->pin_mode(this->pin_, flags);
+    this->parent_->pin_mode(this, flags);
   }
 }
 
 bool ESP32HostedGPIOPin::digital_read() {
   int value = 0;
-  if (this->parent_ == nullptr || this->parent_->digital_read(this->pin_, &value) != ESP_OK) {
+  if (this->parent_ == nullptr || this->parent_->digital_read(this, &value) != ESP_OK) {
     return this->inverted_;
   }
   return bool(value) != this->inverted_;
@@ -222,7 +242,7 @@ bool ESP32HostedGPIOPin::digital_read() {
 
 void ESP32HostedGPIOPin::digital_write(bool value) {
   if (this->parent_ != nullptr) {
-    this->parent_->digital_write(this->pin_, value != this->inverted_);
+    this->parent_->digital_write(this, value != this->inverted_);
   }
 }
 

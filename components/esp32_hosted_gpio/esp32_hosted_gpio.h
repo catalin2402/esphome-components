@@ -10,6 +10,8 @@
 
 namespace esphome::esp32_hosted_gpio {
 
+class ESP32HostedGPIOPin;
+
 class ESP32HostedGPIOComponent final : public Component {
  public:
   void setup() override;
@@ -17,28 +19,27 @@ class ESP32HostedGPIOComponent final : public Component {
   void dump_config() override;
   float get_setup_priority() const override;
 
-  esp_err_t pin_mode(uint8_t pin, gpio::Flags flags);
-  esp_err_t digital_write(uint8_t pin, bool value);
-  esp_err_t digital_read(uint8_t pin, int *value);
+  void register_pin(ESP32HostedGPIOPin *pin);
+  esp_err_t pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags);
+  esp_err_t digital_write(ESP32HostedGPIOPin *pin, bool value);
+  esp_err_t digital_read(ESP32HostedGPIOPin *pin, int *value);
 
  protected:
   esp_err_t probe_link_();
   esp_err_t configure_pin_(uint8_t pin, gpio::Flags flags);
   void apply_pending_();
+  bool has_pending_() const;
   void mark_link_down_();
 
-  gpio::Flags pin_flags_[64]{};
-  uint64_t pending_config_{0};
-  uint64_t configured_pins_{0};
-  uint64_t pending_writes_{0};
-  uint64_t written_pins_{0};
-  uint64_t output_states_{0};
+  ESP32HostedGPIOPin *pins_{nullptr};
   uint32_t next_retry_{0};
   bool link_ready_{false};
   bool waiting_logged_{false};
 };
 
 class ESP32HostedGPIOPin final : public GPIOPin {
+  friend class ESP32HostedGPIOComponent;
+
  public:
   void setup() override;
   void pin_mode(gpio::Flags flags) override;
@@ -55,9 +56,15 @@ class ESP32HostedGPIOPin final : public GPIOPin {
 
  protected:
   ESP32HostedGPIOComponent *parent_{nullptr};
+  ESP32HostedGPIOPin *next_{nullptr};
   uint8_t pin_{0};
   bool inverted_{false};
   gpio::Flags flags_{gpio::FLAG_NONE};
+  bool registered_{false};
+  bool configured_{false};
+  bool pending_write_{false};
+  bool has_output_state_{false};
+  bool output_state_{false};
 };
 
 }  // namespace esphome::esp32_hosted_gpio
