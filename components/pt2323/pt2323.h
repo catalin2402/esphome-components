@@ -19,11 +19,13 @@ public:
   void mute_channel(uint8_t channel, bool mute);
   void resend_data();
 
-  uint8_t get_input() { return input_; }
-  bool get_enhance() { return enhance_; }
-  bool get_mute() { return mute_; }
-  bool get_boost() { return boost_; }
-  bool get_channel_mute(uint8_t channel) { return channels_muted_[channel]; }
+  uint8_t get_input() const { return this->input_; }
+  bool get_enhance() const { return this->enhance_; }
+  bool get_mute() const { return this->mute_; }
+  bool get_boost() const { return this->boost_; }
+  bool get_channel_mute(uint8_t channel) const {
+    return channel >= 1 && channel <= 6 && this->channels_muted_[channel - 1];
+  }
 
 private:
   uint8_t input_ = 0;
@@ -31,7 +33,7 @@ private:
   bool boost_ = false;
   bool mute_ = false;
   void send_data(uint8_t data);
-  bool channels_muted_[6];
+  bool channels_muted_[6]{false, false, false, false, false, false};
 };
 
 } // namespace pt2323

@@ -1,4 +1,5 @@
 #include "remote_receiver.h"
+#include <cinttypes>
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -74,10 +75,10 @@ void RemoteReceiverComponent::dump_config() {
                   "invert the signal using 'inverted: True' in the pin schema!");
   }
   ESP_LOGCONFIG(TAG,
-                "  Buffer Size: %u\n"
-                "  Tolerance: %u%s\n"
-                "  Filter out pulses shorter than: %u us\n"
-                "  Signal is done after %u us of no changes",
+                "  Buffer Size: %" PRIu32 "\n"
+                "  Tolerance: %" PRIu32 "%s\n"
+                "  Filter out pulses shorter than: %" PRIu32 " us\n"
+                "  Signal is done after %" PRIu32 " us of no changes",
                 this->buffer_size_, this->tolerance_,
                 (this->tolerance_mode_ == remote_base::TOLERANCE_MODE_TIME) ? " us" : "%", this->filter_us_,
                 this->idle_us_);

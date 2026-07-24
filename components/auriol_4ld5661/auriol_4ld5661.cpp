@@ -1,13 +1,22 @@
 #include "auriol_4ld5661.h"
 
+#include "esphome/core/application.h"
+#include "esphome/core/log.h"
+
+#include <cinttypes>
+#include <cstdio>
+#include <cstdlib>
+
 namespace esphome {
 namespace auriol_4ld5661 {
 
 static const char *const TAG = "auriol_4ld5661";
-static const uint32_t RAIN_COUNTER_MAX = 0xFFFFF;  // 20-bit monotonic rain counter
-static const uint32_t RAIN_ROLLING_12H_MS = 12UL * 60UL * 60UL * 1000UL;
-static const uint32_t RAIN_ROLLING_24H_MS = 24UL * 60UL * 60UL * 1000UL;
-static const uint32_t RAIN_ROLLING_PUBLISH_INTERVAL_MS = 60UL * 1000UL;
+static constexpr size_t FRAME_BITS = 52;
+static constexpr size_t FRAME_RAW_ITEMS = (FRAME_BITS - 1) * 2 + 1;
+static constexpr uint32_t RAIN_COUNTER_MAX = 0xFFFFF;  // 20-bit monotonic rain counter
+static constexpr uint32_t RAIN_ROLLING_12H_MS = 12UL * 60UL * 60UL * 1000UL;
+static constexpr uint32_t RAIN_ROLLING_24H_MS = 24UL * 60UL * 60UL * 1000UL;
+static constexpr uint32_t RAIN_ROLLING_PUBLISH_INTERVAL_MS = 60UL * 1000UL;
 
 static bool in_range_(uint32_t value, uint32_t min, uint32_t max) {
   return value >= min && value <= max;
@@ -16,10 +25,10 @@ static bool in_range_(uint32_t value, uint32_t min, uint32_t max) {
 bool Auriol4LD5661::on_receive(remote_base::RemoteReceiveData data) {
   const auto &raw = data.get_raw_data();
 
-  if (raw.size() < 104)
+  if (raw.size() < FRAME_RAW_ITEMS)
     return false;
 
-  for (size_t start = 0; start + (52 * 2) < raw.size(); start++) {
+  for (size_t start = 0; start + FRAME_RAW_ITEMS <= raw.size(); start++) {
     if (this->try_decode_from_gap_(raw, start, false))
       return true;
     if (this->try_decode_from_gap_(raw, start, true))
@@ -30,27 +39,45 @@ bool Auriol4LD5661::on_receive(remote_base::RemoteReceiveData data) {
 }
 
 void Auriol4LD5661::loop() {
-  const uint32_t now = millis();
-  if (raining_ && now - last_tip_millis_ >= rain_timeout_ms_) {
+  const uint32_t now = App.get_loop_component_start_time();
+  if (this->raining_ && now - this->last_tip_millis_ >= this->rain_timeout_ms_) {
     this->finish_rain_event_();
   }
 
-  if (has_published_rolling_totals_ &&
-      now - last_rolling_publish_millis_ >= RAIN_ROLLING_PUBLISH_INTERVAL_MS) {
+  if (this->has_published_rolling_totals_ &&
+      now - this->last_rolling_publish_millis_ >= RAIN_ROLLING_PUBLISH_INTERVAL_MS) {
     this->publish_rolling_rain_totals_(false);
   }
 }
 
+void Auriol4LD5661::dump_config() {
+  ESP_LOGCONFIG(TAG,
+                "Auriol 4LD5661:\n"
+                "  Rain timeout: %" PRIu32 " ms\n"
+                "  Rain calibration: %.3f mm/tip",
+                this->rain_timeout_ms_, this->mm_per_tip_);
+  if (this->has_auriol_id_) {
+    ESP_LOGCONFIG(TAG, "  Device ID: 0x%02X", this->auriol_id_);
+  } else {
+    ESP_LOGCONFIG(TAG, "  Device ID: any");
+  }
+  LOG_SENSOR("  ", "Temperature", this->temperature_sensor_);
+  LOG_SENSOR("  ", "Rain total", this->rain_sensor_);
+  LOG_SENSOR("  ", "Rain counter", this->rain_tips_sensor_);
+  LOG_SENSOR("  ", "Last rain event", this->total_last_rain_sensor_);
+  LOG_SENSOR("  ", "Rain in last 12 hours", this->total_rain_last_12h_sensor_);
+  LOG_SENSOR("  ", "Rain in last 24 hours", this->total_rain_last_24h_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery low", this->battery_sensor_);
+  LOG_TEXT_SENSOR("  ", "Start of rain", this->start_of_rain_sensor_);
+  LOG_TEXT_SENSOR("  ", "End of rain", this->end_of_rain_sensor_);
+}
+
 bool Auriol4LD5661::try_decode_from_gap_(const std::vector<int32_t> &raw, size_t first_gap_index, bool inverted) {
   std::array<uint8_t, 7> b{};
-  b.fill(0);
 
-  for (uint8_t bit_index = 0; bit_index < 52; bit_index++) {
-    size_t raw_index = first_gap_index + bit_index * 2;
-    if (raw_index >= raw.size())
-      return false;
-
-    uint32_t width = std::abs(raw[raw_index]);
+  for (size_t bit_index = 0; bit_index < FRAME_BITS; bit_index++) {
+    const size_t raw_index = first_gap_index + bit_index * 2;
+    const uint32_t width = std::abs(raw[raw_index]);
 
     bool bit;
     if (in_range_(width, 700, 1350)) {
@@ -101,13 +128,9 @@ bool Auriol4LD5661::try_candidate_(const std::array<uint8_t, 7> &b) {
   float rain_mm = rain_raw * mm_per_tip_;
 
   ESP_LOGD(TAG,
-           "Auriol decoded: id=%02X battery_low=%s temp=%.1f rain=%.1fmm rain_tips=%u bytes=%02X %02X %02X %02X %02X %02X %02X",
-           id,
-           battery_low ? "true" : "false",
-           temperature,
-           rain_mm,
-           rain_raw,
-           b[0], b[1], b[2], b[3], b[4], b[5], b[6]);
+           "Decoded id=%02X battery_low=%s temp=%.1f°C rain=%.1fmm rain_tips=%" PRIu32,
+           id, TRUEFALSE(battery_low), temperature, rain_mm, rain_raw);
+  ESP_LOGVV(TAG, "Data: %02X %02X %02X %02X %02X %02X %02X", b[0], b[1], b[2], b[3], b[4], b[5], b[6]);
 
   if (temperature_sensor_ != nullptr)
     temperature_sensor_->publish_state(temperature);
@@ -140,7 +163,8 @@ void Auriol4LD5661::handle_rain_counter_(uint32_t rain_raw) {
     return;
 
   if (delta > 1000) {
-    ESP_LOGW(TAG, "Ignoring implausible rain counter jump: previous=%u current=%u delta=%u",
+    ESP_LOGW(TAG,
+             "Ignoring implausible rain counter jump: previous=%" PRIu32 " current=%" PRIu32 " delta=%" PRIu32,
              last_rain_raw_, rain_raw, delta);
     last_rain_raw_ = rain_raw;
     return;
@@ -152,10 +176,10 @@ void Auriol4LD5661::handle_rain_counter_(uint32_t rain_raw) {
     this->start_rain_event_(last_rain_raw_, rain_raw);
   } else {
     current_event_tips_ = this->rain_counter_delta_(rain_start_base_tips_, rain_raw);
-    last_tip_millis_ = millis();
+    last_tip_millis_ = App.get_loop_component_start_time();
     this->publish_current_event_total_();
 
-    ESP_LOGD(TAG, "Rain event updated: tips=%u total=%.1fmm",
+    ESP_LOGD(TAG, "Rain event updated: tips=%" PRIu32 " total=%.1fmm",
              current_event_tips_, current_event_tips_ * mm_per_tip_);
   }
 
@@ -173,11 +197,11 @@ void Auriol4LD5661::start_rain_event_(uint32_t previous_rain_raw, uint32_t curre
   raining_ = true;
   rain_start_base_tips_ = previous_rain_raw;
   current_event_tips_ = this->rain_counter_delta_(previous_rain_raw, current_rain_raw);
-  last_tip_millis_ = millis();
+  last_tip_millis_ = App.get_loop_component_start_time();
 
   const std::string ts = this->now_string_();
 
-  ESP_LOGI(TAG, "Rain started: start=%s tips=%u total=%.1fmm",
+  ESP_LOGI(TAG, "Rain started: start=%s tips=%" PRIu32 " total=%.1fmm",
            ts.c_str(), current_event_tips_, current_event_tips_ * mm_per_tip_);
 
   if (start_of_rain_sensor_ != nullptr)
@@ -192,7 +216,7 @@ void Auriol4LD5661::finish_rain_event_() {
   const std::string ts = this->now_string_();
   const float total_mm = current_event_tips_ * mm_per_tip_;
 
-  ESP_LOGI(TAG, "Rain ended: end=%s tips=%u total=%.1fmm",
+  ESP_LOGI(TAG, "Rain ended: end=%s tips=%" PRIu32 " total=%.1fmm",
            ts.c_str(), current_event_tips_, total_mm);
 
   if (end_of_rain_sensor_ != nullptr)
@@ -213,7 +237,7 @@ void Auriol4LD5661::add_rain_history_(uint32_t tips) {
   if (total_rain_last_12h_sensor_ == nullptr && total_rain_last_24h_sensor_ == nullptr)
     return;
 
-  rain_history_.push_back({millis(), tips});
+  rain_history_.push_back({App.get_loop_component_start_time(), tips});
   this->publish_rolling_rain_totals_(true);
 }
 
@@ -241,7 +265,7 @@ void Auriol4LD5661::publish_rolling_rain_totals_(bool force) {
   if (total_rain_last_12h_sensor_ == nullptr && total_rain_last_24h_sensor_ == nullptr)
     return;
 
-  const uint32_t now = millis();
+  const uint32_t now = App.get_loop_component_start_time();
   if (!force && has_published_rolling_totals_ &&
       now - last_rolling_publish_millis_ < RAIN_ROLLING_PUBLISH_INTERVAL_MS) {
     return;

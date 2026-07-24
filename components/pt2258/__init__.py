@@ -4,6 +4,7 @@ from esphome.components import i2c
 from esphome.const import CONF_ID
 from esphome import automation
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 
 pt2258_ns = cg.esphome_ns.namespace("pt2258")

@@ -38,7 +38,11 @@ void PT2323::mute_all_channels(bool mute) {
 }
 
 void PT2323::mute_channel(uint8_t channel, bool mute) {
-  this->channels_muted_[channel] = mute;
+  if (channel < 1 || channel > 6) {
+    ESP_LOGW(TAG, "Invalid channel: %u", channel);
+    return;
+  }
+  this->channels_muted_[channel - 1] = mute;
   switch (channel) {
   case 1:
     send_data(mute ? 0xF1 : 0xF0);

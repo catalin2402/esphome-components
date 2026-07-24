@@ -15,6 +15,7 @@ from esphome.const import (
     CONF_PULLUP,
 )
 
+CODEOWNERS = ["@catalin2402"]
 AUTO_LOAD = ["gpio_expander"]
 DEPENDENCIES = ["esp32_hosted"]
 

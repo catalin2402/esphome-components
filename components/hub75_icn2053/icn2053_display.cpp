@@ -160,7 +160,8 @@ void ICN2053_Display::icn2053setVSync(bool leds_enable, bool vsync) {
 
 void ICN2053_Display::icn2053setReg(uint8_t reg_idx, driver_rgb_t *regs_data) {
   setDataRegBuffer_n(dma_buff.rowBits[offset_prefix],
-                     FRAME_ADD_LEN + ICN2053_PREFIX_START_LEN, regs_data,
+                     static_cast<int>(FRAME_ADD_LEN) + ICN2053_PREFIX_START_LEN,
+                     regs_data,
                      driver_cnt);
   data_clr(dma_buff.rowBits[offset_prefix],
            dma_buff.frame_prefix_len - DRIVER_BITS, BIT_LAT, DRIVER_BITS);
@@ -194,7 +195,8 @@ void ICN2053_Display::icn2053initBuffers() {
   int desk_idx_datain = frame_offset_data / DMA_MAX;
   int offset_bufer_datain = frame_offset_data % DMA_MAX;
   int frame_offset_prefix = icn2053setOEaddrBuffer(
-      dma_buff.rowBits[offset_prefix], FRAME_ADD_LEN + ICN2053_VSYNC_LEN,
+      dma_buff.rowBits[offset_prefix],
+      static_cast<int>(FRAME_ADD_LEN) + ICN2053_VSYNC_LEN,
       rows_per_frame, dma_buff.frame_prefix_len, 0);
 
   frame_offset_prefix %= dma_buff.frame_suffix_len;
@@ -413,7 +415,6 @@ IRAM_ATTR void ICN2053_Display::sendCBRow(uint8_t buff_id) {
 }
 
 IRAM_ATTR void ICN2053_Display::sendCallback() {
-  static uint8_t dma_buffer_id = 0;
   if (bufferBusy || bufferReady || dma_int_cnt > 0)
     return;
   bufferBusy = true;
@@ -498,7 +499,8 @@ bool ICN2053_Display::allocateDMAmemory() {
   gamma_table_len = BRIGHT_TABLE_SIZE;
 
   dma_buff.frame_prefix_len =
-      FRAME_ADD_LEN + ICN2053_PREFIX_START_LEN + pixels_per_row;
+      static_cast<int>(FRAME_ADD_LEN) + ICN2053_PREFIX_START_LEN +
+      pixels_per_row;
   dma_buff.frame_prefix_cnt = ICN2053_PREFIX_CNT;
   dma_buff.frame_suffix_len = ICN2053_ROW_OE_LEN * rows_per_frame;
   dma_buff.frame_suffix_cnt = ICN2053_SUFFIX_CNT;
@@ -510,7 +512,7 @@ bool ICN2053_Display::allocateDMAmemory() {
   frame_buffer.row_len = (pixels_per_row * 2 + VB_SIZE - 1) / VB_SIZE;
   frame_buffer.subframe_len = frame_buffer.row_len * m_cfg.mx_height;
   frame_buffer.len = frame_buffer.subframe_len;
-  buff_cnt = ICN2053_PREFIX_CNT + ICN2053_SUFFIX_CNT;
+  buff_cnt = static_cast<int>(ICN2053_PREFIX_CNT) + ICN2053_SUFFIX_CNT;
   matrix_buffer_size = (dma_buff.frame_prefix_len * ICN2053_PREFIX_CNT +
                         dma_buff.frame_suffix_cnt * ICN2053_SUFFIX_CNT) *
                        SIZE_DMA_TYPE;

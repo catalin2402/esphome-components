@@ -1,0 +1,47 @@
+esphome:
+  name: all-components-arduino
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+    components:
+      - hub75_icn2053
+      - silvercrest
+
+silvercrest:
+  id: silvercrest_remote
+  transmitter_pin: GPIO2
+
+button:
+  - platform: silvercrest
+    silvercrest: silvercrest_remote
+    button: a_on
+    name: Silvercrest A On
+
+switch:
+  - platform: silvercrest
+    silvercrest: silvercrest_remote
+    channel: a
+    name: Silvercrest Channel A
+
+display:
+  - platform: hub75_icn2053
+    id: matrix
+    width: 64
+    height: 32
+    D_pin: GPIO17
+    lambda: |-
+      it.fill(Color::BLACK);
+
+number:
+  - platform: hub75_icn2053
+    hub75_icn2053_id: matrix
+    name: Matrix Brightness

@@ -31,6 +31,11 @@ void Silvercrest::setup() {
   this->transmitter_pin_->digital_write(false);
 }
 
+void Silvercrest::dump_config() {
+  ESP_LOGCONFIG(TAG, "Silvercrest Remote:");
+  LOG_PIN("  Transmitter Pin: ", this->transmitter_pin_);
+}
+
 void Silvercrest::control_channel(Channel channel, bool state,
                                   uint8_t repeat_times) {
   switch (channel) {

@@ -4,6 +4,7 @@ from esphome.components import i2c, binary_sensor, sensor
 from esphome.const import CONF_ID, CONF_FREQUENCY
 from esphome import automation
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 
 AUTO_LOAD = ["binary_sensor", "sensor"]
@@ -92,6 +93,7 @@ OPERATION_BASE_SCHEMA = cv.Schema(
             }
         )
     ),
+    synchronous=True,
 )
 async def tea5767_set_frequency_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -111,6 +113,7 @@ async def tea5767_set_frequency_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def tea5767_set_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -130,6 +133,7 @@ async def tea5767_set_mute_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def tea5767_set_mono_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -149,6 +153,7 @@ async def tea5767_set_mono_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def tea5767_set_soft_mute_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -168,6 +173,7 @@ async def tea5767_set_soft_mute_to_code(config, action_id, template_arg, args):
             }
         )
     ),
+    synchronous=True,
 )
 async def tea5767_set_stereo_noise_canceling_to_code(
     config, action_id, template_arg, args
@@ -191,8 +197,11 @@ async def tea5767_set_stereo_noise_canceling_to_code(
             }
         )
     ),
+    synchronous=True,
 )
-async def tea5767_set_mono_to_code(config, action_id, template_arg, args):
+async def tea5767_set_high_cut_control_to_code(
+    config, action_id, template_arg, args
+):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config[CONF_HIGH_CUT_CONTROL], args, cg.bool_)

@@ -17,12 +17,18 @@ void HUB75_ICN2053::setup() {
   mxconfig.latch_blanking = latch_blanking_;
 
   dma_display_ = new ICN2053_Display(mxconfig);
-  dma_display_->begin();
+  if (!dma_display_->begin()) {
+    ESP_LOGE(TAG, "Failed to initialize display");
+    this->mark_failed();
+    return;
+  }
   set_brightness(initial_brightness_);
   dma_display_->clearScreen();
 }
 
 void HUB75_ICN2053::update() {
+  if (this->is_failed())
+    return;
   this->do_update_();
   dma_display_->flipDMABuffer();
 }
@@ -34,7 +40,7 @@ void HUB75_ICN2053::dump_config() {
   ESP_LOGCONFIG(TAG, "  Pins: A:%i, B:%i, C:%i, D:%i, E:%i", pins_.a, pins_.b,
                 pins_.c, pins_.d, pins_.e);
   ESP_LOGCONFIG(TAG, "  Pins: LAT:%i, OE:%i, CLK:%i", pins_.lat, pins_.oe,
-                pins_.b1, pins_.clk);
+                pins_.clk);
 }
 
 void HUB75_ICN2053::set_brightness(int brightness) {

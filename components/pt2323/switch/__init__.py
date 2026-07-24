@@ -4,12 +4,15 @@ import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_TYPE
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2323"]
 
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
 
-PT2323Switch = pt2323_ns.class_("PT2323Switch", switch.Switch, cg.Component)
+PT2323Switch = pt2323_ns.class_(
+    "PT2323Switch", switch.Switch, cg.PollingComponent
+)
 SwitchType = pt2323_ns.enum("SwitchType")
 
 SWITCH_TYPE = {
@@ -20,7 +23,7 @@ SWITCH_TYPE = {
 }
 
 
-def vaildate(value):
+def validate_channels(value):
     if (
         value[CONF_TYPE] == "MUTE"
         and CONF_CHANNEL_A not in value
@@ -34,7 +37,6 @@ CONFIG_SCHEMA = cv.All(
     switch.switch_schema(PT2323Switch)
     .extend(
         {
-            cv.GenerateID(): cv.declare_id(PT2323Switch),
             cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
             cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE, upper=True),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
@@ -42,7 +44,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.polling_component_schema("1s")),
-    vaildate,
+    validate_channels,
 )
 
 

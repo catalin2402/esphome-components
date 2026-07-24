@@ -64,6 +64,7 @@ float PT2258Number::get_new_state_() {
       return this->parent_->get_channel_volume(this->channel_a_);
     if (this->channel_b_ != 0)
       return this->parent_->get_channel_volume(this->channel_b_);
+    break;
   case OFFSET:
     if (this->channel_a_ != 0)
       return this->parent_->get_channel_volume(this->channel_a_, true) -

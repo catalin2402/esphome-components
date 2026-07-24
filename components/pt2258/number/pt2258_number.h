@@ -24,7 +24,7 @@ protected:
   void control(float value) override;
   float get_new_state_();
 
-  PT2258 *parent_;
+  PT2258 *parent_{nullptr};
   NumberType type_{MASTER};
   uint8_t channel_a_{0};
   uint8_t channel_b_{0};

@@ -18,16 +18,18 @@ public:
   ArduinoExpander() : PollingComponent(1) {}
   void loop() override;
   void setup() override;
+  void dump_config() override;
   void update() override;
   bool digital_read(uint8_t pin);
   void digital_write(uint8_t pin, bool value);
   uint16_t read_analog(uint8_t pin);
   void pin_mode(uint8_t pin, gpio::Flags flags);
-  void set_adc_source(AdcSource adc_source) { this->adc_source_ = adc_source; };
+  void set_adc_source(AdcSource adc_source) { this->adc_source_ = adc_source; }
 
 protected:
   bool configure_{true};
-  long configure_timeout_{0};
+  bool configure_pending_{true};
+  uint32_t configure_started_{0};
   AdcSource adc_source_{DEFAULT};
   uint16_t pin_modes_{0};
   uint16_t pullup_pins_{0};
@@ -42,7 +44,7 @@ public:
   void pin_mode(gpio::Flags flags) override;
   bool digital_read() override;
   void digital_write(bool value) override;
-  std::string dump_summary() const override;
+  size_t dump_summary(char *buffer, size_t len) const override;
 
   void set_parent(ArduinoExpander *parent) { parent_ = parent; }
   void set_pin(uint8_t pin) { pin_ = pin; }
@@ -50,10 +52,10 @@ public:
   void set_flags(gpio::Flags flags) { flags_ = flags; }
 
 protected:
-  ArduinoExpander *parent_;
-  uint8_t pin_;
-  bool inverted_;
-  gpio::Flags flags_;
+  ArduinoExpander *parent_{nullptr};
+  uint8_t pin_{0};
+  bool inverted_{false};
+  gpio::Flags flags_{gpio::FLAG_NONE};
 };
 
 } // namespace arduino_expander

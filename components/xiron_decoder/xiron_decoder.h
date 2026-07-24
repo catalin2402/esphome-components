@@ -16,6 +16,7 @@ class XironDecoder : public remote_base::RemoteReceiverListener, public Componen
   void set_battery_sensor(binary_sensor::BinarySensor *s) { battery_sensor_ = s; }
   void set_xiron_id(uint16_t id) { xiron_id_ = id; }
 
+  void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
 
  protected:

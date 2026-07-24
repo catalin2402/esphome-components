@@ -6,9 +6,11 @@
 #include <string.h>
 
 #include <driver/gpio.h>
-#include <driver/periph_ctrl.h>
+#include <esp_private/periph_ctrl.h>
 #include <rom/gpio.h>
 #include <soc/gpio_sig_map.h>
+#include <soc/gpio_struct.h>
+#include <soc/i2s_reg.h>
 
 #include "esp32_i2s_parallel_v2.h"
 
@@ -35,7 +37,7 @@ static void IRAM_ATTR irq_hndlr(void *arg) {
     shiftCompleteCallback();
 }
 
-static i2s_dev_t *I2S[I2S_NUM_MAX] = {&I2S0, &I2S1};
+static i2s_dev_t *I2S[2] = {&I2S0, &I2S1};
 
 static inline int get_bus_width(i2s_parallel_cfg_bits_t width) {
   switch (width) {
@@ -54,7 +56,7 @@ static void iomux_set_signal(int gpio, int signal) {
   if (gpio < 0) {
     return;
   }
-  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpio], PIN_FUNC_GPIO);
+  gpio_reset_pin(gpio);
   gpio_set_direction(gpio, GPIO_MODE_DEF_OUTPUT);
   gpio_matrix_out(gpio, signal, false, false);
 }

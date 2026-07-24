@@ -5,6 +5,14 @@ namespace xiron_decoder {
 
 static const char *const TAG = "xiron";
 
+void XironDecoder::dump_config() {
+  ESP_LOGCONFIG(TAG, "Xiron Decoder:");
+  ESP_LOGCONFIG(TAG, "  Device ID: 0x%04X", this->xiron_id_);
+  LOG_SENSOR("  ", "Temperature", this->temp_sensor_);
+  LOG_SENSOR("  ", "Humidity", this->hum_sensor_);
+  LOG_BINARY_SENSOR("  ", "Battery Low", this->battery_sensor_);
+}
+
 bool XironDecoder::on_receive(remote_base::RemoteReceiveData data) {
   const auto &raw = data.get_raw_data();
 
@@ -92,8 +100,9 @@ bool XironDecoder::on_receive(remote_base::RemoteReceiveData data) {
     if (temperature < -60.0f || temperature > 60.0f)
       continue;
 
-    ESP_LOGD(TAG, "Xiron decoded: id=%04X temperature=%.1f humidity=%u battery_low=%s", device_id, temperature, humidity,
-             battery_low ? "true" : "false");
+    ESP_LOGD(TAG,
+             "Decoded id=0x%04X, temperature=%.1f, humidity=%u, battery low=%s",
+             device_id, temperature, humidity, YESNO(battery_low));
 
     if (temp_sensor_ != nullptr)
       temp_sensor_->publish_state(temperature);

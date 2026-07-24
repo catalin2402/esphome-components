@@ -1,4 +1,5 @@
 #include "esp32_hosted_gpio.h"
+#include "esphome/core/application.h"
 #include "esphome/core/log.h"
 
 #include <cstdio>
@@ -191,8 +192,8 @@ void ESP32HostedGPIOComponent::apply_pending_() {
     return;
   }
 
-  const uint32_t now = millis();
-  if (now < this->next_retry_) {
+  const uint32_t now = App.get_loop_component_start_time();
+  if (static_cast<int32_t>(now - this->next_retry_) < 0) {
     return;
   }
 

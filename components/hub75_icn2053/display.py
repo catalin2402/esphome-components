@@ -10,6 +10,8 @@ from esphome.const import (
     CONF_WIDTH,
 )
 
+CODEOWNERS = ["@catalin2402"]
+
 CHAIN_LENGTH = "chain_length"
 BRIGHTNESS = "brightness"
 

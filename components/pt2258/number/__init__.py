@@ -4,9 +4,12 @@ import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_TYPE, CONF_MIN_VALUE, CONF_MAX_VALUE
 from .. import pt2258_ns, CONF_PT2258_ID, PT2258
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2258"]
 
-PT2258Number = pt2258_ns.class_("PT2258Number", number.Number, cg.Component)
+PT2258Number = pt2258_ns.class_(
+    "PT2258Number", number.Number, cg.PollingComponent
+)
 NumberType = pt2258_ns.enum("NumberType")
 
 CONF_NUMBER_TYPE = "number_type"
@@ -20,7 +23,7 @@ NUMBER_TYPE = {
 }
 
 
-def vaildate(value):
+def validate_channels(value):
     if (
         value[CONF_TYPE] != "MASTER"
         and CONF_CHANNEL_A not in value
@@ -38,7 +41,6 @@ CONFIG_SCHEMA = cv.All(
     number.number_schema(PT2258Number)
     .extend(
         {
-            cv.GenerateID(): cv.declare_id(PT2258Number),
             cv.GenerateID(CONF_PT2258_ID): cv.use_id(PT2258),
             cv.Optional(CONF_TYPE, default="master"): cv.enum(NUMBER_TYPE, upper=True),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
@@ -48,7 +50,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.polling_component_schema("1s")),
-    vaildate,
+    validate_channels,
 )
 
 

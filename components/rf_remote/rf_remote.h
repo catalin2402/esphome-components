@@ -14,6 +14,7 @@ class RFRemoteBase : public remote_base::RemoteReceiverListener, public Componen
  public:
   void set_remote_id(uint32_t id) { remote_id_ = id; }
   void set_reset_time(uint32_t reset_time) { reset_time_ = reset_time; }
+  void dump_config() override;
 
  protected:
   uint32_t remote_id_{0};

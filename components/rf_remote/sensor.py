@@ -7,11 +7,12 @@ from esphome.const import (
 
 from . import RFRemoteSensor
 from .common import (
-    CONF_RECEIVER_ID,
     CONF_REMOTE_ID,
     CONF_RESET_TIME,
     validate_remote_id,
 )
+
+CODEOWNERS = ["@catalin2402"]
 
 CONFIG_SCHEMA = (
     sensor.sensor_schema(
@@ -21,13 +22,13 @@ CONFIG_SCHEMA = (
     )
     .extend(
         {
-            cv.GenerateID(CONF_RECEIVER_ID): cv.use_id(remote_base.RemoteReceiverBase),
             cv.Required(CONF_REMOTE_ID): validate_remote_id,
             cv.Optional(
                 CONF_RESET_TIME, default="50ms"
             ): cv.positive_time_period_milliseconds,
         }
     )
+    .extend(remote_base.REMOTE_LISTENER_SCHEMA)
     .extend(cv.COMPONENT_SCHEMA)
 )
 
@@ -35,9 +36,7 @@ CONFIG_SCHEMA = (
 async def to_code(config):
     var = await sensor.new_sensor(config)
     await cg.register_component(var, config)
+    await remote_base.register_listener(var, config)
 
-    cg.add(var.set_remote_id(int(config[CONF_REMOTE_ID], 16)))
+    cg.add(var.set_remote_id(config[CONF_REMOTE_ID]))
     cg.add(var.set_reset_time(config[CONF_RESET_TIME]))
-
-    receiver = await cg.get_variable(config[CONF_RECEIVER_ID])
-    cg.add(receiver.register_listener(var))

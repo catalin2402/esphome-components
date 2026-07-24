@@ -161,7 +161,7 @@ const driver_rgb_t ICN2053_REG_VALUE[ICN2053_REG_CNT] = {
 };
 
 enum {
-  ICN2053_VSYNC_LEN = ((ICN2053_CMD_DELAY + ICN2053_PRE_ACT +
+  ICN2053_VSYNC_LEN = ((static_cast<int>(ICN2053_CMD_DELAY) + ICN2053_PRE_ACT +
                         ICN2053_CMD_DELAY + ICN2053_EN_OP + ICN2053_CMD_DELAY +
                         ICN2053_V_SYNC + ICN2053_CMD_DELAY + 1) /
                        2) *

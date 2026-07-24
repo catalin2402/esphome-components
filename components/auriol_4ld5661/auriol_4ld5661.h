@@ -1,16 +1,15 @@
 #pragma once
 
-#include "esphome/core/component.h"
-#include "esphome/core/log.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/remote_base/remote_base.h"
 #include "esphome/components/sensor/sensor.h"
-#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/time/real_time_clock.h"
+#include "esphome/core/component.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -39,6 +38,7 @@ class Auriol4LD5661 : public remote_base::RemoteReceiverListener, public Compone
 
   bool on_receive(remote_base::RemoteReceiveData data) override;
   void loop() override;
+  void dump_config() override;
 
  protected:
   sensor::Sensor *temperature_sensor_{nullptr};

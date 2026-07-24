@@ -4,11 +4,12 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_CHANNEL
 from esphome import automation
 
+CODEOWNERS = ["@catalin2402"]
 MULTI_CONF = True
 
 cd405x_ns = cg.esphome_ns.namespace("cd405x")
 
-CD405xComponent = cd405x_ns.class_("CD405x", cg.Component, cg.PollingComponent)
+CD405xComponent = cd405x_ns.class_("CD405x", cg.Component)
 ActivateChannelAction = cd405x_ns.class_("ActivateChannelAction", automation.Action)
 InhibitAction = cd405x_ns.class_("InhibitAction", automation.Action)
 
@@ -56,11 +57,12 @@ async def to_code(config):
             }
         )
     ),
+    synchronous=True,
 )
 async def cd405x_activate_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
+    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.int_)
     cg.add(var.set_channel(template_))
     return var
 
@@ -76,10 +78,11 @@ async def cd405x_activate_channel_to_code(config, action_id, template_arg, args)
             }
         )
     ),
+    synchronous=True,
 )
 async def cd405x_inhibit_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
+    template_ = await cg.templatable(config[CONF_INHIBIT], args, cg.bool_)
     cg.add(var.set_inhibit(template_))
     return var

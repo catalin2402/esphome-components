@@ -12,12 +12,13 @@ from esphome.const import (
     CONF_PULLUP,
 )
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 MULTI_CONF = True
 
 arduino_expander_ns = cg.esphome_ns.namespace("arduino_expander")
 ArduinoExpanderComponent = arduino_expander_ns.class_(
-    "ArduinoExpander", cg.Component, i2c.I2CDevice
+    "ArduinoExpander", cg.PollingComponent, i2c.I2CDevice
 )
 ArduinoGPIOPin = arduino_expander_ns.class_("ArduinoGPIOPin", cg.GPIOPin)
 
@@ -35,7 +36,7 @@ ADC_SOURCES = {
 CONFIG_SCHEMA = (
     cv.Schema(
         {
-            cv.Required(CONF_ID): cv.declare_id(ArduinoExpanderComponent),
+            cv.GenerateID(): cv.declare_id(ArduinoExpanderComponent),
             cv.Optional(CONF_ADC_SOURCE): cv.enum(ADC_SOURCES, upper=True),
         }
     )

@@ -11,10 +11,15 @@ extern "C" {
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include <driver/i2s.h>
+#include <driver/i2s_types.h>
 #include <esp_err.h>
 #include <freertos/FreeRTOS.h>
 #include <rom/lldesc.h>
+#include <soc/i2s_struct.h>
+
+#ifndef I2S_NUM_MAX
+#define I2S_NUM_MAX 2
+#endif
 
 #define I2S_PARALLEL_CLOCK_HZ 80000000L
 #define DMA_MAX (4096 - 4)
@@ -42,10 +47,7 @@ static inline int i2s_parallel_get_memory_width(i2s_port_t port,
                                                 i2s_parallel_cfg_bits_t width) {
   switch (width) {
   case I2S_PARALLEL_WIDTH_8:
-  
-    if (port == I2S_NUM_1) {
-      return 1;
-    }
+    return port == I2S_NUM_1 ? 1 : 2;
   case I2S_PARALLEL_WIDTH_16:
     return 2;
   case I2S_PARALLEL_WIDTH_24:

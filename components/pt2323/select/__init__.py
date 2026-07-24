@@ -4,16 +4,18 @@ import esphome.codegen as cg
 from esphome.const import CONF_OPTIONS, CONF_ID
 from .. import pt2323_ns, CONF_PT2323_ID, PT2323
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2323"]
 
 
-PT2323Select = pt2323_ns.class_("PT2323Select", select.Select, cg.Component)
+PT2323Select = pt2323_ns.class_(
+    "PT2323Select", select.Select, cg.PollingComponent
+)
 
 CONFIG_SCHEMA = (
     select.select_schema(PT2323Select)
     .extend(
         {
-            cv.GenerateID(): cv.declare_id(PT2323Select),
             cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
             cv.Required(CONF_OPTIONS): cv.All(
                 cv.ensure_list(cv.string_strict), cv.Length(min=1, max=5)

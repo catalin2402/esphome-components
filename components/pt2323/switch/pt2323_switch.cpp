@@ -64,6 +64,7 @@ bool PT2323Switch::get_new_state_() {
       return this->parent_->get_channel_mute(this->channel_a_);
     if (this->channel_b_ != 0)
       return this->parent_->get_channel_mute(this->channel_b_);
+    break;
   case MUTE_ALL:
     return this->parent_->get_mute();
   }

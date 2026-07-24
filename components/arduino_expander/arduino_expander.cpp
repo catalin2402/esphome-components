@@ -1,4 +1,5 @@
 #include "arduino_expander.h"
+#include "esphome/core/log.h"
 
 #define CMD_READ 0x01
 #define CMD_SETUP_PINS 0x02
@@ -13,19 +14,27 @@ namespace esphome {
 namespace arduino_expander {
 
 void ArduinoExpander::setup() {
-  ESP_LOGD(TAG, "Setting up ArduinoExpander at %#02x ...", address_);
-  this->configure_timeout_ = millis() + 5000;
+  ESP_LOGD(TAG, "Setting up at 0x%02X", this->address_);
+  this->configure_pending_ = true;
+  this->configure_started_ = millis();
+}
+
+void ArduinoExpander::dump_config() {
+  ESP_LOGCONFIG(TAG, "Arduino Expander:");
+  LOG_I2C_DEVICE(this);
+  ESP_LOGCONFIG(TAG, "  ADC source: %u", this->adc_source_);
 }
 
 void ArduinoExpander::loop() {
-  if (millis() < this->configure_timeout_) {
-    bool try_configure = millis() % 100 > 50;
+  const uint32_t now = App.get_loop_component_start_time();
+  if (this->configure_pending_) {
+    bool try_configure = now % 100 > 50;
     if (try_configure == this->configure_)
       return;
     this->configure_ = try_configure;
     uint8_t data[14];
     if (i2c::ERROR_OK == this->read_register(CMD_READ, data, 14)) {
-      ESP_LOGD(TAG, "ArduinoExpander found at %#02x", address_);
+      ESP_LOGD(TAG, "Found at 0x%02X", this->address_);
       uint8_t pin_data[2];
       pin_data[0] = this->adc_source_;
       pin_data[1] = this->adc_source_;
@@ -39,15 +48,14 @@ void ArduinoExpander::loop() {
       pin_data[0] = this->output_states_;
       pin_data[1] = this->output_states_ >> 8;
       this->write_register(CMD_RESTORE_OUTPUTS, pin_data, 2);
-      this->configure_timeout_ = 0;
+      this->configure_pending_ = false;
       this->status_clear_error();
     }
   }
 
-  if (this->configure_timeout_ != 0 && millis() > this->configure_timeout_) {
-    ESP_LOGD(TAG, "ArduinoExpander NOT found at %#02x", address_);
+  if (this->configure_pending_ && now - this->configure_started_ >= 5000) {
+    ESP_LOGE(TAG, "Not found at 0x%02X", this->address_);
     this->mark_failed();
-    return;
   }
 }
 
@@ -63,8 +71,9 @@ void ArduinoExpander::update() {
       }
     } else {
       this->status_set_error();
-      this->configure_timeout_ = millis() + 5000;
-      ESP_LOGD(TAG, "Reconfiguring ArduinoExpander");
+      this->configure_pending_ = true;
+      this->configure_started_ = millis();
+      ESP_LOGD(TAG, "Reconfiguring");
     }
   }
 }
@@ -86,18 +95,18 @@ uint16_t ArduinoExpander::read_analog(uint8_t pin) {
 
 void ArduinoExpander::pin_mode(uint8_t pin, gpio::Flags flags) {
   if (flags == gpio::FLAG_INPUT) {
-    uint16_t state = this->pin_modes_ |= (0 << pin);
-    this->pin_modes_ = state;
+    this->pin_modes_ &= ~(1U << pin);
+    this->pullup_pins_ &= ~(1U << pin);
   } else if (flags == gpio::FLAG_OUTPUT) {
-    uint16_t state = this->pin_modes_ |= (1 << pin);
-    this->pin_modes_ = state;
+    this->pin_modes_ |= 1U << pin;
+    this->pullup_pins_ &= ~(1U << pin);
   } else if (flags == (gpio::FLAG_INPUT | gpio::FLAG_PULLUP)) {
-    uint16_t state = this->pullup_pins_ |= (1 << pin);
-    this->pullup_pins_ = state;
+    this->pin_modes_ &= ~(1U << pin);
+    this->pullup_pins_ |= 1U << pin;
   }
 }
 
-void ArduinoGPIOPin::setup() { pin_mode(flags_); }
+void ArduinoGPIOPin::setup() { this->pin_mode(this->flags_); }
 void ArduinoGPIOPin::pin_mode(gpio::Flags flags) {
   this->parent_->pin_mode(this->pin_, flags);
 }
@@ -107,10 +116,8 @@ bool ArduinoGPIOPin::digital_read() {
 void ArduinoGPIOPin::digital_write(bool value) {
   this->parent_->digital_write(this->pin_, value != this->inverted_);
 }
-std::string ArduinoGPIOPin::dump_summary() const {
-  char buffer[32];
-  snprintf(buffer, sizeof(buffer), "D%u via ArduinoExpander", pin_);
-  return buffer;
+size_t ArduinoGPIOPin::dump_summary(char *buffer, size_t len) const {
+  return snprintf(buffer, len, "D%u via ArduinoExpander", this->pin_);
 }
 
 } // namespace arduino_expander

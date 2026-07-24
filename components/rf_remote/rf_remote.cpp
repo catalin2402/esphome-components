@@ -2,10 +2,18 @@
 
 #include "esphome/components/remote_base/rc_switch_protocol.h"
 
+#include <cinttypes>
+
 namespace esphome {
 namespace rf_remote {
 
 static const char *const TAG = "rf_remote";
+
+void RFRemoteBase::dump_config() {
+  ESP_LOGCONFIG(TAG, "RF Remote:");
+  ESP_LOGCONFIG(TAG, "  Remote ID: 0x%05" PRIX32, this->remote_id_);
+  ESP_LOGCONFIG(TAG, "  Reset time: %" PRIu32 " ms", this->reset_time_);
+}
 
 bool RFRemoteBase::decode_packet_(remote_base::RemoteReceiveData data, uint32_t *remote_id, uint8_t *command,
                                   uint32_t *code) {
@@ -40,7 +48,7 @@ bool RFRemoteSensor::on_receive(remote_base::RemoteReceiveData data) {
   if (!this->decode_packet_(data, &decoded_remote_id, &command, &code))
     return false;
 
-  ESP_LOGD(TAG, "remote_id=%05X command=%u code=%06X", decoded_remote_id, command, code);
+  ESP_LOGD(TAG, "remote_id=%05" PRIX32 " command=%u code=%06" PRIX32, decoded_remote_id, command, code);
 
   this->publish_state(command);
 
@@ -60,7 +68,7 @@ bool RFRemoteBinarySensor::on_receive(remote_base::RemoteReceiveData data) {
   if (command != this->remote_button_)
     return false;
 
-  ESP_LOGD(TAG, "remote_id=%05X button=%u code=%06X", decoded_remote_id, command, code);
+  ESP_LOGD(TAG, "remote_id=%05" PRIX32 " button=%u code=%06" PRIX32, decoded_remote_id, command, code);
 
   this->publish_state(true);
 

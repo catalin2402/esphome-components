@@ -85,7 +85,9 @@ LCD_SCHEMA = display.BASIC_DISPLAY_SCHEMA.extend(
             ),
             cv.Length(min=1),
         ),
-        cv.Optional(CONF_AUTO_CYCLE_INTERVAL, default="0s" ): cv.positive_time_period_milliseconds
+        cv.Optional(
+            CONF_AUTO_CYCLE_INTERVAL, default="0s"
+        ): cv.positive_time_period_milliseconds,
     }
 ).extend(cv.polling_component_schema("1s"))
 
@@ -117,6 +119,7 @@ async def setup_lcd_display(var, config):
             cv.Required(CONF_ID): cv.templatable(cv.use_id(LCDDisplayPage)),
         }
     ),
+    synchronous=True,
 )
 async def display_page_show_to_code(config, action_id, template_arg, args):
     var = cg.new_Pvariable(action_id, template_arg)
@@ -137,6 +140,7 @@ async def display_page_show_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_ID): cv.templatable(cv.use_id(LCDDisplay)),
         }
     ),
+    synchronous=True,
 )
 async def display_page_show_next_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
@@ -151,6 +155,7 @@ async def display_page_show_next_to_code(config, action_id, template_arg, args):
             cv.Required(CONF_ID): cv.templatable(cv.use_id(LCDDisplay)),
         }
     ),
+    synchronous=True,
 )
 async def display_page_show_previous_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])

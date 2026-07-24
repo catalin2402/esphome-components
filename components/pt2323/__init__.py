@@ -4,13 +4,14 @@ from esphome.components import i2c
 from esphome.const import CONF_ID, CONF_INPUT, CONF_CHANNEL
 from esphome import automation
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 
 pt2323_ns = cg.esphome_ns.namespace("pt2323")
 PT2323 = pt2323_ns.class_("PT2323", cg.Component, i2c.I2CDevice)
 
 CONF_PT2323_ID = "pt2323_id"
-CONF_ENAHNCE = "enhance"
+CONF_ENHANCE = "enhance"
 CONF_BOOST = "boost"
 CONF_MUTE = "mute"
 
@@ -29,7 +30,7 @@ CONFIG_SCHEMA = (
         {
             cv.Required(CONF_ID): cv.declare_id(PT2323),
             cv.Optional(CONF_INPUT, default=0): cv.int_range(min=0, max=4),
-            cv.Optional(CONF_ENAHNCE, default=False): cv.boolean,
+            cv.Optional(CONF_ENHANCE, default=False): cv.boolean,
             cv.Optional(CONF_BOOST, default=False): cv.boolean,
             cv.Optional(CONF_MUTE, default=False): cv.boolean,
         }
@@ -50,7 +51,7 @@ async def to_code(config):
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
     cg.add(var.set_input(config[CONF_INPUT]))
-    cg.add(var.set_enhance(config[CONF_ENAHNCE]))
+    cg.add(var.set_enhance(config[CONF_ENHANCE]))
     cg.add(var.set_boost(config[CONF_BOOST]))
     cg.add(var.mute_all_channels(config[CONF_MUTE]))
 
@@ -70,7 +71,7 @@ async def to_code(config):
 async def pt2323_set_input_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_INPUT], args, cg.size_t)
+    template_ = await cg.templatable(config[CONF_INPUT], args, cg.int_)
     cg.add(var.set_input(template_))
     return var
 
@@ -108,7 +109,7 @@ async def pt2323_unmute_to_code(config, action_id, template_arg, args):
 async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
+    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.int_)
     cg.add(var.set_channel(template_))
     return var
 
@@ -128,7 +129,7 @@ async def pt2323_mute_channel_to_code(config, action_id, template_arg, args):
 async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.size_t)
+    template_ = await cg.templatable(config[CONF_CHANNEL], args, cg.int_)
     cg.add(var.set_channel(template_))
     return var
 
@@ -139,7 +140,7 @@ async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
     automation.maybe_simple_id(
         OPERATION_BASE_SCHEMA.extend(
             {
-                cv.Required(CONF_ENAHNCE): cv.boolean,
+                cv.Required(CONF_ENHANCE): cv.templatable(cv.boolean),
             }
         )
     ),
@@ -148,7 +149,7 @@ async def pt2323_unmute_channel_to_code(config, action_id, template_arg, args):
 async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
-    template_ = await cg.templatable(config[CONF_ENAHNCE], args, cg.bool_)
+    template_ = await cg.templatable(config[CONF_ENHANCE], args, cg.bool_)
     cg.add(var.set_enhance(template_))
     return var
 
@@ -159,13 +160,13 @@ async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
     automation.maybe_simple_id(
         OPERATION_BASE_SCHEMA.extend(
             {
-                cv.Required(CONF_BOOST): cv.boolean,
+                cv.Required(CONF_BOOST): cv.templatable(cv.boolean),
             }
         )
     ),
     synchronous=True,
 )
-async def pt2323_set_enhance_to_code(config, action_id, template_arg, args):
+async def pt2323_set_boost_to_code(config, action_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, paren)
     template_ = await cg.templatable(config[CONF_BOOST], args, cg.bool_)
