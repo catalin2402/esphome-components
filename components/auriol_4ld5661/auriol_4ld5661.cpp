@@ -5,6 +5,9 @@ namespace auriol_4ld5661 {
 
 static const char *const TAG = "auriol_4ld5661";
 static const uint32_t RAIN_COUNTER_MAX = 0xFFFFF;  // 20-bit monotonic rain counter
+static const uint32_t RAIN_ROLLING_12H_MS = 12UL * 60UL * 60UL * 1000UL;
+static const uint32_t RAIN_ROLLING_24H_MS = 24UL * 60UL * 60UL * 1000UL;
+static const uint32_t RAIN_ROLLING_PUBLISH_INTERVAL_MS = 60UL * 1000UL;
 
 static bool in_range_(uint32_t value, uint32_t min, uint32_t max) {
   return value >= min && value <= max;
@@ -27,12 +30,14 @@ bool Auriol4LD5661::on_receive(remote_base::RemoteReceiveData data) {
 }
 
 void Auriol4LD5661::loop() {
-  if (!raining_)
-    return;
-
   const uint32_t now = millis();
-  if (now - last_tip_millis_ >= rain_timeout_ms_) {
+  if (raining_ && now - last_tip_millis_ >= rain_timeout_ms_) {
     this->finish_rain_event_();
+  }
+
+  if (has_published_rolling_totals_ &&
+      now - last_rolling_publish_millis_ >= RAIN_ROLLING_PUBLISH_INTERVAL_MS) {
+    this->publish_rolling_rain_totals_(false);
   }
 }
 
@@ -125,6 +130,7 @@ void Auriol4LD5661::handle_rain_counter_(uint32_t rain_raw) {
   if (!has_last_rain_raw_) {
     has_last_rain_raw_ = true;
     last_rain_raw_ = rain_raw;
+    this->publish_rolling_rain_totals_(true);
     return;
   }
 
@@ -139,6 +145,8 @@ void Auriol4LD5661::handle_rain_counter_(uint32_t rain_raw) {
     last_rain_raw_ = rain_raw;
     return;
   }
+
+  this->add_rain_history_(delta);
 
   if (!raining_) {
     this->start_rain_event_(last_rain_raw_, rain_raw);
@@ -199,6 +207,60 @@ void Auriol4LD5661::finish_rain_event_() {
 void Auriol4LD5661::publish_current_event_total_() {
   if (total_last_rain_sensor_ != nullptr)
     total_last_rain_sensor_->publish_state(current_event_tips_ * mm_per_tip_);
+}
+
+void Auriol4LD5661::add_rain_history_(uint32_t tips) {
+  if (total_rain_last_12h_sensor_ == nullptr && total_rain_last_24h_sensor_ == nullptr)
+    return;
+
+  rain_history_.push_back({millis(), tips});
+  this->publish_rolling_rain_totals_(true);
+}
+
+void Auriol4LD5661::prune_rain_history_(uint32_t now) {
+  auto first_valid = rain_history_.begin();
+  while (first_valid != rain_history_.end() &&
+         now - first_valid->timestamp_ms > RAIN_ROLLING_24H_MS) {
+    ++first_valid;
+  }
+
+  if (first_valid != rain_history_.begin())
+    rain_history_.erase(rain_history_.begin(), first_valid);
+}
+
+uint32_t Auriol4LD5661::rain_history_total_(uint32_t now, uint32_t window_ms) const {
+  uint32_t total = 0;
+  for (const auto &entry : rain_history_) {
+    if (now - entry.timestamp_ms <= window_ms)
+      total += entry.tips;
+  }
+  return total;
+}
+
+void Auriol4LD5661::publish_rolling_rain_totals_(bool force) {
+  if (total_rain_last_12h_sensor_ == nullptr && total_rain_last_24h_sensor_ == nullptr)
+    return;
+
+  const uint32_t now = millis();
+  if (!force && has_published_rolling_totals_ &&
+      now - last_rolling_publish_millis_ < RAIN_ROLLING_PUBLISH_INTERVAL_MS) {
+    return;
+  }
+
+  this->prune_rain_history_(now);
+
+  if (total_rain_last_12h_sensor_ != nullptr) {
+    total_rain_last_12h_sensor_->publish_state(
+        this->rain_history_total_(now, RAIN_ROLLING_12H_MS) * mm_per_tip_);
+  }
+
+  if (total_rain_last_24h_sensor_ != nullptr) {
+    total_rain_last_24h_sensor_->publish_state(
+        this->rain_history_total_(now, RAIN_ROLLING_24H_MS) * mm_per_tip_);
+  }
+
+  last_rolling_publish_millis_ = now;
+  has_published_rolling_totals_ = true;
 }
 
 std::string Auriol4LD5661::now_string_() const {

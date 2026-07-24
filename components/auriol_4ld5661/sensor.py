@@ -19,6 +19,8 @@ CONF_BATTERY = "battery"
 CONF_START_OF_RAIN = "start_of_rain"
 CONF_END_OF_RAIN = "end_of_rain"
 CONF_TOTAL_LAST_RAIN = "total_last_rain"
+CONF_TOTAL_RAIN_LAST_12H = "total_rain_last_12h"
+CONF_TOTAL_RAIN_LAST_24H = "total_rain_last_24h"
 CONF_RAIN_TIMEOUT = "rain_timeout"
 CONF_MM_PER_TIP = "mm_per_tip"
 
@@ -67,6 +69,18 @@ CONFIG_SCHEMA = cv.Schema({
         state_class=STATE_CLASS_MEASUREMENT,
     ),
 
+    cv.Optional(CONF_TOTAL_RAIN_LAST_12H): sensor.sensor_schema(
+        unit_of_measurement=UNIT_MILLIMETER,
+        accuracy_decimals=1,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+
+    cv.Optional(CONF_TOTAL_RAIN_LAST_24H): sensor.sensor_schema(
+        unit_of_measurement=UNIT_MILLIMETER,
+        accuracy_decimals=1,
+        state_class=STATE_CLASS_MEASUREMENT,
+    ),
+
     cv.Optional(CONF_START_OF_RAIN): text_sensor.text_sensor_schema(),
     cv.Optional(CONF_END_OF_RAIN): text_sensor.text_sensor_schema(),
 
@@ -103,6 +117,14 @@ async def to_code(config):
     if CONF_TOTAL_LAST_RAIN in config:
         total_last = await sensor.new_sensor(config[CONF_TOTAL_LAST_RAIN])
         cg.add(var.set_total_last_rain_sensor(total_last))
+
+    if CONF_TOTAL_RAIN_LAST_12H in config:
+        total_12h = await sensor.new_sensor(config[CONF_TOTAL_RAIN_LAST_12H])
+        cg.add(var.set_total_rain_last_12h_sensor(total_12h))
+
+    if CONF_TOTAL_RAIN_LAST_24H in config:
+        total_24h = await sensor.new_sensor(config[CONF_TOTAL_RAIN_LAST_24H])
+        cg.add(var.set_total_rain_last_24h_sensor(total_24h))
 
     if CONF_START_OF_RAIN in config:
         start = await text_sensor.new_text_sensor(config[CONF_START_OF_RAIN])
