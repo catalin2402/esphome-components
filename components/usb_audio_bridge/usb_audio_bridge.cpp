@@ -6,6 +6,7 @@
 
 #include "esphome/core/log.h"
 #include "freertos/FreeRTOS.h"
+#include "tusb.h"
 #include "usb_device_uac.h"
 
 namespace esphome {
@@ -45,6 +46,8 @@ void USBAudioBridge::setup() {
   ESP_LOGI(TAG, "USB stereo playback is ready");
 }
 
+void USBAudioBridge::loop() { this->process_media_keys_(); }
+
 void USBAudioBridge::on_shutdown() { this->suspend_playback_(); }
 
 #ifdef USE_OTA_STATE_LISTENER
@@ -73,6 +76,60 @@ void USBAudioBridge::dump_config() {
 void USBAudioBridge::set_output_gain_db(float output_gain_db) {
   this->output_gain_db_ = output_gain_db;
   this->update_playback_gain_();
+}
+
+void USBAudioBridge::send_media_key(MediaKey key) {
+  if (!tud_mounted()) {
+    ESP_LOGD(TAG, "Ignoring media key while USB is not mounted");
+    return;
+  }
+
+  if (this->media_key_queue_count_ >= MEDIA_KEY_QUEUE_SIZE) {
+    ESP_LOGW(TAG, "USB media-key queue is full; dropping key press");
+    return;
+  }
+
+  this->media_key_queue_[this->media_key_queue_tail_] = key;
+  this->media_key_queue_tail_ = (this->media_key_queue_tail_ + 1) % MEDIA_KEY_QUEUE_SIZE;
+  this->media_key_queue_count_++;
+}
+
+void USBAudioBridge::process_media_keys_() {
+  if (!tud_mounted()) {
+    this->clear_media_key_queue_();
+    return;
+  }
+  if (!tud_hid_ready()) {
+    return;
+  }
+
+  if (this->media_key_pressed_) {
+    const uint16_t released = 0;
+    if (tud_hid_report(0, &released, sizeof(released))) {
+      this->media_key_pressed_ = false;
+    }
+    return;
+  }
+
+  if (this->media_key_queue_count_ == 0) {
+    return;
+  }
+
+  const uint16_t usage = static_cast<uint16_t>(this->media_key_queue_[this->media_key_queue_head_]);
+  if (!tud_hid_report(0, &usage, sizeof(usage))) {
+    return;
+  }
+
+  this->media_key_queue_head_ = (this->media_key_queue_head_ + 1) % MEDIA_KEY_QUEUE_SIZE;
+  this->media_key_queue_count_--;
+  this->media_key_pressed_ = true;
+}
+
+void USBAudioBridge::clear_media_key_queue_() {
+  this->media_key_queue_head_ = 0;
+  this->media_key_queue_tail_ = 0;
+  this->media_key_queue_count_ = 0;
+  this->media_key_pressed_ = false;
 }
 
 void USBAudioBridge::update_playback_gain_() {

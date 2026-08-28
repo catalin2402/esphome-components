@@ -30,5 +30,3 @@ The override retains the normal ESPHome LCD configuration, including pages,
 custom characters and the `display.page.show`, `display.page.show_next` and
 `display.page.show_previous` actions.
 
-Because `lcd_base` is part of base ESPHome, ownership remains with the
-upstream ESPHome project.

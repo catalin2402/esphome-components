@@ -1,4 +1,6 @@
-from esphome import pins
+from pathlib import Path
+
+from esphome import automation, pins
 import esphome.codegen as cg
 from esphome.components import ota
 from esphome.components.esp32 import (
@@ -29,7 +31,94 @@ CONF_USB_PID = "usb_pid"
 
 usb_audio_bridge_ns = cg.esphome_ns.namespace("usb_audio_bridge")
 USBAudioBridge = usb_audio_bridge_ns.class_("USBAudioBridge", cg.Component)
+MediaKey = usb_audio_bridge_ns.enum("MediaKey", is_class=True)
+MediaKeyAction = usb_audio_bridge_ns.class_("MediaKeyAction", automation.Action)
 UAC_IDF_COMPONENT_VERSION = "1.3.1"
+
+MEDIA_KEY_ACTION_SCHEMA = automation.maybe_simple_id(
+    {
+        cv.GenerateID(): cv.use_id(USBAudioBridge),
+    }
+)
+
+
+async def _media_key_action_to_code(
+    config, action_id, template_arg, media_key
+):
+    parent = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, parent, media_key)
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_up",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_up_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_UP
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_down",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_down_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_DOWN
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.next_track",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def next_track_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.NEXT_TRACK
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.previous_track",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def previous_track_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.PREVIOUS_TRACK
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.play_pause",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def play_pause_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.PLAY_PAUSE
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.stop",
+    MediaKeyAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def stop_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_action_to_code(
+        config, action_id, template_arg, MediaKey.STOP
+    )
 
 
 def _usb_string(value):
@@ -83,6 +172,14 @@ async def to_code(config):
     # Pull the unmodified component from the Espressif Component Registry.
     add_idf_component(
         name="espressif/usb_device_uac", ref=UAC_IDF_COMPONENT_VERSION
+    )
+
+    # Extend the standard UAC descriptor with a HID Consumer Control interface.
+    # Keeping this as a small companion IDF component avoids forking the UAC
+    # implementation itself.
+    add_idf_component(
+        name="usb_audio_hid",
+        path=str(Path(__file__).resolve().parent / "usb_audio_hid"),
     )
 
     include_builtin_idf_component("esp_driver_i2s")
