@@ -6,7 +6,7 @@
 
 #include "esphome/core/log.h"
 #include "freertos/FreeRTOS.h"
-#include "tusb.h"
+#include "usb_media_hid.h"
 #include "usb_device_uac.h"
 
 namespace esphome {
@@ -79,7 +79,7 @@ void USBAudioBridge::set_output_gain_db(float output_gain_db) {
 }
 
 void USBAudioBridge::send_media_key(MediaKey key) {
-  if (!tud_mounted()) {
+  if (!usb_audio_hid_mounted()) {
     ESP_LOGD(TAG, "Ignoring media key while USB is not mounted");
     return;
   }
@@ -94,19 +94,52 @@ void USBAudioBridge::send_media_key(MediaKey key) {
   this->media_key_queue_count_++;
 }
 
-void USBAudioBridge::process_media_keys_() {
-  if (!tud_mounted()) {
-    this->clear_media_key_queue_();
-    return;
-  }
-  if (!tud_hid_ready()) {
+void USBAudioBridge::press_media_key(MediaKey key) {
+  if (!usb_audio_hid_mounted()) {
+    ESP_LOGD(TAG, "Ignoring media-key press while USB is not mounted");
     return;
   }
 
-  if (this->media_key_pressed_) {
+  // Setting the same requested usage again is intentionally harmless. This
+  // allows automations that call *_pressed repeatedly while a GPIO is held.
+  this->held_media_key_usage_ = static_cast<uint16_t>(key);
+}
+
+void USBAudioBridge::release_media_key(MediaKey key) {
+  const uint16_t usage = static_cast<uint16_t>(key);
+  if (this->held_media_key_usage_ == usage) {
+    this->held_media_key_usage_ = 0;
+  }
+}
+
+void USBAudioBridge::process_media_keys_() {
+  if (!usb_audio_hid_mounted()) {
+    this->clear_media_key_queue_();
+    return;
+  }
+  if (this->active_media_key_usage_ != 0) {
+    // A matching held usage remains asserted without sending duplicate HID
+    // reports. The host sees one continuous key press and handles auto-repeat.
+    if (this->active_media_key_usage_ == this->held_media_key_usage_) {
+      return;
+    }
+    if (!usb_audio_hid_ready()) {
+      return;
+    }
     const uint16_t released = 0;
-    if (tud_hid_report(0, &released, sizeof(released))) {
-      this->media_key_pressed_ = false;
+    if (usb_audio_hid_send_report(released)) {
+      this->active_media_key_usage_ = 0;
+    }
+    return;
+  }
+
+  if (!usb_audio_hid_ready()) {
+    return;
+  }
+
+  if (this->held_media_key_usage_ != 0) {
+    if (usb_audio_hid_send_report(this->held_media_key_usage_)) {
+      this->active_media_key_usage_ = this->held_media_key_usage_;
     }
     return;
   }
@@ -116,20 +149,21 @@ void USBAudioBridge::process_media_keys_() {
   }
 
   const uint16_t usage = static_cast<uint16_t>(this->media_key_queue_[this->media_key_queue_head_]);
-  if (!tud_hid_report(0, &usage, sizeof(usage))) {
+  if (!usb_audio_hid_send_report(usage)) {
     return;
   }
 
   this->media_key_queue_head_ = (this->media_key_queue_head_ + 1) % MEDIA_KEY_QUEUE_SIZE;
   this->media_key_queue_count_--;
-  this->media_key_pressed_ = true;
+  this->active_media_key_usage_ = usage;
 }
 
 void USBAudioBridge::clear_media_key_queue_() {
   this->media_key_queue_head_ = 0;
   this->media_key_queue_tail_ = 0;
   this->media_key_queue_count_ = 0;
-  this->media_key_pressed_ = false;
+  this->active_media_key_usage_ = 0;
+  this->held_media_key_usage_ = 0;
 }
 
 void USBAudioBridge::update_playback_gain_() {

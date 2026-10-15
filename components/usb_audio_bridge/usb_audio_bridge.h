@@ -56,6 +56,8 @@ class USBAudioBridge : public Component
   void set_output_gain_db(float output_gain_db);
   void add_audio_listener(AudioFrameListener *listener) { this->audio_listeners_.push_back(listener); }
   void send_media_key(MediaKey key);
+  void press_media_key(MediaKey key);
+  void release_media_key(MediaKey key);
 
  protected:
   static constexpr size_t CONVERSION_FRAMES = 256;
@@ -92,7 +94,8 @@ class USBAudioBridge : public Component
   uint8_t media_key_queue_head_{0};
   uint8_t media_key_queue_tail_{0};
   uint8_t media_key_queue_count_{0};
-  bool media_key_pressed_{false};
+  uint16_t active_media_key_usage_{0};
+  uint16_t held_media_key_usage_{0};
 };
 
 template<typename... Ts> class MediaKeyAction final : public Action<Ts...> {
@@ -100,6 +103,28 @@ template<typename... Ts> class MediaKeyAction final : public Action<Ts...> {
   MediaKeyAction(USBAudioBridge *parent, MediaKey media_key) : parent_(parent), media_key_(media_key) {}
 
   void play(const Ts &...x) override { this->parent_->send_media_key(this->media_key_); }
+
+ protected:
+  USBAudioBridge *parent_;
+  MediaKey media_key_;
+};
+
+template<typename... Ts> class MediaKeyPressedAction final : public Action<Ts...> {
+ public:
+  MediaKeyPressedAction(USBAudioBridge *parent, MediaKey media_key) : parent_(parent), media_key_(media_key) {}
+
+  void play(const Ts &...x) override { this->parent_->press_media_key(this->media_key_); }
+
+ protected:
+  USBAudioBridge *parent_;
+  MediaKey media_key_;
+};
+
+template<typename... Ts> class MediaKeyReleasedAction final : public Action<Ts...> {
+ public:
+  MediaKeyReleasedAction(USBAudioBridge *parent, MediaKey media_key) : parent_(parent), media_key_(media_key) {}
+
+  void play(const Ts &...x) override { this->parent_->release_media_key(this->media_key_); }
 
  protected:
   USBAudioBridge *parent_;

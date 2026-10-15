@@ -32,6 +32,14 @@
 #include "tusb.h"
 #include "uac_descriptors.h"
 
+bool usb_audio_hid_mounted(void) { return tud_mounted(); }
+
+bool usb_audio_hid_ready(void) { return tud_hid_ready(); }
+
+bool usb_audio_hid_send_report(uint16_t usage) {
+  return tud_hid_report(0, &usage, sizeof(usage));
+}
+
 //--------------------------------------------------------------------+
 // Device descriptor
 //--------------------------------------------------------------------+

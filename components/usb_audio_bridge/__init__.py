@@ -33,6 +33,12 @@ usb_audio_bridge_ns = cg.esphome_ns.namespace("usb_audio_bridge")
 USBAudioBridge = usb_audio_bridge_ns.class_("USBAudioBridge", cg.Component)
 MediaKey = usb_audio_bridge_ns.enum("MediaKey", is_class=True)
 MediaKeyAction = usb_audio_bridge_ns.class_("MediaKeyAction", automation.Action)
+MediaKeyPressedAction = usb_audio_bridge_ns.class_(
+    "MediaKeyPressedAction", automation.Action
+)
+MediaKeyReleasedAction = usb_audio_bridge_ns.class_(
+    "MediaKeyReleasedAction", automation.Action
+)
 UAC_IDF_COMPONENT_VERSION = "1.3.1"
 
 MEDIA_KEY_ACTION_SCHEMA = automation.maybe_simple_id(
@@ -118,6 +124,70 @@ async def play_pause_action_to_code(config, action_id, template_arg, args):
 async def stop_action_to_code(config, action_id, template_arg, args):
     return await _media_key_action_to_code(
         config, action_id, template_arg, MediaKey.STOP
+    )
+
+
+async def _media_key_pressed_action_to_code(
+    config, action_id, template_arg, media_key
+):
+    parent = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, parent, media_key)
+
+
+async def _media_key_released_action_to_code(
+    config, action_id, template_arg, media_key
+):
+    parent = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, parent, media_key)
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_up_pressed",
+    MediaKeyPressedAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_up_pressed_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_pressed_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_UP
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_up_released",
+    MediaKeyReleasedAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_up_released_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_released_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_UP
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_down_pressed",
+    MediaKeyPressedAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_down_pressed_action_to_code(config, action_id, template_arg, args):
+    return await _media_key_pressed_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_DOWN
+    )
+
+
+@automation.register_action(
+    "usb_audio_bridge.volume_down_released",
+    MediaKeyReleasedAction,
+    MEDIA_KEY_ACTION_SCHEMA,
+    synchronous=True,
+)
+async def volume_down_released_action_to_code(
+    config, action_id, template_arg, args
+):
+    return await _media_key_released_action_to_code(
+        config, action_id, template_arg, MediaKey.VOLUME_DOWN
     )
 
 
