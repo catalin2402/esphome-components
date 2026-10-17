@@ -1,92 +1,54 @@
 #pragma once
 
-#include <utility>
-
+#include "esphome/core/automation.h"
 #include "esphome/components/display/display_buffer.h"
-#include "esphome/core/hal.h"
-#include "esphome/core/log.h"
+#include "icn2053.h"
+#include "layout_types.h"
 
-#include "icn2053_display.h"
+namespace esphome::hub75_icn2053 {
 
-namespace esphome {
-namespace hub75_icn2053 {
-class HUB75_ICN2053 : public display::DisplayBuffer {
-public:
+class HUB75Display : public display::DisplayBuffer {
+ public:
+  void set_geometry(uint16_t width, uint16_t height, uint16_t rows, uint16_t cols, Hub75PanelLayout layout) {
+    config_.panel_width = width;
+    config_.panel_height = height;
+    config_.chain_length_x = cols;
+    config_.chain_length_y = rows;
+    layout_ = layout;
+  }
+  void set_pins(hub75_pins_t pins) { config_.gpio = pins; }
+  void set_clock(Hub75ClockSpeed speed, bool inverted) {
+    config_.clock_hz = static_cast<uint32_t>(speed);
+    config_.clock_phase_inverted = inverted;
+  }
+  void set_gamma(uint8_t mode) { gamma_mode_ = mode; }
+  void set_brightness(uint8_t brightness);
   void setup() override;
-
   void dump_config() override;
-
   void update() override;
+  void loop() override;
+  void on_shutdown() override;
+  float get_setup_priority() const override { return setup_priority::PROCESSOR; }
+  display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
 
-  void set_panel_height(int panel_height) {
-    this->panel_height_ = panel_height;
-  }
-  void set_panel_width(int panel_width) { this->panel_width_ = panel_width; }
-
-  void set_chain_length(int chain_length) {
-    this->chain_length_ = chain_length;
-  }
-
-  void set_initial_brightness(int brightness) {
-    this->initial_brightness_ = brightness;
-  };
-
-  int get_initial_brightness() { return initial_brightness_; }
-
-  void set_pins(InternalGPIOPin *R1_pin, InternalGPIOPin *G1_pin,
-                InternalGPIOPin *B1_pin, InternalGPIOPin *R2_pin,
-                InternalGPIOPin *G2_pin, InternalGPIOPin *B2_pin,
-                InternalGPIOPin *A_pin, InternalGPIOPin *B_pin,
-                InternalGPIOPin *C_pin, InternalGPIOPin *D_pin,
-                InternalGPIOPin *E_pin, InternalGPIOPin *LAT_pin,
-                InternalGPIOPin *OE_pin, InternalGPIOPin *CLK_pin) {
-    int8_t d = -1;
-    if (D_pin != NULL)
-      d = D_pin->get_pin();
-    int8_t e = -1;
-    if (E_pin != NULL)
-      e = E_pin->get_pin();
-
-    pins_ = {static_cast<int8_t>(R1_pin->get_pin()),
-             static_cast<int8_t>(G1_pin->get_pin()),
-             static_cast<int8_t>(B1_pin->get_pin()),
-             static_cast<int8_t>(R2_pin->get_pin()),
-             static_cast<int8_t>(G2_pin->get_pin()),
-             static_cast<int8_t>(B2_pin->get_pin()),
-             static_cast<int8_t>(A_pin->get_pin()),
-             static_cast<int8_t>(B_pin->get_pin()),
-             static_cast<int8_t>(C_pin->get_pin()),
-             d,
-             e,
-             static_cast<int8_t>(LAT_pin->get_pin()),
-             static_cast<int8_t>(OE_pin->get_pin()),
-             static_cast<int8_t>(CLK_pin->get_pin())};
-  }
-
-  void set_latch_blanking(int latch_blanking) {
-    latch_blanking_ = latch_blanking;
-  };
-
-  display::DisplayType get_display_type() override {
-    return display::DisplayType::DISPLAY_TYPE_COLOR;
-  }
-
-  void set_brightness(int brightness);
-  ICN2053_Display *dma_display_ = nullptr;
-
-protected:
-  hub75_pins_t pins_;
-  int latch_blanking_ = 1;
-  int panel_width_ = 64;
-  int panel_height_ = 32;
-  int chain_length_ = 1;
-  int initial_brightness_ = 255;
-  bool enabled_ = true;
-  int get_width_internal() override { return panel_width_ * chain_length_; };
-  int get_height_internal() override { return panel_height_; };
-
+ protected:
   void draw_absolute_pixel_internal(int x, int y, Color color) override;
+  int get_width_internal() override { return config_.panel_width * config_.chain_length_x; }
+  int get_height_internal() override { return config_.panel_height * config_.chain_length_y; }
+  void present_();
+  hub75_i2s_cfg_t config_{};
+  Hub75PanelLayout layout_{Hub75PanelLayout::HORIZONTAL};
+  MatrixPanel_I2S_DMA *panel_{nullptr};
+  uint8_t brightness_{128};
+  uint8_t gamma_mode_{0};
+  uint8_t gamma_[256]{};
+  bool dirty_{false};
 };
 
-} // namespace hub75_icn2053
-} // namespace esphome
+template<typename... Ts> class SetBrightnessAction : public Action<Ts...>, public Parented<HUB75Display> {
+ public:
+  TEMPLATABLE_VALUE(uint8_t, brightness)
+  void play(const Ts &...x) override { this->parent_->set_brightness(this->brightness_.value(x...)); }
+};
+
+}  // namespace esphome::hub75_icn2053
