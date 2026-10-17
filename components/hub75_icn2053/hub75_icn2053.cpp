@@ -1,54 +1,85 @@
 #include "hub75_icn2053.h"
 
-namespace esphome {
-namespace hub75_icn2053 {
+#include <cmath>
+#include "esphome/core/log.h"
+#include "panel_layout.h"
 
+namespace esphome::hub75_icn2053 {
 static const char *const TAG = "hub75_icn2053";
 
-void HUB75_ICN2053::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up hub75_icn2053...");
-  hub75_i2s_cfg_t mxconfig;
-  mxconfig.mx_width = panel_width_;
-  mxconfig.mx_height = panel_height_;
-  mxconfig.chain_length_x = chain_length_;
-  mxconfig.chain_length_y = 1;
-  mxconfig.gpio = pins_;
-  mxconfig.i2sspeed = HZ_1M;
-  mxconfig.latch_blanking = latch_blanking_;
-
-  dma_display_ = new ICN2053_Display(mxconfig);
-  dma_display_->begin();
-  set_brightness(initial_brightness_);
-  dma_display_->clearScreen();
-}
-
-void HUB75_ICN2053::update() {
-  this->do_update_();
-  dma_display_->flipDMABuffer();
-}
-
-void HUB75_ICN2053::dump_config() {
-  ESP_LOGCONFIG(TAG, "hub75_icn2053:");
-  ESP_LOGCONFIG(TAG, "  Pins: R1:%i, G1:%i, B1:%i, R2:%i, G2:%i, B2:%i", pins_.r1,
-                pins_.g1, pins_.b1, pins_.r2, pins_.g2, pins_.b2);
-  ESP_LOGCONFIG(TAG, "  Pins: A:%i, B:%i, C:%i, D:%i, E:%i", pins_.a, pins_.b,
-                pins_.c, pins_.d, pins_.e);
-  ESP_LOGCONFIG(TAG, "  Pins: LAT:%i, OE:%i, CLK:%i", pins_.lat, pins_.oe,
-                pins_.b1, pins_.clk);
-}
-
-void HUB75_ICN2053::set_brightness(int brightness) {
-  dma_display_->setPanelBrightness(brightness);
-}
-
-void HOT HUB75_ICN2053::draw_absolute_pixel_internal(int x, int y,
-                                                     Color color) {
-  if (x >= this->get_width_internal() || x < 0 ||
-      y >= this->get_height_internal() || y < 0)
+void HUB75Display::setup() {
+  for (int i = 0; i < 256; i++) {
+    const float value = i / 255.0f;
+    float corrected = value;
+    if (gamma_mode_ == 1) {
+      const float luminance = value * 100.0f;
+      corrected = luminance <= 8.0f ? luminance / 903.3f : std::pow((luminance + 16.0f) / 116.0f, 3.0f);
+    } else if (gamma_mode_ == 2) {
+      corrected = std::pow(value, 2.2f);
+    }
+    gamma_[i] = static_cast<uint8_t>(std::lround(corrected * 255.0f));
+  }
+  panel_ = new MatrixPanel_I2S_DMA(config_);
+  if (!panel_->begin()) {
+    ESP_LOGE(TAG, "ICN2053 initialization failed: %s", esp_err_to_name(panel_->error()));
+    mark_failed();
     return;
-
-  dma_display_->drawPixelRGB888(x, y, color.r, color.g, color.b);
+  }
+  panel_->setBrightness8(brightness_);
+  panel_->fillScreenRGB888(0, 0, 0);
+  panel_->present();
 }
 
-} // namespace hub75_icn2053
-} // namespace esphome
+void HUB75Display::dump_config() {
+  ESP_LOGCONFIG(TAG, "ICN2053 HUB75: %ux%u panels, %ux%u grid, %dx%d virtual pixels",
+                config_.panel_width, config_.panel_height, config_.chain_length_y, config_.chain_length_x,
+                get_width_internal(), get_height_internal());
+  ESP_LOGCONFIG(TAG, "  Clock: %u Hz; brightness: %u; layout: %u; RGB565 framebuffer",
+                static_cast<unsigned>(config_.clock_hz), brightness_, static_cast<unsigned>(layout_));
+  LOG_UPDATE_INTERVAL(this);
+}
+
+void HUB75Display::draw_absolute_pixel_internal(int x, int y, Color color) {
+  if (panel_ == nullptr || is_failed() || x < 0 || y < 0 || x >= get_width_internal() || y >= get_height_internal())
+    return;
+  const auto coords = PanelLayoutRemap::remap({x, y}, layout_, config_.panel_width, config_.panel_height,
+                                             config_.chain_length_y, config_.chain_length_x);
+  panel_->fillRect(coords.x, coords.y, 1, 1, gamma_[color.r], gamma_[color.g], gamma_[color.b]);
+  dirty_ = true;
+}
+
+void HUB75Display::present_() {
+  if (panel_ == nullptr || is_failed() || !dirty_)
+    return;
+  panel_->present();
+  dirty_ = false;
+  if (panel_->error() != ESP_OK) {
+    ESP_LOGE(TAG, "ICN2053 transfer failed: %s", esp_err_to_name(panel_->error()));
+    mark_failed();
+  }
+}
+
+void HUB75Display::update() {
+  if (is_failed())
+    return;
+  do_update_();
+  present_();
+}
+
+// LVGL and direct draw calls can modify the framebuffer without update().
+void HUB75Display::loop() { present_(); }
+
+void HUB75Display::set_brightness(uint8_t brightness) {
+  brightness_ = brightness;
+  if (panel_ != nullptr && !is_failed()) {
+    panel_->setBrightness8(brightness);
+    dirty_ = true;
+  }
+}
+
+void HUB75Display::on_shutdown() {
+  if (panel_ != nullptr)
+    panel_->end();
+}
+
+}  // namespace esphome::hub75_icn2053

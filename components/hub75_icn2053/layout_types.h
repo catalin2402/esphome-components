@@ -1,0 +1,9 @@
+#pragma once
+#include <cstdint>
+namespace esphome::hub75_icn2053 {
+enum class Hub75PanelLayout { HORIZONTAL, TOP_LEFT_DOWN, TOP_RIGHT_DOWN, BOTTOM_LEFT_UP, BOTTOM_RIGHT_UP, TOP_LEFT_DOWN_ZIGZAG, TOP_RIGHT_DOWN_ZIGZAG, BOTTOM_LEFT_UP_ZIGZAG, BOTTOM_RIGHT_UP_ZIGZAG };
+enum class Hub75ShiftDriver { ICN2053 };
+enum class Hub75ScanWiring { STANDARD_TWO_SCAN, SCAN_1_4_16PX_HIGH, SCAN_1_8_32PX_HIGH, SCAN_1_8_32PX_FULL, SCAN_1_8_40PX_HIGH, SCAN_1_8_64PX_HIGH };
+enum class Hub75ClockSpeed : uint32_t { HZ_1M=1000000, HZ_5M=5000000, HZ_8M=8000000, HZ_10M=10000000, HZ_16M=16000000, HZ_20M=20000000 };
+struct Coords { int x; int y; };
+}
