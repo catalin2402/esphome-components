@@ -3,13 +3,11 @@
 ESPHome display component for HUB75 LED panels with ICN2053 drivers.
 Requires an original ESP32 with the ESP-IDF framework.
 
-## Example configuration
+## Example
 
 ```yaml
 external_components:
-  - source:
-      type: local
-      path: components
+  - source: github://catalin2402/esphome-components
     components: [hub75_icn2053]
 
 esp32:
@@ -22,6 +20,7 @@ display:
     id: matrix
     panel_width: 64
     panel_height: 32
+    brightness: 128
     r1_pin: GPIO25
     g1_pin: GPIO26
     b1_pin: GPIO27
@@ -39,46 +38,29 @@ display:
       it.rectangle(0, 0, it.get_width(), it.get_height(), Color(255, 0, 0));
 ```
 
-Set the local component path and pins to match your installation and wiring.
-All pins above are required except `d_pin` for panels up to 16 pixels high.
-Panels taller than 32 pixels also require `e_pin`. Panel width must be a
-multiple of 16; height must be even and between 2 and 64.
+Set the pins to match your controller wiring. All pins above are required
+except `d_pin` for panels up to 16 pixels high. Panels taller than 32 pixels
+also require `e_pin`. Panel width must be a multiple of 16; height must be
+even and between 2 and 64.
 
-## Configuration
+For multiple panels, set `layout_rows`, `layout_cols` and `layout`. The
+default `HORIZONTAL` layout supports one row. Grid layouts are
+`TOP_LEFT_DOWN`, `TOP_RIGHT_DOWN`, `BOTTOM_LEFT_UP` and `BOTTOM_RIGHT_UP`;
+add `_ZIGZAG` to keep every panel upright instead of rotating alternate
+rows 180 degrees. All panels share a single data chain.
 
-- `layout_rows` and `layout_cols`: panel grid dimensions (default: 1 each).
-- `layout`: `HORIZONTAL` (default), `TOP_LEFT_DOWN`, `TOP_RIGHT_DOWN`,
-  `BOTTOM_LEFT_UP`, or `BOTTOM_RIGHT_UP`. Grid layouts also accept a
-  `_ZIGZAG` suffix to keep all panels upright; other grid layouts rotate
-  alternate rows 180 degrees.
-- `brightness`: 0-255 (default: 128).
-- `clock_speed`: `1MHZ` (default), `5MHZ`, `8MHZ`, `10MHZ`, or `20MHZ`.
-- `clock_phase`: invert the clock phase (default: false).
-- `gamma_correct`: `LINEAR` (default), `CIE1931`, or `GAMMA_2_2`.
+`brightness` ranges from 0 to 255 (default: 128). Change it with the
+templatable `hub75_icn2053.set_brightness` action using `id` and `brightness`,
+or call `id(matrix).set_brightness(128)` in a lambda.
 
-Standard ESPHome display options, including lambdas, pages and rotation,
-are supported. For LVGL, set `update_interval: never` and
-`auto_clear_enabled: false`.
+`clock_speed` accepts `1MHZ` (default), `5MHZ`, `8MHZ`, `10MHZ` or `20MHZ`.
+`clock_phase` defaults to false. `gamma_correct` accepts `LINEAR` (default),
+`CIE1931` or `GAMMA_2_2`.
 
-Only one display output is supported; connect multiple panels in a single
-chain. The driver reserves I2S1 and uses a single RGB565 framebuffer.
-`double_buffer: true`, `bit_depth`, `min_refresh_rate`, `latch_blanking`,
-and scan wiring other than `STANDARD_TWO_SCAN` are unsupported.
+Standard display lambdas, pages and rotation are supported. For LVGL, set
+`update_interval: never` and `auto_clear_enabled: false`.
 
-## Brightness action
-
-```yaml
-- hub75_icn2053.set_brightness:
-    id: matrix
-    brightness: 128
-```
-
-Brightness may be templated. In a lambda, use
-`id(matrix).set_brightness(128)`.
-
-## Attribution
-
-Configuration code adapts ESPHome's MIT-licensed HUB75 component.
-The panel layout remapper adapts
-Stuart Parmenter's MIT-licensed esp-hub75 code, with attribution retained
-in `panel_layout.h`.
+Only one display output is supported. The driver reserves I2S1 and uses a
+single RGB565 framebuffer. `double_buffer: true`, `bit_depth`,
+`min_refresh_rate`, `latch_blanking` and scan wiring other than
+`STANDARD_TWO_SCAN` are unsupported.
