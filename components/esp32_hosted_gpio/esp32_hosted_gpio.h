@@ -5,6 +5,7 @@
 #include "esphome/components/gpio_expander/cached_gpio.h"
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/helpers.h"
 
 #include "esp_err.h"
 #include "esp_hosted.h"
@@ -13,8 +14,7 @@ namespace esphome::esp32_hosted_gpio {
 
 class ESP32HostedGPIOPin;
 
-class ESP32HostedGPIOComponent final : public Component,
-                                       public gpio_expander::CachedGpioExpander<uint8_t, 64> {
+class ESP32HostedGPIOComponent final : public Component, public gpio_expander::CachedGpioExpander<uint8_t, 64> {
  public:
   void setup() override;
   void loop() override;
@@ -22,6 +22,11 @@ class ESP32HostedGPIOComponent final : public Component,
   float get_setup_priority() const override;
 
   void register_pin(ESP32HostedGPIOPin *pin);
+  bool read_pin(ESP32HostedGPIOPin *pin);
+  void reconfigure();
+  bool is_gpio_ready() const { return this->ready_; }
+  bool has_pending() const { return this->has_pending_(); }
+  void add_on_ready_callback(std::function<void(bool)> &&callback) { this->ready_callback_.add(std::move(callback)); }
   void pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags);
 
  protected:
@@ -35,10 +40,13 @@ class ESP32HostedGPIOComponent final : public Component,
   void apply_pending_();
   bool has_pending_() const;
   void mark_link_down_();
+  void update_ready_();
 
   ESP32HostedGPIOPin *pins_{nullptr};
+  LazyCallbackManager<void(bool)> ready_callback_;
   uint32_t next_retry_{0};
   bool link_ready_{false};
+  bool ready_{false};
   bool waiting_logged_{false};
 };
 

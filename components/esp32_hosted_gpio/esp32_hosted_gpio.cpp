@@ -7,28 +7,33 @@
 namespace esphome::esp32_hosted_gpio {
 
 static const char *const TAG = "esp32_hosted_gpio";
+static constexpr uint8_t GPIO_COUNT = 64;
 static constexpr uint32_t LINK_RETRY_INTERVAL_MS = 1000;
 static constexpr uint32_t APPLY_RETRY_INTERVAL_MS = 250;
 
 void ESP32HostedGPIOComponent::setup() {
   ESP_LOGCONFIG(TAG, "ESP32 Hosted GPIO expander enabled");
+  this->set_invalidate_on_read_(false);
   this->next_retry_ = millis() + LINK_RETRY_INTERVAL_MS;
+  this->status_set_warning();
 }
 
 void ESP32HostedGPIOComponent::loop() {
   this->reset_pin_cache_();
   this->apply_pending_();
+  this->update_ready_();
 }
 
 void ESP32HostedGPIOComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "ESP32 Hosted GPIO:");
-  ESP_LOGCONFIG(TAG, "  Uses ESP-Hosted co-processor GPIO expander RPCs");
+  ESP_LOGCONFIG(TAG, "  Ready: %s", YESNO(this->ready_));
+  ESP_LOGCONFIG(TAG, "  Pending GPIO state: %s", YESNO(this->has_pending_()));
 }
 
 float ESP32HostedGPIOComponent::get_setup_priority() const { return setup_priority::IO; }
 
 void ESP32HostedGPIOComponent::register_pin(ESP32HostedGPIOPin *pin) {
-  if (pin == nullptr || pin->registered_) {
+  if (pin == nullptr || pin->registered_ || pin->pin_ >= GPIO_COUNT) {
     return;
   }
   pin->next_ = this->pins_;
@@ -40,7 +45,7 @@ void ESP32HostedGPIOComponent::pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags fla
   if (pin == nullptr) {
     return;
   }
-  if (pin->pin_ >= 64) {
+  if (pin->pin_ >= GPIO_COUNT) {
     ESP_LOGW(TAG, "Invalid co-processor GPIO%u", pin->pin_);
     return;
   }
@@ -48,11 +53,13 @@ void ESP32HostedGPIOComponent::pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags fla
   this->register_pin(pin);
   pin->flags_ = flags;
   pin->configured_ = false;
-  this->status_set_warning();
+  pin->pending_write_ = (flags & gpio::FLAG_OUTPUT) && pin->has_output_state_;
+  this->reset_pin_cache_();
+  this->update_ready_();
 }
 
 bool ESP32HostedGPIOComponent::digital_read_hw(uint8_t pin) {
-  if (pin >= 64) {
+  if (pin >= GPIO_COUNT) {
     ESP_LOGW(TAG, "Invalid co-processor GPIO%u read", pin);
     return false;
   }
@@ -70,6 +77,11 @@ bool ESP32HostedGPIOComponent::digital_read_hw(uint8_t pin) {
       continue;
     }
 
+    if (!(gpio_pin->flags_ & gpio::FLAG_INPUT)) {
+      gpio_pin->input_state_ = gpio_pin->output_state_;
+      read_any = true;
+      continue;
+    }
     int value = 0;
     esp_err_t err = esp_hosted_cp_gpio_get_level(gpio_pin->pin_, &value);
     if (err != ESP_OK) {
@@ -97,8 +109,8 @@ void ESP32HostedGPIOComponent::digital_write_hw(uint8_t pin, bool value) {
   this->reset_pin_cache_();
 
   auto *gpio_pin = this->find_pin_(pin);
-  if (gpio_pin == nullptr) {
-    ESP_LOGW(TAG, "Invalid co-processor GPIO%u write", pin);
+  if (gpio_pin == nullptr || pin >= GPIO_COUNT || !(gpio_pin->flags_ & gpio::FLAG_OUTPUT)) {
+    ESP_LOGW(TAG, "Co-processor GPIO%u is not a configured output", pin);
     return;
   }
 
@@ -107,7 +119,7 @@ void ESP32HostedGPIOComponent::digital_write_hw(uint8_t pin, bool value) {
 
   if (!gpio_pin->configured_ || !this->link_ready_) {
     gpio_pin->pending_write_ = true;
-    this->status_set_warning();
+    this->update_ready_();
     return;
   }
 
@@ -117,6 +129,10 @@ void ESP32HostedGPIOComponent::digital_write_hw(uint8_t pin, bool value) {
     this->mark_link_down_();
     this->status_set_warning();
     ESP_LOGW(TAG, "Failed to write co-processor GPIO%u: %s", pin, esp_err_to_name(err));
+  } else {
+    gpio_pin->pending_write_ = false;
+    gpio_pin->input_state_ = value;
+    this->update_ready_();
   }
 }
 
@@ -169,12 +185,13 @@ ESP32HostedGPIOPin *ESP32HostedGPIOComponent::find_pin_(uint8_t pin) const {
 
 void ESP32HostedGPIOComponent::mark_link_down_() {
   this->link_ready_ = false;
+  this->next_retry_ = millis() + LINK_RETRY_INTERVAL_MS;
+  this->reset_pin_cache_();
   for (auto *pin = this->pins_; pin != nullptr; pin = pin->next_) {
     pin->configured_ = false;
-    if (pin->has_output_state_) {
-      pin->pending_write_ = true;
-    }
+    pin->pending_write_ = (pin->flags_ & gpio::FLAG_OUTPUT) && pin->has_output_state_;
   }
+  this->update_ready_();
 }
 
 bool ESP32HostedGPIOComponent::has_pending_() const {
@@ -187,10 +204,8 @@ bool ESP32HostedGPIOComponent::has_pending_() const {
 }
 
 void ESP32HostedGPIOComponent::apply_pending_() {
-  if (!this->has_pending_()) {
-    this->status_clear_warning();
+  if (this->link_ready_ && !this->has_pending_())
     return;
-  }
 
   const uint32_t now = App.get_loop_component_start_time();
   if (static_cast<int32_t>(now - this->next_retry_) < 0) {
@@ -233,6 +248,18 @@ void ESP32HostedGPIOComponent::apply_pending_() {
     }
 
     pin->configured_ = true;
+    this->reset_pin_cache_();
+    // Restore this output immediately rather than waiting for all other pins.
+    if (pin->pending_write_) {
+      err = esp_hosted_cp_gpio_set_level(pin->pin_, pin->output_state_ ? 1 : 0);
+      if (err != ESP_OK) {
+        this->mark_link_down_();
+        ESP_LOGW(TAG, "Failed to restore co-processor GPIO%u: %s", pin->pin_, esp_err_to_name(err));
+        return;
+      }
+      pin->pending_write_ = false;
+      pin->input_state_ = pin->output_state_;
+    }
     return;
   }
 
@@ -250,8 +277,36 @@ void ESP32HostedGPIOComponent::apply_pending_() {
     }
 
     pin->pending_write_ = false;
+    pin->input_state_ = pin->output_state_;
     this->reset_pin_cache_();
     return;
+  }
+}
+
+bool ESP32HostedGPIOComponent::read_pin(ESP32HostedGPIOPin *pin) {
+  if (pin == nullptr || pin->pin_ >= GPIO_COUNT)
+    return false;
+  this->register_pin(pin);
+  if (pin->configured_ && this->link_ready_)
+    this->digital_read(pin->pin_);
+  // GPIOPin has no unavailable state. Preserve the last sample during recovery.
+  return pin->input_state_;
+}
+
+void ESP32HostedGPIOComponent::reconfigure() {
+  this->mark_link_down_();
+  this->next_retry_ = millis();
+}
+
+void ESP32HostedGPIOComponent::update_ready_() {
+  const bool ready = this->link_ready_ && !this->has_pending_();
+  if (ready)
+    this->status_clear_warning();
+  else
+    this->status_set_warning();
+  if (ready != this->ready_) {
+    this->ready_ = ready;
+    this->ready_callback_.call(ready);
   }
 }
 
@@ -268,8 +323,7 @@ bool ESP32HostedGPIOPin::digital_read() {
   if (this->parent_ == nullptr) {
     return this->inverted_;
   }
-  this->parent_->register_pin(this);
-  return this->parent_->digital_read(this->pin_) != this->inverted_;
+  return this->parent_->read_pin(this) != this->inverted_;
 }
 
 void ESP32HostedGPIOPin::digital_write(bool value) {
