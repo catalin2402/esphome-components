@@ -5,6 +5,7 @@ from esphome.const import CONF_USE_FAHRENHEIT
 
 CODEOWNERS = ["@catalin2402"]
 AUTO_LOAD = ["climate_ir"]
+DEPENDENCIES = ["remote_transmitter"]
 
 climate_ir_hyundai_ns = cg.esphome_ns.namespace("climate_ir_hyundai")
 HyundaiIrClimate = climate_ir_hyundai_ns.class_(

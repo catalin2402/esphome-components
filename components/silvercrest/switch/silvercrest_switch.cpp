@@ -1,13 +1,12 @@
 #include "silvercrest_switch.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace silvercrest {
+namespace esphome::silvercrest {
 
-static const char *TAG = "silvercrest.switch";
+static const char *const TAG = "silvercrest.switch";
 
 void SilvercrestSwitch::dump_config() {
-  LOG_SWITCH("", "SilvercrestSwitch", this);
+  LOG_SWITCH("", "Silvercrest Switch", this);
   ESP_LOGCONFIG(TAG, "  Channel: %u", this->channel_);
 }
 
@@ -19,5 +18,4 @@ void SilvercrestSwitch::write_state(bool state) {
 
 bool SilvercrestSwitch::assumed_state() { return true; }
 
-} // namespace silvercrest
-} // namespace esphome
+}  // namespace esphome::silvercrest

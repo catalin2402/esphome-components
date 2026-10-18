@@ -1,10 +1,9 @@
 #include "tea5767_switch.h"
 #include "esphome/core/log.h"
 
-namespace esphome {
-namespace tea5767 {
+namespace esphome::tea5767 {
 
-static const char *TAG = "tea5767.switch";
+static const char *const TAG = "tea5767.switch";
 
 void TEA5767Switch::dump_config() {
   LOG_SWITCH("", "TEA5767 Switch", this);
@@ -13,62 +12,54 @@ void TEA5767Switch::dump_config() {
 }
 
 void TEA5767Switch::setup() {
-  this->state = get_new_state_();
-  this->publish_state(this->state);
+  this->parent_->add_on_state_callback([this]() { this->update(); });
+  this->publish_state(this->get_new_state_());
 }
 
 void TEA5767Switch::update() {
   bool new_state = get_new_state_();
   if (this->state != new_state) {
-    this->state = new_state;
-    this->publish_state(this->state);
+    this->publish_state(new_state);
   }
 }
 
 void TEA5767Switch::write_state(bool state) {
   switch (this->type_) {
-  case MUTE:
-    this->parent_->set_mute(state);
-    break;
-  case MONO:
-    this->parent_->set_mono(state);
-    break;
-  case SOFT_MUTE:
-    this->parent_->set_soft_mute(state);
-    break;
-  case STEREO_NOISE_CANCELING:
-    this->parent_->set_stereo_noise_canceling(state);
-    break;
-  case HIGH_CUT_CONTROL:
-    this->parent_->set_high_cut_control(state);
-    break;
+    case MUTE:
+      this->parent_->set_mute(state);
+      break;
+    case MONO:
+      this->parent_->set_mono(state);
+      break;
+    case SOFT_MUTE:
+      this->parent_->set_soft_mute(state);
+      break;
+    case STEREO_NOISE_CANCELING:
+      this->parent_->set_stereo_noise_canceling(state);
+      break;
+    case HIGH_CUT_CONTROL:
+      this->parent_->set_high_cut_control(state);
+      break;
   }
 
-  this->state = state;
-  this->publish_state(this->state);
+  this->update();
 }
 
 bool TEA5767Switch::get_new_state_() {
   switch (this->type_) {
-  case MUTE:
-    return this->parent_->is_muted();
-    break;
-  case MONO:
-    return this->parent_->is_mono();
-    break;
-  case SOFT_MUTE:
-    this->parent_->is_soft_muted();
-    break;
-  case STEREO_NOISE_CANCELING:
-    this->parent_->get_stereo_noise_canceling();
-    break;
-  case HIGH_CUT_CONTROL:
-    this->parent_->get_high_cut_control();
-    break;
+    case MUTE:
+      return this->parent_->is_muted();
+    case MONO:
+      return this->parent_->is_mono();
+    case SOFT_MUTE:
+      return this->parent_->is_soft_muted();
+    case STEREO_NOISE_CANCELING:
+      return this->parent_->get_stereo_noise_canceling();
+    case HIGH_CUT_CONTROL:
+      return this->parent_->get_high_cut_control();
   }
 
   return false;
 }
 
-} // namespace tea5767
-} // namespace esphome
+}  // namespace esphome::tea5767

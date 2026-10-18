@@ -1,38 +1,48 @@
 #pragma once
 
+#include <array>
+
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
 
-namespace esphome {
-namespace pt2258 {
+namespace esphome::pt2258 {
 
 class PT2258 : public Component, public i2c::I2CDevice {
-public:
+ public:
   void dump_config() override;
   void setup() override;
+  float get_setup_priority() const override { return setup_priority::HARDWARE; }
   void set_default_volume(int volume);
   void set_master_volume(int volume);
   void set_channel_volume(int volume, int channel);
-  int get_channel_volume(int channel, bool is_offset = false);
+  int get_channel_volume(int channel, bool is_offset = false) const;
   void resend_data();
-
-  // Mute support: controls the PT2258 all-channel mute register.
+  void set_channel_offset(int offset, int channel);
+  void add_on_volume_callback(std::function<void(int, int)> &&callback) {
+    this->volume_callback_.add(std::move(callback));
+  }
+  void add_on_mute_callback(std::function<void(bool)> &&callback) { this->mute_callback_.add(std::move(callback)); }
   void set_mute(bool mute);
   bool is_muted() const { return this->muted_; }
   void toggle_mute() { this->set_mute(!this->muted_); }
+  void add_on_state_callback(std::function<void()> &&callback) { this->state_callback_.add(std::move(callback)); }
 
-protected:
-  int default_volume_ = 40;
-  int volumes_[7];
-  bool muted_ = false;
+ protected:
+  void send_data_();
+  void notify_volume_changes_(const std::array<int, 7> &previous);
+  bool send_channel_volume_(int volume, uint8_t channel);
+  bool send_mute_state_();
+  void update_status_(bool success);
 
-  void send_data();
-  void send_channel_volume(int volume, int channel);
-  void send_mute_state();
-  uint8_t calculate_x1(int volume);
-  uint8_t calculate_x10(int volume);
-  bool send_individual_channels();
+  CallbackManager<void()> state_callback_;
+  CallbackManager<void(int, int)> volume_callback_;
+  CallbackManager<void(bool)> mute_callback_;
+  std::array<int, 7> volumes_{};
+  int default_volume_{0};
+  bool muted_{false};
+  bool initialized_{false};
+  bool startup_delay_complete_{false};
 };
 
-} // namespace pt2258
-} // namespace esphome
+}  // namespace esphome::pt2258

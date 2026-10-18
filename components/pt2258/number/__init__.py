@@ -1,15 +1,14 @@
+import esphome.codegen as cg
 from esphome.components import number
 import esphome.config_validation as cv
-import esphome.codegen as cg
-from esphome.const import CONF_ID, CONF_TYPE, CONF_MIN_VALUE, CONF_MAX_VALUE
-from .. import pt2258_ns, CONF_PT2258_ID, PT2258
+from esphome.const import CONF_ID, CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_TYPE
+
+from .. import CONF_PT2258_ID, PT2258, pt2258_ns
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2258"]
 
-PT2258Number = pt2258_ns.class_(
-    "PT2258Number", number.Number, cg.PollingComponent
-)
+PT2258Number = pt2258_ns.class_("PT2258Number", number.Number, cg.Component)
 NumberType = pt2258_ns.enum("NumberType")
 
 CONF_NUMBER_TYPE = "number_type"
@@ -24,6 +23,10 @@ NUMBER_TYPE = {
 
 
 def validate_channels(value):
+    if value[CONF_MIN_VALUE] >= value[CONF_MAX_VALUE]:
+        raise cv.Invalid("min_value must be less than max_value")
+    if value[CONF_TYPE] != "OFFSET" and value[CONF_MIN_VALUE] < 0:
+        raise cv.Invalid("Negative values are only supported for type: offset")
     if (
         value[CONF_TYPE] != "MASTER"
         and CONF_CHANNEL_A not in value
@@ -49,7 +52,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_MAX_VALUE, default=79): cv.int_range(min=-79, max=79),
         }
     )
-    .extend(cv.polling_component_schema("1s")),
+    .extend(cv.COMPONENT_SCHEMA),
     validate_channels,
 )
 

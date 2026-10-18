@@ -1,15 +1,14 @@
+import esphome.codegen as cg
 from esphome.components import switch
 import esphome.config_validation as cv
-import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_TYPE
-from .. import tea5767_ns, CONF_TEA5767_ID, TEA5767
+
+from .. import CONF_TEA5767_ID, TEA5767, tea5767_ns
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["tea5767"]
 
-TEA5767Switch = tea5767_ns.class_(
-    "TEA5767Switch", switch.Switch, cg.PollingComponent
-)
+TEA5767Switch = tea5767_ns.class_("TEA5767Switch", switch.Switch, cg.Component)
 SwitchType = tea5767_ns.enum("SwitchType")
 
 SWITCH_TYPE = {
@@ -29,7 +28,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE, upper=True),
         }
     )
-    .extend(cv.polling_component_schema("1s"))
+    .extend(cv.COMPONENT_SCHEMA)
 )
 
 

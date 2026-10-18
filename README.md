@@ -15,10 +15,11 @@ External ESPHome components maintained by
 | [lcd_base](components/lcd_base/) | Local override of base ESPHome LCD support | ESPHome base |
 | [pt2258](components/pt2258/) | Six-channel volume controller |
 | [pt2323](components/pt2323/) | Audio selector and processor |
-| [rf_remote](components/rf_remote/) | 24-bit RC Switch remote decoder |
+| [generic_ev1527](components/generic_ev1527/) | EV1527 packet logger and binary sensors |
 | [silvercrest](components/silvercrest/) | Silvercrest remote socket transmitter |
+| [status_light](components/status_light/) | Device status indication using monochrome or RGB lights |
 | [tea5767](components/tea5767/) | FM radio tuner |
-| [xiron_decoder](components/xiron_decoder/) | Xiron weather sensor decoder |
+| [xiron](components/xiron/) | Xiron weather sensor decoder |
 
 Each component directory contains installation notes and a working YAML
 example.
@@ -32,7 +33,7 @@ external_components:
   - source: github://catalin2402/esphome-components
     components:
       - auriol_4ld5661
-      - rf_remote
+      - generic_ev1527
 ```
 
 The `lcd_base` and `remote_receiver` directories override components included

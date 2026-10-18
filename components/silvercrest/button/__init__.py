@@ -1,8 +1,8 @@
+import esphome.codegen as cg
 from esphome.components import button
 import esphome.config_validation as cv
-import esphome.codegen as cg
-from esphome.const import CONF_ID
-from .. import silvercrest_ns, CONF_SILVERCREST_ID, Silvercrest
+
+from .. import CONF_SILVERCREST_ID, Silvercrest, silvercrest_ns
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["silvercrest"]
@@ -21,7 +21,9 @@ BUTTON_TYPE = {
     "M_OFF": 9,
 }
 
-SilvercrestButton = silvercrest_ns.class_("SilvercrestButton", button.Button, cg.Component)
+SilvercrestButton = silvercrest_ns.class_(
+    "SilvercrestButton", button.Button, cg.Component
+)
 
 CONFIG_SCHEMA = (
     button.button_schema(SilvercrestButton)
@@ -35,6 +37,7 @@ CONFIG_SCHEMA = (
     )
     .extend(cv.COMPONENT_SCHEMA)
 )
+
 
 async def to_code(config):
     var = await button.new_button(config)

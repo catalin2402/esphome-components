@@ -1,26 +1,18 @@
 #pragma once
 
+#include "silvercrest_protocol.h"
 #include "esphome/core/component.h"
-#include "esphome/core/hal.h"
 
-namespace esphome {
-namespace silvercrest {
+namespace esphome::silvercrest {
 
-enum Channel { A, B, C, D, MASTER };
-
-class Silvercrest : public Component {
-public:
-  void setup() override;
+class Silvercrest : public Component, public remote_base::RemoteTransmittable {
+ public:
   void dump_config() override;
-  void set_transmitter_pin(GPIOPin *transmitter_pin) {
-    transmitter_pin_ = transmitter_pin;
-  }
-  void control_channel(Channel channel, bool state, uint8_t repeat_times = 5);
+  void set_repeat_times(uint8_t repeat_times) { this->repeat_times_ = repeat_times; }
+  void control_channel(Channel channel, bool state);
 
-private:
-  GPIOPin *transmitter_pin_{nullptr};
-  void send_code_(const bool code[24], uint8_t repeat_times);
+ protected:
+  uint8_t repeat_times_{5};
 };
 
-} // namespace silvercrest
-} // namespace esphome
+}  // namespace esphome::silvercrest

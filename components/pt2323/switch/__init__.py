@@ -1,8 +1,9 @@
+import esphome.codegen as cg
 from esphome.components import switch
 import esphome.config_validation as cv
-import esphome.codegen as cg
 from esphome.const import CONF_ID, CONF_TYPE
-from .. import pt2323_ns, CONF_PT2323_ID, PT2323
+
+from .. import CONF_PT2323_ID, PT2323, pt2323_ns
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2323"]
@@ -10,9 +11,7 @@ DEPENDENCIES = ["pt2323"]
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
 
-PT2323Switch = pt2323_ns.class_(
-    "PT2323Switch", switch.Switch, cg.PollingComponent
-)
+PT2323Switch = pt2323_ns.class_("PT2323Switch", switch.Switch, cg.Component)
 SwitchType = pt2323_ns.enum("SwitchType")
 
 SWITCH_TYPE = {
@@ -24,6 +23,10 @@ SWITCH_TYPE = {
 
 
 def validate_channels(value):
+    if value[CONF_TYPE] != "MUTE" and (
+        CONF_CHANNEL_A in value or CONF_CHANNEL_B in value
+    ):
+        raise cv.Invalid("channel_a and channel_b are only supported for type: mute")
     if (
         value[CONF_TYPE] == "MUTE"
         and CONF_CHANNEL_A not in value
@@ -43,7 +46,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
         }
     )
-    .extend(cv.polling_component_schema("1s")),
+    .extend(cv.COMPONENT_SCHEMA),
     validate_channels,
 )
 

@@ -12,5 +12,6 @@
         "utility": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.sourceDirectory": "D:/Projects-ESP/esphome-components/components/usb_audio_bridge/usb_audio_hid"
 }
