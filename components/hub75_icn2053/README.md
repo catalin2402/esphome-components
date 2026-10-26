@@ -1,9 +1,13 @@
 # HUB75 ICN2053
 
-ESPHome display component for HUB75 LED panels with ICN2053 drivers.
-Requires an original ESP32 with the ESP-IDF framework.
+Controls HUB75 LED matrix panels with ICN2053 drivers. Supports display lambdas,
+pages, rotation, chained panel layouts and LVGL. A number entity lets you adjust
+brightness from Home Assistant.
 
-## Example
+Requires an original ESP32 using the ESP-IDF framework. One display output is
+supported; multiple panels can share its data chain.
+
+## Example configuration
 
 ```yaml
 external_components:
@@ -36,31 +40,141 @@ display:
     clk_pin: GPIO16
     lambda: |-
       it.rectangle(0, 0, it.get_width(), it.get_height(), Color(255, 0, 0));
+
+number:
+  - platform: hub75_icn2053
+    name: "Matrix Brightness"
+    display_id: matrix
 ```
 
-Set the pins to match your controller wiring. All pins above are required
-except `d_pin` for panels up to 16 pixels high. Panels taller than 32 pixels
-also require `e_pin`. Panel width must be a multiple of 16; height must be
-even and between 2 and 64.
+Choose pins to match your controller wiring.
 
-For multiple panels, set `layout_rows`, `layout_cols` and `layout`. The
-default `HORIZONTAL` layout supports one row. Grid layouts are
-`TOP_LEFT_DOWN`, `TOP_RIGHT_DOWN`, `BOTTOM_LEFT_UP` and `BOTTOM_RIGHT_UP`;
-add `_ZIGZAG` to keep every panel upright instead of rotating alternate
-rows 180 degrees. All panels share a single data chain.
+## Display configuration
 
-`brightness` ranges from 0 to 255 (default: 128). Change it with the
-templatable `hub75_icn2053.set_brightness` action using `id` and `brightness`,
-or call `id(matrix).set_brightness(128)` in a lambda.
+| Option | Purpose |
+| --- | --- |
+| `id` | Identifies the display for drawing, automations and the brightness number. |
+| `panel_width` | Required width of each panel in pixels; must be a multiple of 16. |
+| `panel_height` | Required height of each panel in pixels; must be even and between 2 and 64. |
+| `r1_pin`, `g1_pin`, `b1_pin` | Required RGB data pins for the upper half of the panel. |
+| `r2_pin`, `g2_pin`, `b2_pin` | Required RGB data pins for the lower half of the panel. |
+| `a_pin`, `b_pin`, `c_pin` | Required row address pins. |
+| `d_pin` | Row address pin required for panels taller than 16 pixels. |
+| `e_pin` | Row address pin required for panels taller than 32 pixels. |
+| `lat_pin` | Required latch pin. |
+| `oe_pin` | Required output enable pin. |
+| `clk_pin` | Required clock pin. |
+| `brightness` | Startup brightness from 0 (off) to 255 (maximum). Default: 128. |
+| `gamma_correct` | Brightness curve: `LINEAR` (default), `CIE1931` or `GAMMA_2_2`. |
+| `clock_speed` | Panel clock: `1MHZ` (default), `5MHZ`, `8MHZ`, `10MHZ` or `20MHZ`. |
+| `clock_phase` | Inverts the panel clock phase when true. Default: false. |
+| `layout_rows` | Number of panel rows. Default: 1. |
+| `layout_cols` | Number of panel columns. Default: 1. |
+| `layout` | Arrangement and wiring direction of the panel chain. Default: `HORIZONTAL`. |
+| `rotation` | Display rotation: 0, 90, 180 or 270 degrees. Default: 0. |
+| `lambda`, `pages` | Standard ESPHome display drawing configuration. |
+| `update_interval` | How often the display redraws. Default: 1s. Use `never` with LVGL. |
+| `auto_clear_enabled` | Standard display clearing behavior. Set false with LVGL. |
 
-`clock_speed` accepts `1MHZ` (default), `5MHZ`, `8MHZ`, `10MHZ` or `20MHZ`.
-`clock_phase` defaults to false. `gamma_correct` accepts `LINEAR` (default),
-`CIE1931` or `GAMMA_2_2`.
+Pins must be unique, non-inverted, push-pull GPIO outputs. The display reserves
+I2S1 and uses a single RGB565 framebuffer. `shift_driver` accepts `ICN2053`;
+`scan_wiring` accepts `STANDARD_TWO_SCAN`. `double_buffer` can only be false.
+`bit_depth`, `latch_blanking` and `min_refresh_rate` are not configurable.
 
-Standard display lambdas, pages and rotation are supported. For LVGL, set
-`update_interval: never` and `auto_clear_enabled: false`.
+### Panel layouts
 
-Only one display output is supported. The driver reserves I2S1 and uses a
-single RGB565 framebuffer. `double_buffer: true`, `bit_depth`,
-`min_refresh_rate`, `latch_blanking` and scan wiring other than
-`STANDARD_TWO_SCAN` are unsupported.
+`HORIZONTAL` connects panels in a single row. For grids, use `TOP_LEFT_DOWN`,
+`TOP_RIGHT_DOWN`, `BOTTOM_LEFT_UP` or `BOTTOM_RIGHT_UP`, depending on where the
+chain starts. These layouts rotate alternate panel rows by 180 degrees.
+
+Add `_ZIGZAG` to any grid layout to keep every panel upright. Grid layouts
+require more than one row; `_ZIGZAG` layouts also require more than one column.
+All panels share a single data chain and have the same dimensions.
+
+### LVGL
+
+When using this display with LVGL, replace its drawing lambda or pages with:
+
+```yaml
+update_interval: never
+auto_clear_enabled: false
+```
+
+Configure drawing and rotation through LVGL.
+
+## Brightness number
+
+The `hub75_icn2053` number platform controls display brightness from 0 to 255
+in steps of 1. It follows changes made through actions or lambdas without
+polling. At startup, it reports the display's configured `brightness` value.
+
+`display_id` selects the display and can be omitted when it resolves
+unambiguously. Standard number options such as `name`, `id`, `icon` and
+`entity_category` are supported.
+
+## Actions
+
+`hub75_icn2053.set_brightness` changes brightness. `brightness` accepts a value
+from 0 to 255 or a lambda. Runtime values are limited to that range.
+
+```yaml
+- hub75_icn2053.set_brightness:
+    id: matrix
+    brightness: 200
+```
+
+The `id` is optional when the display resolves unambiguously. A single value
+can also be used:
+
+```yaml
+- hub75_icn2053.set_brightness: 128
+```
+
+In a lambda, use `id(matrix).set_brightness(128)` and
+`id(matrix).get_brightness()`.
+
+## Conditions
+
+| Condition | Purpose |
+| --- | --- |
+| `hub75_icn2053.is_ready` | True after successful display initialization and while the display has not failed or shut down. |
+| `hub75_icn2053.brightness_in_range` | Checks the current brightness against inclusive `min` and `max` values. Defaults: 0 and 255. |
+
+Both conditions accept an optional `id`.
+
+```yaml
+- if:
+    condition:
+      hub75_icn2053.is_ready:
+    then:
+      - hub75_icn2053.set_brightness: 200
+
+- if:
+    condition:
+      hub75_icn2053.brightness_in_range:
+        min: 1
+        max: 127
+    then:
+      - logger.log: "Display is dimmed"
+```
+
+## Triggers
+
+Configure these on the display entry:
+
+| Trigger | Purpose |
+| --- | --- |
+| `on_ready` | Runs after initialization and the first successful display transfer. |
+| `on_error` | Runs when initialization or a display transfer fails. The display is marked failed. |
+| `on_brightness` | Runs when brightness changes after setup. Provides the integer variable `brightness` (0-255). Startup configuration and unchanged values do not trigger it. |
+
+```yaml
+on_ready:
+  - logger.log: "Matrix ready"
+on_error:
+  - logger.log: "Matrix failed"
+on_brightness:
+  - logger.log:
+      format: "Matrix brightness: %d"
+      args: [brightness]
+```

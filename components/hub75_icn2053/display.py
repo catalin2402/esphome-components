@@ -1,5 +1,3 @@
-import logging
-
 from esphome import automation, pins
 import esphome.codegen as cg
 from esphome.components import display
@@ -14,22 +12,21 @@ from esphome.const import (
     CONF_LAMBDA,
     CONF_OE_PIN,
     CONF_ROTATION,
+    CONF_TRIGGER_ID,
     CONF_UPDATE_INTERVAL,
 )
-from esphome.core import ID, EnumValue
-from esphome.cpp_generator import MockObj, TemplateArgsType
 import esphome.final_validate as fv
-from esphome.helpers import add_class_to_obj
 from esphome.types import ConfigType
 
-from . import hub75_icn2053_ns as hub75_ns
+from . import HUB75Display, hub75_icn2053_ns as hub75_ns
 
-_LOGGER = logging.getLogger(__name__)
+CONF_ON_BRIGHTNESS = "on_brightness"
+CONF_ON_READY = "on_ready"
+CONF_ON_ERROR = "on_error"
+
+CODEOWNERS = ["@catalin2402"]
 
 DEPENDENCIES = ["esp32"]
-
-# Constants
-CONF_HUB75_ID = "hub75_id"
 
 # Panel dimensions
 CONF_PANEL_WIDTH = "panel_width"
@@ -64,7 +61,7 @@ CONF_LAT_PIN = "lat_pin"
 
 NEVER = 4294967295  # uint32_t max - value used when update_interval is "never"
 
-# Pin order matches the Hub75Pins C++ struct.
+# Pin order matches the hub75_pins_t C++ struct.
 PIN_KEYS = (
     CONF_R1_PIN,
     CONF_G1_PIN,
@@ -89,7 +86,7 @@ CONF_CLOCK_PHASE = "clock_phase"
 CONF_DOUBLE_BUFFER = "double_buffer"
 CONF_MIN_REFRESH_RATE = "min_refresh_rate"
 
-# Map to hub75 library enums (in global namespace)
+# Hardware and layout enums.
 Hub75ShiftDriver = hub75_ns.enum("Hub75ShiftDriver", is_class=True)
 SHIFT_DRIVERS = {
     "ICN2053": Hub75ShiftDriver.ICN2053,
@@ -118,43 +115,6 @@ SCAN_WIRINGS = {
     "SCAN_1_8_64PX_HIGH": Hub75ScanWiring.SCAN_1_8_64PX_HIGH,
 }
 
-# Deprecated scan wiring names - mapped to new names
-DEPRECATED_SCAN_WIRINGS = {
-    "FOUR_SCAN_16PX_HIGH": "SCAN_1_4_16PX_HIGH",
-    "FOUR_SCAN_32PX_HIGH": "SCAN_1_8_32PX_HIGH",
-    "FOUR_SCAN_64PX_HIGH": "SCAN_1_8_64PX_HIGH",
-}
-
-
-def _validate_scan_wiring(value):
-    """Validate scan_wiring with deprecation warnings for old names."""
-    value = cv.string(value).upper().replace(" ", "_")
-
-    # Check if using deprecated name
-    # Remove deprecated names in 2026.7.0
-    if value in DEPRECATED_SCAN_WIRINGS:
-        new_name = DEPRECATED_SCAN_WIRINGS[value]
-        _LOGGER.warning(
-            "Scan wiring '%s' is deprecated and will be removed in ESPHome 2026.7.0. "
-            "Please use '%s' instead.",
-            value,
-            new_name,
-        )
-        value = new_name
-
-    # Validate against allowed values
-    if value not in SCAN_WIRINGS:
-        raise cv.Invalid(
-            f"Unknown scan wiring '{value}'. "
-            f"Valid options are: {', '.join(sorted(SCAN_WIRINGS.keys()))}"
-        )
-
-    # Return as EnumValue like cv.enum does
-    result = add_class_to_obj(value, EnumValue)
-    result.enum_value = SCAN_WIRINGS[value]
-    return result
-
-
 Hub75ClockSpeed = hub75_ns.enum("Hub75ClockSpeed", is_class=True)
 CLOCK_SPEEDS = {
     "1MHZ": Hub75ClockSpeed.HZ_1M,
@@ -165,53 +125,10 @@ CLOCK_SPEEDS = {
     "20MHZ": Hub75ClockSpeed.HZ_20M,
 }
 
-Hub75Rotation = hub75_ns.enum("Hub75Rotation", is_class=True)
-ROTATIONS = {
-    0: Hub75Rotation.ROTATE_0,
-    90: Hub75Rotation.ROTATE_90,
-    180: Hub75Rotation.ROTATE_180,
-    270: Hub75Rotation.ROTATE_270,
-}
-
-HUB75Display = hub75_ns.class_("HUB75Display", display.DisplayBuffer)
-Hub75Config = hub75_ns.struct("Hub75Config")
-Hub75Pins = hub75_ns.struct("Hub75Pins")
-SetBrightnessAction = hub75_ns.class_("SetBrightnessAction", automation.Action)
-
 
 def _validate_config(config: ConfigType) -> ConfigType:
     """Validate driver and layout requirements."""
     errs: list[cv.Invalid] = []
-
-    # MBI5124 requires inverted clock phase
-    driver = config.get(CONF_SHIFT_DRIVER, "GENERIC")
-    if driver == "MBI5124" and not config.get(CONF_CLOCK_PHASE, False):
-        errs.append(
-            cv.Invalid(
-                "MBI5124 shift driver requires 'clock_phase: true' to be set",
-                path=[CONF_CLOCK_PHASE],
-            )
-        )
-
-    # Prevent conflicting min_refresh_rate + update_interval configuration
-    # min_refresh_rate is auto-calculated from update_interval unless using LVGL mode
-    update_interval = config.get(CONF_UPDATE_INTERVAL)
-    if CONF_MIN_REFRESH_RATE in config and update_interval is not None:
-        # Handle both integer (NEVER) and time object cases
-        interval_ms = (
-            update_interval
-            if isinstance(update_interval, int)
-            else update_interval.total_milliseconds
-        )
-        if interval_ms != NEVER:
-            errs.append(
-                cv.Invalid(
-                    "Cannot set both 'min_refresh_rate' and 'update_interval' (except 'never'). "
-                    "Refresh rate is auto-calculated from update_interval. "
-                    "Remove 'min_refresh_rate' or use 'update_interval: never' for LVGL mode.",
-                    path=[CONF_MIN_REFRESH_RATE],
-                )
-            )
 
     # Validate layout configuration (validate effective config including C++ defaults)
     layout = config.get(CONF_LAYOUT, "HORIZONTAL")
@@ -235,15 +152,6 @@ def _validate_config(config: ConfigType) -> ConfigType:
                 f"HORIZONTAL layout requires 'layout_rows: 1' (got {layout_rows}). "
                 "For multi-row grids, use TOP_LEFT_DOWN or other grid layouts.",
                 path=[CONF_LAYOUT_ROWS],
-            )
-        )
-
-    # Grid layouts (non-HORIZONTAL) require more than one panel
-    if layout != "HORIZONTAL" and layout_rows == 1 and layout_cols == 1:
-        errs.append(
-            cv.Invalid(
-                f"Grid layout '{layout}' requires multiple panels (layout_rows > 1 or layout_cols > 1)",
-                path=[CONF_LAYOUT],
             )
         )
 
@@ -280,12 +188,6 @@ def _validate_config(config: ConfigType) -> ConfigType:
 
 def _final_validate(config: ConfigType) -> ConfigType:
     """Validate requirements when using HUB75 display."""
-    # Local imports to avoid circular dependencies
-    from esphome.components.esp32 import get_esp32_variant
-    from esphome.components.esp32.const import VARIANT_ESP32P4
-    from esphome.components.lvgl import DOMAIN as LVGL_DOMAIN
-    from esphome.components.psram import DOMAIN as PSRAM_DOMAIN
-
     full_config = fv.full_config.get()
     if (
         sum(
@@ -299,18 +201,12 @@ def _final_validate(config: ConfigType) -> ConfigType:
         )
     errs: list[cv.Invalid] = []
 
-    # ESP32-P4 requires PSRAM
-    variant = get_esp32_variant()
-    if variant == VARIANT_ESP32P4 and PSRAM_DOMAIN not in full_config:
-        errs.append(
-            cv.Invalid(
-                "HUB75 display on ESP32-P4 requires PSRAM. Add 'psram:' to your configuration.",
-                path=[CONF_ID],
-            )
-        )
-
     # LVGL-specific validation
-    if LVGL_DOMAIN in full_config:
+    if any(
+        str(display_id) == str(config[CONF_ID])
+        for lvgl_config in full_config.get("lvgl", [])
+        for display_id in lvgl_config.get("displays", [])
+    ):
         # Check update_interval (converted from "never" to NEVER constant)
         update_interval = config.get(CONF_UPDATE_INTERVAL)
         if update_interval is not None:
@@ -368,9 +264,7 @@ def _validate_icn2053(config):
     if CORE.target_framework != "esp-idf":
         raise cv.Invalid("hub75_icn2053 requires framework type: esp-idf")
     if get_esp32_variant() != VARIANT_ESP32:
-        raise cv.Invalid(
-            "The ICN2053 I2S backend supports the original ESP32 only"
-        )
+        raise cv.Invalid("The ICN2053 I2S backend supports the original ESP32 only")
     if config[CONF_PANEL_WIDTH] % 16:
         raise cv.Invalid(
             "panel_width must be a multiple of 16", path=[CONF_PANEL_WIDTH]
@@ -381,7 +275,9 @@ def _validate_icn2053(config):
             path=[CONF_PANEL_HEIGHT],
         )
     if config[CONF_PANEL_HEIGHT] > 16 and CONF_D_PIN not in config:
-        raise cv.Invalid("Panels taller than 16 pixels require d_pin", path=[CONF_D_PIN])
+        raise cv.Invalid(
+            "Panels taller than 16 pixels require d_pin", path=[CONF_D_PIN]
+        )
     if config[CONF_PANEL_HEIGHT] > 32 and CONF_E_PIN not in config:
         raise cv.Invalid(
             "Panels taller than 32 pixels require e_pin", path=[CONF_E_PIN]
@@ -431,11 +327,25 @@ def _validate_icn2053(config):
     return config
 
 
+BrightnessTrigger = hub75_ns.class_(
+    "BrightnessTrigger", automation.Trigger.template(cg.int_)
+)
+ReadyTrigger = hub75_ns.class_("ReadyTrigger", automation.Trigger.template())
+ErrorTrigger = hub75_ns.class_("ErrorTrigger", automation.Trigger.template())
+
 CONFIG_SCHEMA = cv.All(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(HUB75Display),
-            # Override rotation - store Hub75Rotation directly (driver handles rotation)
+            cv.Optional(CONF_ON_BRIGHTNESS): automation.validate_automation(
+                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BrightnessTrigger)}
+            ),
+            cv.Optional(CONF_ON_READY): automation.validate_automation(
+                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ReadyTrigger)}
+            ),
+            cv.Optional(CONF_ON_ERROR): automation.validate_automation(
+                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ErrorTrigger)}
+            ),
             cv.Optional(CONF_ROTATION): display.validate_rotation,
             # Panel dimensions
             cv.Required(CONF_PANEL_WIDTH): cv.positive_int,
@@ -445,7 +355,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_LAYOUT_COLS): cv.positive_int,
             cv.Optional(CONF_LAYOUT): cv.enum(PANEL_LAYOUTS, upper=True, space="_"),
             # Panel hardware configuration
-            cv.Optional(CONF_SCAN_WIRING): _validate_scan_wiring,
+            cv.Optional(CONF_SCAN_WIRING): cv.enum(SCAN_WIRINGS, upper=True),
             cv.Optional(CONF_SHIFT_DRIVER, default="ICN2053"): cv.enum(
                 SHIFT_DRIVERS, upper=True
             ),
@@ -529,27 +439,11 @@ async def to_code(config):
         )
         cg.add(var.set_writer(writer))
 
-
-@automation.register_action(
-    "hub75_icn2053.set_brightness",
-    SetBrightnessAction,
-    cv.maybe_simple_value(
-        {
-            cv.GenerateID(): cv.use_id(HUB75Display),
-            cv.Required(CONF_BRIGHTNESS): cv.templatable(cv.int_range(min=0, max=255)),
-        },
-        key=CONF_BRIGHTNESS,
-    ),
-    synchronous=True,
-)
-async def hub75_set_brightness_to_code(
-    config: ConfigType,
-    action_id: ID,
-    template_arg: cg.TemplateArguments,
-    args: TemplateArgsType,
-) -> MockObj:
-    var = cg.new_Pvariable(action_id, template_arg)
-    await cg.register_parented(var, config[CONF_ID])
-    template_ = await cg.templatable(config[CONF_BRIGHTNESS], args, cg.uint8)
-    cg.add(var.set_brightness(template_))
-    return var
+    for key, args in (
+        (CONF_ON_BRIGHTNESS, [(cg.int_, "brightness")]),
+        (CONF_ON_READY, []),
+        (CONF_ON_ERROR, []),
+    ):
+        for conf in config.get(key, []):
+            trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+            await automation.build_automation(trigger, args, conf)
