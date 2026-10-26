@@ -19,6 +19,7 @@ External ESPHome components maintained by
 | [silvercrest](components/silvercrest/) | Silvercrest remote socket transmitter |
 | [status_light](components/status_light/) | Device status indication using monochrome or RGB lights |
 | [tea5767](components/tea5767/) | FM radio tuner |
+| [usb_media_player](components/usb_media_player/) | USB playback hub with optional I2S microphone capture |
 | [xiron](components/xiron/) | Xiron weather sensor decoder |
 
 Each component directory contains installation notes and a working YAML
