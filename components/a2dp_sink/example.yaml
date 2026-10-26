@@ -1,0 +1,46 @@
+esphome:
+  name: native-a2dp-test
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    advanced:
+      compiler_optimization: SIZE
+logger:
+external_components:
+  - source:
+      type: local
+      path: ..
+    components: [a2dp_sink]
+a2dp_sink:
+  id: bt_sink
+  name: Native A2DP test
+i2s_audio:
+  id: i2s_output
+  i2s_lrclk_pin: GPIO25
+  i2s_bclk_pin: GPIO27
+speaker:
+  - platform: i2s_audio
+    id: audio_speaker
+    i2s_audio_id: i2s_output
+    i2s_dout_pin: GPIO26
+    dac_type: external
+    channel: stereo
+    sample_rate: 44100
+    bits_per_sample: 16bit
+media_source:
+  - platform: a2dp_sink
+    id: bt_source
+    a2dp_sink_id: bt_sink
+media_player:
+  - platform: speaker_source
+    name: Bluetooth player
+    media_pipeline:
+      speaker: audio_speaker
+      sources: [bt_source]
+switch:
+  - platform: a2dp_sink
+    type: bluetooth
+    a2dp_sink_id: bt_sink
+    name: Bluetooth
+    restore_mode: RESTORE_DEFAULT_OFF

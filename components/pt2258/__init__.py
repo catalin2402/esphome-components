@@ -99,7 +99,8 @@ async def pt2258_resend_data_to_code(config, action_id, template_arg, args):
 async def pt2258_mute_to_code(config, action_id, template_arg, args):
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
-    cg.add(var.set_mute(True))
+    value = await cg.templatable(True, args, cg.bool_)
+    cg.add(var.set_mute(value))
     return var
 
 
@@ -112,7 +113,8 @@ async def pt2258_mute_to_code(config, action_id, template_arg, args):
 async def pt2258_unmute_to_code(config, action_id, template_arg, args):
     parent = await cg.get_variable(config[CONF_ID])
     var = cg.new_Pvariable(action_id, template_arg, parent)
-    cg.add(var.set_mute(False))
+    value = await cg.templatable(False, args, cg.bool_)
+    cg.add(var.set_mute(value))
     return var
 
 
