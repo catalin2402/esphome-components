@@ -207,7 +207,6 @@ Configure these under `media_source: - platform: usb_media_player`:
 | `prefill` | Audio to accumulate at startup and after an empty-queue wait. Default: `100ms`; maximum: `1000ms`. The wait is bounded by this duration so short sounds still play. The buffer must fit the audio plus packet overhead. |
 | `use_psram` | Prefer PSRAM for the playback packet buffer, falling back to internal RAM if unavailable. Default: true. Enable the ESPHome `psram:` component to initialize PSRAM. |
 | `auto_start` | Selects USB when the host connects. Default: true. |
-| `output_gain_db` | Additional attenuation applied to USB playback, from -60 to 0 dB. Default: 0 dB. |
 
 The USB packet buffer absorbs short scheduling delays. Playback prefills up to
 100 ms of audio by default at startup and after an empty-queue wait to cushion scheduling
@@ -340,3 +339,32 @@ usb_media_player:
   on_stream_stopped:
     - logger.log: "USB playback stopped"
 ```
+
+
+## Sound-reactive lights
+
+`sound_reactive_rgb` can use the USB playback media source directly. Load both
+components from the checkout/version containing this integration:
+
+```yaml
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [usb_media_player, sound_reactive_rgb]
+
+sound_reactive_rgb:
+  audio_source_id: usb_input
+  right_light_id: right_light
+  mode: spectrum
+  use_psram: true
+  follow_volume: false
+```
+
+`usb_input` is the ID under `media_source`, and `right_light` must be a configured
+light. Existing `usb_audio_bridge` IDs remain supported. Analysis receives stereo
+PCM on the USB output task, outside the USB receive callback. Lights react as
+samples enter the speaker pipeline, so speaker buffering can make them lead the
+audible sound. `follow_volume: true` includes USB host volume; media-player/speaker volume is
+applied later and is not tracked.
+USB mute silences the analysis regardless of `follow_volume`.

@@ -13,7 +13,6 @@ AUTO_LOAD = ["audio"]
 CONF_PREFILL = "prefill"
 CONF_AUTO_START = "auto_start"
 CONF_USE_PSRAM = "use_psram"
-CONF_OUTPUT_GAIN_DB = "output_gain_db"
 
 
 def validate_config(config):
@@ -43,9 +42,6 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PREFILL, default="100ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_USE_PSRAM, default=True): cv.boolean,
             cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
-            cv.Optional(CONF_OUTPUT_GAIN_DB, default=0.0): cv.float_range(
-                min=-60.0, max=0.0
-            ),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -86,4 +82,3 @@ async def to_code(config):
     cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
     cg.add(var.set_use_psram(config[CONF_USE_PSRAM]))
     cg.add(var.set_auto_start(config[CONF_AUTO_START]))
-    cg.add(var.set_output_gain_db(config[CONF_OUTPUT_GAIN_DB]))

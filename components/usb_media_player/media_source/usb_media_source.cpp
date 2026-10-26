@@ -16,8 +16,6 @@ using media_source::MediaSourceCommand;
 using media_source::MediaSourceState;
 
 void USBMediaSource::setup() {
-  this->output_gain_q16_ =
-      static_cast<uint32_t>(std::lround(std::pow(10.0f, this->output_gain_db_ / 20.0f) * 65536.0f));
   // USB callbacks run in task context; packet storage does not need DMA memory.
   if (this->use_psram_) {
     this->buffer_ =
@@ -50,10 +48,9 @@ void USBMediaSource::dump_config() {
                 "  Audio: 48000 Hz, stereo, signed 16-bit PCM\n"
                 "  Buffer: %u bytes (%s)\n"
                 "  Prefill: %u ms\n"
-                "  Auto start: %s\n"
-                "  Maximum output gain: %.1f dB",
+                "  Auto start: %s",
                 static_cast<unsigned>(this->buffer_size_), this->buffer_in_psram_ ? "PSRAM" : "internal RAM",
-                static_cast<unsigned>(this->prefill_ms_), YESNO(this->auto_start_), this->output_gain_db_);
+                static_cast<unsigned>(this->prefill_ms_), YESNO(this->auto_start_));
 }
 
 void USBMediaSource::loop() {
@@ -216,8 +213,11 @@ void USBMediaSource::write_audio_() {
       vTaskDelay(1);
     if (item->generation == this->generation_.load() && this->playback_enabled_.load() && !this->suspended_.load()) {
       const auto *input = reinterpret_cast<const int16_t *>(item + 1);
-      const uint32_t gain =
-          static_cast<uint32_t>((static_cast<uint64_t>(item->gain_q16) * this->output_gain_q16_) >> 16);
+      const uint32_t gain = item->gain_q16;
+      // Analysis runs outside the USB callback, before applying gain to the PCM.
+      // This preserves follow_volume=false without allocating another audio buffer.
+      for (auto *listener : this->audio_listeners_)
+        listener->on_audio_frames(input, length / 4, gain, gain == 0);
       for (size_t i = 0; i < length / sizeof(int16_t); i++)
         pcm[i] = static_cast<int16_t>((static_cast<int64_t>(input[i]) * gain) >> 16);
       size_t offset = 0;

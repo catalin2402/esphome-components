@@ -57,7 +57,7 @@ void SoundReactiveRGB::dump_config() {
   ESP_LOGCONFIG(TAG, "  Update interval: %u ms", static_cast<unsigned>(this->update_interval_ms_));
   ESP_LOGCONFIG(TAG, "  Analysis buffer: %u stereo frames (%s)", static_cast<unsigned>(this->buffer_frames_),
                 this->buffer_in_psram_ ? "PSRAM" : "internal RAM");
-  ESP_LOGCONFIG(TAG, "  Follow Windows volume: %s", YESNO(this->follow_volume_));
+  ESP_LOGCONFIG(TAG, "  Follow USB source volume: %s", YESNO(this->follow_volume_));
 }
 
 void SoundReactiveRGB::on_shutdown() { this->all_off_(); }

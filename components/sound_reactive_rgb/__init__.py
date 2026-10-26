@@ -1,12 +1,14 @@
 import logging
 
-from esphome import automation
 import esphome.codegen as cg
-from esphome.components import light, usb_audio_bridge
 import esphome.config_validation as cv
+import esphome.final_validate as fv
+from esphome import automation
+from esphome.components import light
 from esphome.const import CONF_ID
+from esphome.core import CORE
 
-DEPENDENCIES = ["usb_audio_bridge"]
+DEPENDENCIES = ["esp32"]
 AUTO_LOAD = ["light"]
 CODEOWNERS = []
 MULTI_CONF = False
@@ -64,7 +66,7 @@ async def sound_reactive_rgb_set_mode_to_code(config, action_id, template_arg, a
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SoundReactiveRGB),
-        cv.Required(CONF_AUDIO_SOURCE_ID): cv.use_id(usb_audio_bridge.USBAudioBridge),
+        cv.Required(CONF_AUDIO_SOURCE_ID): cv.use_id(cg.Component),
         cv.Optional(CONF_LEFT_LIGHT_ID): cv.use_id(light.LightState),
         cv.Optional(CONF_RIGHT_LIGHT_ID): cv.use_id(light.LightState),
         cv.Optional(CONF_MODE, default="stereo_vu"): cv.enum(MODES, lower=True),
@@ -80,7 +82,27 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(cv.COMPONENT_SCHEMA)
 
 
+def final_validate(config):
+    full_config = fv.full_config.get()
+    path = full_config.get_path_for_id(config[CONF_AUDIO_SOURCE_ID])
+    source = full_config.get_config_for_path(path[:-1])
+    if not (
+        path[0] == "usb_audio_bridge"
+        or (path[0] == "media_source" and source.get("platform") == "usb_media_player")
+    ):
+        raise cv.Invalid(
+            "audio_source_id must reference a usb_audio_bridge or a usb_media_player media_source",
+            path=[CONF_AUDIO_SOURCE_ID],
+        )
+    return config
+
+
+FINAL_VALIDATE_SCHEMA = final_validate
+
+
 async def to_code(config):
+    if "usb_audio_bridge" in CORE.config:
+        cg.add_define("USE_SOUND_REACTIVE_USB_AUDIO_BRIDGE")
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "esp_err.h"
 #include "freertos/FreeRTOS.h"
@@ -16,6 +17,13 @@
 #include "esphome/components/usb_media_player/usb_media_player.h"
 
 namespace esphome::usb_media_player {
+
+// Listeners run on the output task. They must copy samples promptly and never block.
+class AudioFrameListener {
+ public:
+  virtual void on_audio_frames(const int16_t *interleaved_stereo, size_t frames, uint32_t playback_gain_q16,
+                               bool muted) = 0;
+};
 
 class USBMediaSource : public Component, public media_source::MediaSource {
  public:
@@ -31,11 +39,11 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   // The connected host owns track selection, so NEXT/PREVIOUS must be delegated to it.
   bool has_internal_playlist() const override { return true; }
 
+  void add_audio_listener(AudioFrameListener *listener) { this->audio_listeners_.push_back(listener); }
   void set_prefill_ms(uint32_t prefill_ms) { this->prefill_ms_ = prefill_ms; }
   void set_buffer_size(size_t size) { this->buffer_size_ = size; }
   void set_use_psram(bool use_psram) { this->use_psram_ = use_psram; }
   void set_auto_start(bool auto_start) { this->auto_start_ = auto_start; }
-  void set_output_gain_db(float gain) { this->output_gain_db_ = gain; }
   bool is_connected() const { return this->connected_; }
   bool is_streaming() const { return this->streaming_; }
   void set_parent(USBMediaPlayer *parent) { this->parent_ = parent; }
@@ -61,6 +69,7 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   void start_audio_();
   void stop_audio_();
   void update_stream_state_();
+  std::vector<AudioFrameListener *> audio_listeners_;
   USBMediaPlayer *parent_{nullptr};
   RingbufHandle_t buffer_{nullptr};
   TaskHandle_t task_{nullptr};
@@ -76,8 +85,6 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   size_t buffer_size_{32768};
   uint32_t last_drop_log_{0};
   uint32_t prefill_ms_{100};
-  float output_gain_db_{0.0f};
-  uint32_t output_gain_q16_{65536};
   bool use_psram_{true};
   bool buffer_in_psram_{false};
   bool auto_start_{true};

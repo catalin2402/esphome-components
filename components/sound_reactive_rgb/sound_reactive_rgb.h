@@ -5,7 +5,12 @@
 #include <string>
 
 #include "esphome/components/light/light_state.h"
+#ifdef USE_SOUND_REACTIVE_USB_AUDIO_BRIDGE
 #include "esphome/components/usb_audio_bridge/usb_audio_bridge.h"
+#endif
+#ifdef USE_USB_MEDIA_PLAYER_SOURCE
+#include "esphome/components/usb_media_player/media_source/usb_media_source.h"
+#endif
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 
@@ -19,7 +24,14 @@ enum class SoundReactiveMode : uint8_t {
   RAINBOW_PULSE,
 };
 
-class SoundReactiveRGB : public Component, public usb_audio_bridge::AudioFrameListener {
+class SoundReactiveRGB : public Component
+#ifdef USE_SOUND_REACTIVE_USB_AUDIO_BRIDGE
+    , public usb_audio_bridge::AudioFrameListener
+#endif
+#ifdef USE_USB_MEDIA_PLAYER_SOURCE
+    , public usb_media_player::AudioFrameListener
+#endif
+{
  public:
   void setup() override;
   void loop() override;
@@ -30,10 +42,12 @@ class SoundReactiveRGB : public Component, public usb_audio_bridge::AudioFrameLi
   void on_audio_frames(const int16_t *interleaved_stereo, size_t frames, uint32_t playback_gain_q16,
                        bool muted) override;
 
-  void set_audio_source(usb_audio_bridge::USBAudioBridge *source) {
-    this->audio_source_ = source;
-    source->add_audio_listener(this);
-  }
+#ifdef USE_SOUND_REACTIVE_USB_AUDIO_BRIDGE
+  void set_audio_source(usb_audio_bridge::USBAudioBridge *source) { source->add_audio_listener(this); }
+#endif
+#ifdef USE_USB_MEDIA_PLAYER_SOURCE
+  void set_audio_source(usb_media_player::USBMediaSource *source) { source->add_audio_listener(this); }
+#endif
   void set_left_light(light::LightState *light) { this->left_light_ = light; }
   void set_right_light(light::LightState *light) { this->right_light_ = light; }
   void set_mode(SoundReactiveMode mode);
@@ -64,7 +78,6 @@ class SoundReactiveRGB : public Component, public usb_audio_bridge::AudioFrameLi
   static RGB vu_color_(float level);
   static RGB hsv_to_rgb_(float hue, float saturation, float value);
 
-  usb_audio_bridge::USBAudioBridge *audio_source_{nullptr};
   light::LightState *left_light_{nullptr};
   light::LightState *right_light_{nullptr};
 
