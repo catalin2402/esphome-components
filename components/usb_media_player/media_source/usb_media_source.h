@@ -32,6 +32,7 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   bool has_internal_playlist() const override { return true; }
 
   void set_buffer_size(size_t size) { this->buffer_size_ = size; }
+  void set_use_psram(bool use_psram) { this->use_psram_ = use_psram; }
   void set_auto_start(bool auto_start) { this->auto_start_ = auto_start; }
   void set_output_gain_db(float gain) { this->output_gain_db_ = gain; }
   bool is_connected() const { return this->connected_; }
@@ -70,10 +71,13 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   std::atomic<uint32_t> generation_{0};
   std::atomic<uint32_t> host_gain_q16_{65536};
   std::atomic<uint32_t> dropped_frames_{0};
+  std::atomic<size_t> queued_bytes_{0};
   size_t buffer_size_{32768};
   uint32_t last_drop_log_{0};
   float output_gain_db_{0.0f};
   uint32_t output_gain_q16_{65536};
+  bool use_psram_{true};
+  bool buffer_in_psram_{false};
   bool auto_start_{true};
   bool connected_{false};
   bool streaming_{false};

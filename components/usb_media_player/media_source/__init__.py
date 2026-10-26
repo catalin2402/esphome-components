@@ -1,8 +1,8 @@
 import esphome.codegen as cg
-from esphome.components import media_source
 import esphome.config_validation as cv
-from esphome.const import CONF_BUFFER_SIZE, CONF_ID
 import esphome.final_validate as fv
+from esphome.components import media_source
+from esphome.const import CONF_BUFFER_SIZE, CONF_ID
 
 from .. import CONF_USB_MEDIA_PLAYER_ID, USBMediaPlayer, USBMediaSource
 
@@ -11,6 +11,7 @@ DEPENDENCIES = ["usb_media_player"]
 AUTO_LOAD = ["audio"]
 
 CONF_AUTO_START = "auto_start"
+CONF_USE_PSRAM = "use_psram"
 CONF_OUTPUT_GAIN_DB = "output_gain_db"
 
 
@@ -28,6 +29,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BUFFER_SIZE, default=32768): cv.int_range(
                 min=8192, max=262144
             ),
+            cv.Optional(CONF_USE_PSRAM, default=True): cv.boolean,
             cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
             cv.Optional(CONF_OUTPUT_GAIN_DB, default=0.0): cv.float_range(
                 min=-60.0, max=0.0
@@ -69,5 +71,6 @@ async def to_code(config):
     cg.add(var.set_parent(parent))
     cg.add(parent.set_source(var))
     cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
+    cg.add(var.set_use_psram(config[CONF_USE_PSRAM]))
     cg.add(var.set_auto_start(config[CONF_AUTO_START]))
     cg.add(var.set_output_gain_db(config[CONF_OUTPUT_GAIN_DB]))

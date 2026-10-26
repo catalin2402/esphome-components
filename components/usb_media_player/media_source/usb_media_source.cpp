@@ -18,8 +18,15 @@ using media_source::MediaSourceState;
 void USBMediaSource::setup() {
   this->output_gain_q16_ =
       static_cast<uint32_t>(std::lround(std::pow(10.0f, this->output_gain_db_ / 20.0f) * 65536.0f));
-  this->buffer_ =
-      xRingbufferCreateWithCaps(this->buffer_size_, RINGBUF_TYPE_NOSPLIT, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  // USB callbacks run in task context; packet storage does not need DMA memory.
+  if (this->use_psram_) {
+    this->buffer_ =
+        xRingbufferCreateWithCaps(this->buffer_size_, RINGBUF_TYPE_NOSPLIT, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    this->buffer_in_psram_ = this->buffer_ != nullptr;
+  }
+  if (this->buffer_ == nullptr)
+    this->buffer_ =
+        xRingbufferCreateWithCaps(this->buffer_size_, RINGBUF_TYPE_NOSPLIT, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
   if (this->buffer_ == nullptr) {
     ESP_LOGE(TAG, "Unable to allocate USB audio buffer");
     this->mark_failed();
@@ -41,10 +48,11 @@ void USBMediaSource::dump_config() {
   ESP_LOGCONFIG(TAG,
                 "USB Media Source:\n"
                 "  Audio: 48000 Hz, stereo, signed 16-bit PCM\n"
-                "  Buffer: %u bytes (internal RAM)\n"
+                "  Buffer: %u bytes (%s)\n"
                 "  Auto start: %s\n"
                 "  Maximum output gain: %.1f dB",
-                static_cast<unsigned>(this->buffer_size_), YESNO(this->auto_start_), this->output_gain_db_);
+                static_cast<unsigned>(this->buffer_size_), this->buffer_in_psram_ ? "PSRAM" : "internal RAM",
+                YESNO(this->auto_start_), this->output_gain_db_);
 }
 
 void USBMediaSource::loop() {
@@ -159,6 +167,7 @@ esp_err_t USBMediaSource::receive_audio(const uint8_t *data, size_t length) {
     header->generation = generation;
     header->gain_q16 = gain;
     std::memcpy(header + 1, data, bytes);
+    this->queued_bytes_.fetch_add(bytes);
     xRingbufferSendComplete(this->buffer_, item);
     data += bytes;
     length -= bytes;
@@ -175,12 +184,31 @@ void USBMediaSource::write_audio_() {
   const audio::AudioStreamInfo stream_info(16, 2, 48000);
   int16_t pcm[PACKET_BYTES / sizeof(int16_t)];
   const TickType_t wait = std::max<TickType_t>(1, pdMS_TO_TICKS(20));
+  bool needs_prefill = true;
+  uint32_t generation = this->generation_.load();
+  // 20 ms of stereo PCM cushions scheduling jitter without adding a large delay.
+  static constexpr size_t PREFILL_BYTES = 48000 * 4 * 20 / 1000;
   while (this->task_running_.load()) {
     size_t size = 0;
     auto *item = static_cast<PacketHeader *>(xRingbufferReceive(this->buffer_, &size, wait));
-    if (item == nullptr)
+    if (item == nullptr) {
+      needs_prefill = true;
       continue;
+    }
     const size_t length = size - sizeof(PacketHeader);
+    if (generation != item->generation) {
+      generation = item->generation;
+      needs_prefill = true;
+    }
+    if (needs_prefill && item->generation == this->generation_.load()) {
+      const uint32_t start = millis();
+      while (this->queued_bytes_.load() < PREFILL_BYTES && millis() - start < 20 &&
+             this->task_running_.load() && item->generation == this->generation_.load() &&
+             !this->suspended_.load())
+        vTaskDelay(1);
+      needs_prefill = false;
+    }
+    this->queued_bytes_.fetch_sub(length);
     // Retain the first USB packets while the main loop selects this source.
     while (this->task_running_.load() && item->generation == this->generation_.load() &&
            this->prebuffer_enabled_.load() && !this->playback_enabled_.load() && !this->suspended_.load())
