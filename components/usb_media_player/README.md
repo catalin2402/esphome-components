@@ -204,12 +204,13 @@ Configure these under `media_source: - platform: usb_media_player`:
 | `id` | Identifies the playback source for the media pipeline. |
 | `usb_media_player_id` | ID of the USB hub. Optional when it resolves unambiguously. |
 | `buffer_size` | Playback packet buffer in bytes. Default: 32768. Accepts multiples of 4 from 8192 to 262144. |
+| `prefill` | Audio to accumulate at startup and after an empty-queue wait. Default: `100ms`; maximum: `1000ms`. The wait is bounded by this duration so short sounds still play. The buffer must fit the audio plus packet overhead. |
 | `use_psram` | Prefer PSRAM for the playback packet buffer, falling back to internal RAM if unavailable. Default: true. Enable the ESPHome `psram:` component to initialize PSRAM. |
 | `auto_start` | Selects USB when the host connects. Default: true. |
 | `output_gain_db` | Additional attenuation applied to USB playback, from -60 to 0 dB. Default: 0 dB. |
 
 The USB packet buffer absorbs short scheduling delays. Playback prefills up to
-20 ms of audio at startup and after an empty-queue wait to cushion scheduling
+100 ms of audio by default at startup and after an empty-queue wait to cushion scheduling
 jitter. The worker stack and microphone capture buffer stay in internal RAM.
 PSRAM frees internal RAM; it does not correct USB/I2S clock drift or sustained
 output stalls. The speaker's

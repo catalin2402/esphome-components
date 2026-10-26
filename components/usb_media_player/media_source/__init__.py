@@ -10,6 +10,7 @@ CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["usb_media_player"]
 AUTO_LOAD = ["audio"]
 
+CONF_PREFILL = "prefill"
 CONF_AUTO_START = "auto_start"
 CONF_USE_PSRAM = "use_psram"
 CONF_OUTPUT_GAIN_DB = "output_gain_db"
@@ -18,6 +19,16 @@ CONF_OUTPUT_GAIN_DB = "output_gain_db"
 def validate_config(config):
     if config[CONF_BUFFER_SIZE] % 4:
         raise cv.Invalid("buffer_size must be a multiple of 4", path=[CONF_BUFFER_SIZE])
+    prefill_ms = config[CONF_PREFILL].total_milliseconds
+    if prefill_ms > 1000:
+        raise cv.Invalid("prefill must be at most 1000ms", path=[CONF_PREFILL])
+    # 192 PCM bytes per USB millisecond, plus packet headers and wrap headroom.
+    required = prefill_ms * (192 + 16) + 2 * (1024 + 16)
+    if prefill_ms and config[CONF_BUFFER_SIZE] < required:
+        raise cv.Invalid(
+            f"buffer_size must be at least {required} bytes for this prefill",
+            path=[CONF_BUFFER_SIZE],
+        )
     return config
 
 
@@ -29,6 +40,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BUFFER_SIZE, default=32768): cv.int_range(
                 min=8192, max=262144
             ),
+            cv.Optional(CONF_PREFILL, default="100ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_USE_PSRAM, default=True): cv.boolean,
             cv.Optional(CONF_AUTO_START, default=True): cv.boolean,
             cv.Optional(CONF_OUTPUT_GAIN_DB, default=0.0): cv.float_range(
@@ -70,6 +82,7 @@ async def to_code(config):
     parent = await cg.get_variable(config[CONF_USB_MEDIA_PLAYER_ID])
     cg.add(var.set_parent(parent))
     cg.add(parent.set_source(var))
+    cg.add(var.set_prefill_ms(config[CONF_PREFILL].total_milliseconds))
     cg.add(var.set_buffer_size(config[CONF_BUFFER_SIZE]))
     cg.add(var.set_use_psram(config[CONF_USE_PSRAM]))
     cg.add(var.set_auto_start(config[CONF_AUTO_START]))

@@ -31,6 +31,7 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   // The connected host owns track selection, so NEXT/PREVIOUS must be delegated to it.
   bool has_internal_playlist() const override { return true; }
 
+  void set_prefill_ms(uint32_t prefill_ms) { this->prefill_ms_ = prefill_ms; }
   void set_buffer_size(size_t size) { this->buffer_size_ = size; }
   void set_use_psram(bool use_psram) { this->use_psram_ = use_psram; }
   void set_auto_start(bool auto_start) { this->auto_start_ = auto_start; }
@@ -74,6 +75,7 @@ class USBMediaSource : public Component, public media_source::MediaSource {
   std::atomic<size_t> queued_bytes_{0};
   size_t buffer_size_{32768};
   uint32_t last_drop_log_{0};
+  uint32_t prefill_ms_{100};
   float output_gain_db_{0.0f};
   uint32_t output_gain_q16_{65536};
   bool use_psram_{true};

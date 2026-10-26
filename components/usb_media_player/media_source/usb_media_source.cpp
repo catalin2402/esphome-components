@@ -49,10 +49,11 @@ void USBMediaSource::dump_config() {
                 "USB Media Source:\n"
                 "  Audio: 48000 Hz, stereo, signed 16-bit PCM\n"
                 "  Buffer: %u bytes (%s)\n"
+                "  Prefill: %u ms\n"
                 "  Auto start: %s\n"
                 "  Maximum output gain: %.1f dB",
                 static_cast<unsigned>(this->buffer_size_), this->buffer_in_psram_ ? "PSRAM" : "internal RAM",
-                YESNO(this->auto_start_), this->output_gain_db_);
+                static_cast<unsigned>(this->prefill_ms_), YESNO(this->auto_start_), this->output_gain_db_);
 }
 
 void USBMediaSource::loop() {
@@ -186,8 +187,8 @@ void USBMediaSource::write_audio_() {
   const TickType_t wait = std::max<TickType_t>(1, pdMS_TO_TICKS(20));
   bool needs_prefill = true;
   uint32_t generation = this->generation_.load();
-  // 20 ms of stereo PCM cushions scheduling jitter without adding a large delay.
-  static constexpr size_t PREFILL_BYTES = 48000 * 4 * 20 / 1000;
+  // Retain a small reserve before feeding the speaker after startup or a gap.
+  const size_t prefill_bytes = 192 * this->prefill_ms_;
   while (this->task_running_.load()) {
     size_t size = 0;
     auto *item = static_cast<PacketHeader *>(xRingbufferReceive(this->buffer_, &size, wait));
@@ -202,7 +203,7 @@ void USBMediaSource::write_audio_() {
     }
     if (needs_prefill && item->generation == this->generation_.load()) {
       const uint32_t start = millis();
-      while (this->queued_bytes_.load() < PREFILL_BYTES && millis() - start < 20 &&
+      while (this->queued_bytes_.load() < prefill_bytes && millis() - start < this->prefill_ms_ &&
              this->task_running_.load() && item->generation == this->generation_.load() &&
              !this->suspended_.load())
         vTaskDelay(1);
