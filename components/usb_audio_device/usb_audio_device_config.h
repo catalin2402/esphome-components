@@ -1,0 +1,32 @@
+#ifndef ESPHOME_USB_AUDIO_DEVICE_USB_AUDIO_DEVICE_CONFIG_H
+#define ESPHOME_USB_AUDIO_DEVICE_USB_AUDIO_DEVICE_CONFIG_H
+#pragma once
+
+// Private backend constants, shared by the TinyUSB library and this component.
+// No custom IDF Kconfig/CMake component is needed for this fixed-format device.
+#define UAD_AS_PART 0
+#define UAD_HIGH_SPEED 0
+#define UAD_SPEAKER_CHANNEL_NUM 2
+#define UAD_MIC_CHANNEL_NUM 1
+#define UAD_SAMPLE_RATE 48000
+#define UAD_BIT_RESOLUTION 16
+#define UAD_BYTES_PER_SAMPLE 2
+#define UAD_SPK_INTERVAL_MS 10
+#define UAD_MIC_INTERVAL_MS 10
+#define UAD_SPK_NEW_PLAY_INTERVAL 100
+#define UAD_SUPPORT_MACOS 0
+#define UAD_TINYUSB_TASK_CORE 1
+#define UAD_TINYUSB_TASK_PRIORITY 14
+#define UAD_SPK_TASK_CORE 1
+#define UAD_SPK_TASK_PRIORITY 15
+#define UAD_MIC_TASK_CORE 0
+#define UAD_MIC_TASK_PRIORITY 9
+
+#ifndef UAD_MEDIA_CONTROL
+#define UAD_MEDIA_CONTROL 0
+#endif
+#define CFG_TUD_HID UAD_MEDIA_CONTROL
+#define CFG_TUD_HID_EP_BUFSIZE 16
+#define CFG_TUD_CDC 0
+
+#endif  // ESPHOME_USB_AUDIO_DEVICE_USB_AUDIO_DEVICE_CONFIG_H

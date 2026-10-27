@@ -17,8 +17,11 @@ External ESPHome components maintained by
 | [pt2323](components/pt2323/) | Audio selector and processor |
 | [generic_ev1527](components/generic_ev1527/) | EV1527 packet logger and binary sensors |
 | [silvercrest](components/silvercrest/) | Silvercrest remote socket transmitter |
+| [sound_reactive_lights](components/sound_reactive_lights/) | Audio-reactive control of existing lights |
 | [status_light](components/status_light/) | Device status indication using monochrome or RGB lights |
 | [tea5767](components/tea5767/) | FM radio tuner |
+| [usb_audio_device](components/usb_audio_device/) | USB audio playback and microphone capture |
+| [usb_media_control](components/usb_media_control/) | USB HID media controls |
 | [xiron](components/xiron/) | Xiron weather sensor decoder |
 
 Each component directory contains installation notes and a working YAML
