@@ -15,6 +15,10 @@ void SoundReactiveLightsSpeaker::setup() {
     this->mark_failed();
     return;
   }
+  this->mode_preference_ = global_preferences->make_preference<uint8_t>(this->preference_key_);
+  uint8_t restored_mode;
+  if (this->mode_preference_.load(&restored_mode) && restored_mode <= MODE_RAINBOW_PULSE)
+    this->set_mode(restored_mode);
   this->light_->add_remote_values_listener(this);
   this->output_->add_audio_output_callback(
       [this](uint32_t frames, int64_t time) { this->audio_output_callback_.call(frames, time); });

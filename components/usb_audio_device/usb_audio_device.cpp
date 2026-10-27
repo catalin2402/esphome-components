@@ -1,4 +1,7 @@
 #include "usb_audio_device.h"
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
+#include "esphome/components/microphone/microphone.h"
+#endif
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 #include "esp_heap_caps.h"
@@ -100,18 +103,22 @@ void USBAudioDevice::setup() {
     this->fail_setup_("Exactly one USB playback destination is required");
     return;
   }
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
   if (this->microphone_ == nullptr) {
     this->fail_setup_("A capture microphone is required");
     return;
   }
+#endif
   if (!this->playback_.allocate(65536)) {
     this->fail_setup_("Could not allocate the playback queue");
     return;
   }
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
   if (!this->capture_.allocate(16384)) {
     this->fail_setup_("Could not allocate the capture queue");
     return;
   }
+#endif
   // The worker waits for ready_ before touching either queues or audio endpoints.
   if (xTaskCreatePinnedToCore(playback_task_, "usb_pcm", 6144, this, 10, &this->playback_task_handle_, 1) != pdPASS) {
     this->fail_setup_("Could not create the playback task");
@@ -124,10 +131,12 @@ void USBAudioDevice::setup() {
     static_cast<USBAudioDevice *>(context)->receive_playback(data, bytes);
     return ESP_OK;
   };
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
   config.input_cb = [](uint8_t *data, size_t bytes, size_t *read, void *context) -> esp_err_t {
     static_cast<USBAudioDevice *>(context)->read_capture(data, bytes, read);
     return ESP_OK;
   };
+#endif
   config.set_volume_cb = [](uint32_t value, void *context) {
     static_cast<USBAudioDevice *>(context)->set_host_volume(value);
   };
@@ -144,7 +153,9 @@ void USBAudioDevice::setup() {
   }
   if (this->speaker_)
     this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, 2, 48000));
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
   this->microphone_->add_data_callback([this](const std::vector<uint8_t> &data) { this->receive_microphone_(data); });
+#endif
   this->ready_.store(true);
 }
 void USBAudioDevice::fail_setup_(const char *message) {
@@ -170,12 +181,15 @@ void USBAudioDevice::set_playback_active(bool value) {
   this->playback_active_.store(value);
 }
 void USBAudioDevice::set_capture_active(bool value) {
+  value = value && this->has_microphone();
   this->capture_active_.store(false);
   this->capture_generation_.fetch_add(1);
   this->capture_.reset();
   this->capture_active_.store(value);
 }
 void USBAudioDevice::set_microphone_muted(bool value) {
+  if (!this->has_microphone())
+    return;
   if (this->mic_muted_.exchange(value) == value)
     return;
   this->capture_generation_.fetch_add(1);
@@ -207,6 +221,7 @@ void USBAudioDevice::receive_playback(const uint8_t *data, size_t bytes) {
   const size_t accepted = this->playback_.push(data, bytes, 4);
   this->dropped_playback_.fetch_add((bytes - accepted) / 4);
 }
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
 void USBAudioDevice::receive_microphone_(const std::vector<uint8_t> &data) {
   if (!this->ready_.load() || this->shutting_down_.load() || this->audio_suspended_.load() ||
       !this->capture_active_.load() || this->mic_muted_.load())
@@ -217,6 +232,7 @@ void USBAudioDevice::receive_microphone_(const std::vector<uint8_t> &data) {
   const size_t accepted = this->capture_.push(data.data(), data.size(), 2);
   this->dropped_capture_.fetch_add((data.size() - accepted) / 2);
 }
+#endif
 void USBAudioDevice::read_capture(uint8_t *data, size_t bytes, size_t *read) {
   *read = bytes;
   std::memset(data, 0, bytes);
@@ -333,6 +349,28 @@ void USBAudioDevice::playback_task_(void *arg) {
     self->speaker_->stop();
   vTaskDelete(nullptr);
 }
+void USBAudioDevice::update_microphone_() {
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
+  const bool wanted = this->ready_.load() && !this->shutting_down_.load() && !this->audio_suspended_.load() &&
+                      this->capture_active_.load();
+  if (wanted && !this->microphone_started_) {
+    this->microphone_->start();
+    this->microphone_started_ = true;
+  }
+  if (!wanted && this->microphone_started_) {
+    this->microphone_->stop();
+    this->microphone_started_ = false;
+  }
+#endif
+}
+void USBAudioDevice::stop_microphone_() {
+#ifdef USE_USB_AUDIO_DEVICE_MICROPHONE
+  if (this->microphone_started_) {
+    this->microphone_->stop();
+    this->microphone_started_ = false;
+  }
+#endif
+}
 void USBAudioDevice::loop() {
   // USB tasks only update atomics. Automations run on the main loop.
   const bool connected = this->is_connected();
@@ -359,16 +397,7 @@ void USBAudioDevice::loop() {
       this->playback_activity_callback_.call(audible);
     }
   }
-  const bool wanted = this->ready_.load() && !this->shutting_down_.load() && !this->audio_suspended_.load() &&
-                      this->capture_active_.load();
-  if (wanted && !this->microphone_started_) {
-    this->microphone_->start();
-    this->microphone_started_ = true;
-  }
-  if (!wanted && this->microphone_started_) {
-    this->microphone_->stop();
-    this->microphone_started_ = false;
-  }
+  this->update_microphone_();
   if (millis() - this->last_diagnostics_ >= 5000) {
     this->last_diagnostics_ = millis();
     const auto output = this->dropped_playback_.exchange(0), input = this->dropped_capture_.exchange(0);
@@ -400,10 +429,7 @@ void USBAudioDevice::apply_ota_state_() {
       this->playback_sink_->stop_playback();
     if (this->speaker_)
       this->speaker_->stop();
-    if (this->microphone_started_) {
-      this->microphone_->stop();
-      this->microphone_started_ = false;
-    }
+    this->stop_microphone_();
     if (this->playback_audible_) {
       this->playback_audible_ = false;
       this->playback_activity_callback_.call(false);
@@ -424,10 +450,7 @@ void USBAudioDevice::on_shutdown() {
   this->set_capture_active(false);
   if (this->playback_sink_)
     this->playback_sink_->stop_playback();
-  if (this->microphone_started_) {
-    this->microphone_->stop();
-    this->microphone_started_ = false;
-  }
+  this->stop_microphone_();
 }
 
 void USBAudioDevice::dump_config() {
@@ -436,7 +459,8 @@ void USBAudioDevice::dump_config() {
   ESP_LOGCONFIG(TAG, "  Product: %s", this->product_);
   ESP_LOGCONFIG(TAG, "  Serial: %s", this->serial_);
   ESP_LOGCONFIG(TAG, "  USB ID: %04X:%04X", this->vendor_id_, this->product_id_);
-  ESP_LOGCONFIG(TAG, "  Format: 48000 Hz, 16-bit, stereo playback, mono capture");
+  ESP_LOGCONFIG(TAG, "  Playback: 48000 Hz, 16-bit, stereo");
+  ESP_LOGCONFIG(TAG, "  Microphone capture: %s", this->has_microphone() ? "48000 Hz, 16-bit, mono" : "Disabled");
   ESP_LOGCONFIG(TAG, "  Playback destination: %s", this->speaker_ ? "Speaker" : "Media source");
   ESP_LOGCONFIG(TAG, "  Activity threshold: %u", this->activity_threshold_);
   ESP_LOGCONFIG(TAG, "  Activity timeout: %" PRIu32 " ms", this->activity_timeout_);

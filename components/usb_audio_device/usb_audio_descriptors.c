@@ -44,8 +44,10 @@ extern void usb_audio_device_original_tud_suspend_cb(bool remote_wakeup_en);
 extern void usb_audio_device_original_tud_resume_cb(void);
 static tusb_control_request_t speaker_request;
 static bool speaker_active;
+#if MIC_CHANNEL_NUM
 static tusb_control_request_t microphone_request;
 static bool microphone_active;
+#endif
 
 bool tud_audio_set_itf_cb(uint8_t rhport, tusb_control_request_t const *request) {
   const bool result = usb_audio_device_original_tud_audio_set_itf_cb(rhport, request);
@@ -54,11 +56,13 @@ bool tud_audio_set_itf_cb(uint8_t rhport, tusb_control_request_t const *request)
     speaker_active = tu_le16toh(request->wValue) != 0;
     usb_audio_device_playback_changed(speaker_active);
   }
+#if MIC_CHANNEL_NUM
   if (result && tu_u16_low(tu_le16toh(request->wIndex)) == ITF_NUM_AUDIO_STREAMING_MIC) {
     microphone_request = *request;
     microphone_active = tu_le16toh(request->wValue) != 0;
     usb_audio_device_capture_changed(microphone_active);
   }
+#endif
   return result;
 }
 
@@ -67,17 +71,21 @@ bool tud_audio_set_itf_close_ep_cb(uint8_t rhport, tusb_control_request_t const 
     speaker_active = false;
     usb_audio_device_playback_changed(false);
   }
+#if MIC_CHANNEL_NUM
   if (tu_u16_low(tu_le16toh(request->wIndex)) == ITF_NUM_AUDIO_STREAMING_MIC) {
     microphone_active = false;
     usb_audio_device_capture_changed(false);
   }
+#endif
   return usb_audio_device_original_tud_audio_set_itf_close_ep_cb(rhport, request);
 }
 
 void tud_mount_cb(void) {
   usb_audio_device_connection_changed(true);
   speaker_active = false;
+#if MIC_CHANNEL_NUM
   microphone_active = false;
+#endif
   usb_audio_device_capture_changed(false);
   usb_audio_device_playback_changed(false);
   usb_audio_device_original_tud_mount_cb();
@@ -85,7 +93,9 @@ void tud_mount_cb(void) {
 void tud_umount_cb(void) {
   usb_audio_device_connection_changed(false);
   speaker_active = false;
+#if MIC_CHANNEL_NUM
   microphone_active = false;
+#endif
   usb_audio_device_capture_changed(false);
   usb_audio_device_playback_changed(false);
   usb_audio_device_original_tud_umount_cb();
@@ -102,8 +112,10 @@ void tud_resume_cb(void) {
   // alternate setting without sending SET_INTERFACE again.
   if (speaker_active && usb_audio_device_original_tud_audio_set_itf_cb(0, &speaker_request))
     usb_audio_device_playback_changed(true);
+#if MIC_CHANNEL_NUM
   if (microphone_active && usb_audio_device_original_tud_audio_set_itf_cb(0, &microphone_request))
     usb_audio_device_capture_changed(true);
+#endif
 }
 
 //--------------------------------------------------------------------+

@@ -1,6 +1,7 @@
 #pragma once
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/preferences.h"
 #include "esphome/components/speaker/speaker.h"
 #include "esphome/components/light/light_state.h"
 #include "freertos/FreeRTOS.h"
@@ -20,11 +21,14 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
  public:
   void set_output_speaker(speaker::Speaker *value) { this->output_ = value; }
   void set_light(light::LightState *value) { this->light_ = value; }
+  void set_preference_key(uint32_t key) { this->preference_key_ = key; }
   uint8_t get_mode() const { return this->mode_; }
   void set_mode(uint8_t value) {
     if (value > MODE_RAINBOW_PULSE || value == this->mode_)
       return;
     this->mode_ = static_cast<ReactiveMode>(value);
+    if (this->ready_)
+      this->mode_preference_.save(&value);
     this->mode_callback_.call(value);
   }
   void add_mode_callback(std::function<void(uint8_t)> callback) { this->mode_callback_.add(std::move(callback)); }
@@ -85,6 +89,8 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
   std::atomic<bool> shutting_down_{false};
   std::atomic<float> analysis_gain_{1.0f};
   ReactiveMode mode_{MODE_SPECTRUM};
+  ESPPreferenceObject mode_preference_;
+  uint32_t preference_key_{0};
   LazyCallbackManager<void(uint8_t)> mode_callback_;
   LazyCallbackManager<void(bool)> enabled_callback_;
   LazyCallbackManager<void(float)> sensitivity_callback_;

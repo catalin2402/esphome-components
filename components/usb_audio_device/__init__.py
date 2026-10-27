@@ -40,7 +40,7 @@ CONF_ON_CAPTURE_STOPPED = "on_capture_stopped"
 CONF_ON_PLAYBACK_ACTIVITY = "on_playback_activity"
 CONF_ON_MICROPHONE_MUTE = "on_microphone_mute"
 
-AUTO_LOAD = ["audio", "speaker", "microphone"]
+AUTO_LOAD = ["audio", "speaker"]
 CODEOWNERS = ["@catalin2402"]
 CONFLICTS_WITH = ["usb_host", "usb_audio", "tinyusb", "usb_cdc_acm"]
 DEPENDENCIES = ["esp32"]
@@ -118,7 +118,7 @@ CONFIG_SCHEMA = cv.All(
                     cv.Optional(CONF_CHANNELS, default=2): cv.one_of(2, int=True),
                 }
             ),
-            cv.Required(CONF_CAPTURE): STREAM.extend(
+            cv.Optional(CONF_CAPTURE): STREAM.extend(
                 {
                     cv.Required(CONF_MICROPHONE): cv.use_id(microphone.Microphone),
                     cv.Optional(CONF_CHANNELS, default=1): cv.one_of(1, int=True),
@@ -155,14 +155,15 @@ def final_validate(config):
         raise cv.Invalid(
             "Choose exactly one USB playback destination: playback.speaker or one usb_audio_device media_source"
         )
-    audio.final_validate_audio_schema(
-        "usb_audio_device capture",
-        audio_device=CONF_MICROPHONE,
-        bits_per_sample=16,
-        channels=1,
-        sample_rate=48000,
-        audio_device_issue=True,
-    )(config[CONF_CAPTURE])
+    if CONF_CAPTURE in config:
+        audio.final_validate_audio_schema(
+            "usb_audio_device capture",
+            audio_device=CONF_MICROPHONE,
+            bits_per_sample=16,
+            channels=1,
+            sample_rate=48000,
+            audio_device_issue=True,
+        )(config[CONF_CAPTURE])
     if CONF_SPEAKER in config[CONF_PLAYBACK]:
         audio.final_validate_audio_schema(
             "usb_audio_device playback",
@@ -198,9 +199,15 @@ async def to_code(config):
         cg.add(
             var.set_speaker(await cg.get_variable(config[CONF_PLAYBACK][CONF_SPEAKER]))
         )
-    cg.add(
-        var.set_microphone(await cg.get_variable(config[CONF_CAPTURE][CONF_MICROPHONE]))
-    )
+    if CONF_CAPTURE in config:
+        cg.add_define("USE_USB_AUDIO_DEVICE_MICROPHONE")
+        cg.add(
+            var.set_microphone(
+                await cg.get_variable(config[CONF_CAPTURE][CONF_MICROPHONE])
+            )
+        )
+    # TinyUSB is built separately, so descriptor settings must be build-wide.
+    cg.add_build_flag(f"-DUAD_MIC_CHANNEL_NUM={int(CONF_CAPTURE in config)}")
     cg.add(var.set_activity_threshold(config[CONF_ACTIVITY_THRESHOLD]))
     cg.add(var.set_activity_timeout(config[CONF_ACTIVITY_TIMEOUT].total_milliseconds))
     # Use the full configured name for both iProduct and the audio function

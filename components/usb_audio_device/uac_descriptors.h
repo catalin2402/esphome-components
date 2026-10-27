@@ -1,5 +1,5 @@
-#ifndef ESPHOME_USB_AUDIO_DEVICE_UAC_DESCRIPTORS_H
-#define ESPHOME_USB_AUDIO_DEVICE_UAC_DESCRIPTORS_H
+#pragma once
+
 /*
  * The MIT License (MIT)
  *
@@ -25,311 +25,142 @@
  *
  */
 
-#pragma once
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "uac_config.h"
-#include "sdkconfig.h"
 
-#if !UAD_AS_PART
+// Playback always has a control interface and a streaming interface.
+// Capture adds a second streaming interface when configured.
+// The optional HID interface is appended by usb_audio_descriptors.c.
 enum {
   ITF_NUM_AUDIO_CONTROL = 0,
-#if SPEAK_CHANNEL_NUM
   ITF_NUM_AUDIO_STREAMING_SPK,
-#endif  // SPEAK_CHANNEL_NUM
 #if MIC_CHANNEL_NUM
   ITF_NUM_AUDIO_STREAMING_MIC,
-#endif  // MIC_CHANNEL_NUM
-  ITF_NUM_TOTAL
+#endif
+  ITF_NUM_TOTAL,
 };
+#if MIC_CHANNEL_NUM
+#define NUM_INTERFACES 3
+#define UAD_AUDIO_CATEGORY AUDIO_FUNC_HEADSET
+#else
+#define NUM_INTERFACES 2
+#define UAD_AUDIO_CATEGORY AUDIO_FUNC_DESKTOP_SPEAKER
 #endif
 
-// Unit numbers are arbitrary selected
+// Audio-control entity IDs. The backend uses these IDs for host requests.
 #define UAC2_ENTITY_CLOCK 0x04
 
-#if SPEAK_CHANNEL_NUM && MIC_CHANNEL_NUM
-// Speaker path
+// Host playback: USB input -> volume/mute controls -> speaker output.
 #define UAC2_ENTITY_SPK_INPUT_TERMINAL 0x01
 #define UAC2_ENTITY_SPK_FEATURE_UNIT 0x02
 #define UAC2_ENTITY_SPK_OUTPUT_TERMINAL 0x03
-// Microphone path
+
+// Microphone capture: microphone input -> feature unit -> USB output.
 #define UAC2_ENTITY_MIC_INPUT_TERMINAL 0x11
 #define UAC2_ENTITY_MIC_FEATURE_TERMINAL 0x12
 #define UAC2_ENTITY_MIC_OUTPUT_TERMINAL 0x13
-#else
-// Speaker path
-#define UAC2_ENTITY_SPK_INPUT_TERMINAL 0x01
-#define UAC2_ENTITY_SPK_FEATURE_UNIT 0x02
-#define UAC2_ENTITY_SPK_OUTPUT_TERMINAL 0x03
-// Microphone path
-#define UAC2_ENTITY_MIC_INPUT_TERMINAL 0x01
-#define UAC2_ENTITY_MIC_FEATURE_TERMINAL 0x02
-#define UAC2_ENTITY_MIC_OUTPUT_TERMINAL 0x03
-#endif
 
-#if SPEAK_CHANNEL_NUM && MIC_CHANNEL_NUM
-#define NUM_INTERFACES 3
-#elif SPEAK_CHANNEL_NUM || MIC_CHANNEL_NUM
-#define NUM_INTERFACES 2
-#else
-#error "SPEAK_CHANNEL_NUM and MIC_CHANNEL_NUM cannot both be 0"
-#endif
-
-#if SPEAK_CHANNEL_NUM && MIC_CHANNEL_NUM
-#define TUD_AUDIO_DESC_CS_AC_TOTAL_LEN \
-  (TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + \
-   TUD_AUDIO_DESC_OUTPUT_TERM_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN + \
-   TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN)
-
-#define TUD_AUDIO_DEVICE_DESC_LEN \
-  (TUD_AUDIO_DESC_IAD_LEN + TUD_AUDIO_DESC_STD_AC_LEN + TUD_AUDIO_DESC_CS_AC_LEN + \
-   TUD_AUDIO_DESC_CS_AC_TOTAL_LEN  /* Interface 1, Alternate 0 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN /* Interface 1, Alternate 1 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + \
-   TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN /* Interface 2, Alternate 0 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN                                    /* Interface 2, Alternate 1 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + \
-   TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN + TUD_AUDIO_DESC_STD_AS_ISO_FB_EP_LEN)
-
-#define TUD_AUDIO_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) \
-  TUD_AUDIO_MIC_SPEAK_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb)
-
-#elif MIC_CHANNEL_NUM
-#define TUD_AUDIO_DESC_CS_AC_TOTAL_LEN \
-  (TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN + \
-   TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN)
-
-#define TUD_AUDIO_DEVICE_DESC_LEN \
-  (TUD_AUDIO_DESC_IAD_LEN + TUD_AUDIO_DESC_STD_AC_LEN + TUD_AUDIO_DESC_CS_AC_LEN + \
-   TUD_AUDIO_DESC_CS_AC_TOTAL_LEN  /* Interface 1, Alternate 0 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN /* Interface 1, Alternate 1 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + \
-   TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN)
-
-#define TUD_AUDIO_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) TUD_AUDIO_MIC_DESCRIPTOR(_itfnum, _stridx, _epin)
-
-#elif SPEAK_CHANNEL_NUM
-#define TUD_AUDIO_DESC_CS_AC_TOTAL_LEN \
-  (TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + \
-   TUD_AUDIO_DESC_OUTPUT_TERM_LEN)
-
-#define TUD_AUDIO_DEVICE_DESC_LEN \
-  (TUD_AUDIO_DESC_IAD_LEN + TUD_AUDIO_DESC_STD_AC_LEN + TUD_AUDIO_DESC_CS_AC_LEN + \
-   TUD_AUDIO_DESC_CS_AC_TOTAL_LEN  /* Interface 1, Alternate 0 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN /* Interface 1, Alternate 1 */ \
-   + TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + \
-   TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN + TUD_AUDIO_DESC_STD_AS_ISO_FB_EP_LEN)
-
-#define TUD_AUDIO_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) \
-  TUD_AUDIO_SPEAK_DESCRIPTOR(_itfnum, _stridx, _epout, _epfb)
-
-#endif
-
-/**
- * @brief UAC 2.0 Stereo Microphone + Speaker
- *
- */
-#if SPEAK_CHANNEL_NUM && MIC_CHANNEL_NUM
-#define TUD_AUDIO_MIC_SPEAK_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) \
-  /* Standard Interface Association Descriptor (IAD) */ \
-  TUD_AUDIO_DESC_IAD(/*_firstitfs*/ _itfnum, /*_nitfs*/ NUM_INTERFACES, \
-                     /*_stridx*/ 0x00), /* Standard AC Interface Descriptor(4.7.1) */ \
-      TUD_AUDIO_DESC_STD_AC(/*_itfnum*/ _itfnum, /*_nEPs*/ 0x00, \
-                            /*_stridx*/ _stridx), /* Class-Specific AC Interface Header Descriptor(4.7.2) */ \
-      TUD_AUDIO_DESC_CS_AC(/*_bcdADC*/ 0x0200, /*_category*/ AUDIO_FUNC_HEADSET, \
-                           /*_totallen*/ TUD_AUDIO_DESC_CS_AC_TOTAL_LEN, \
-                           /*_ctrl*/ AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS), /* Clock Source Descriptor(4.7.2.1) */ \
-      TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 3, /*_ctrl*/ 7, /*_assocTerm*/ 0x00, \
-                             /*_stridx*/ 0x00), /* Input Terminal Descriptor(4.7.2.4) */ \
-      TUD_AUDIO_DESC_INPUT_TERM(/*_termid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, \
-                                /*_termtype*/ AUDIO_TERM_TYPE_USB_STREAMING, /*_assocTerm*/ 0x00, \
-                                /*_clkid*/ UAC2_ENTITY_CLOCK, /*_nchannelslogical*/ SPEAK_CHANNEL_NUM, \
-                                /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, /*_idxchannelnames*/ 0x00, \
-                                /*_ctrl*/ (AUDIO_CTRL_R << AUDIO_IN_TERM_CTRL_CONNECTOR_POS), \
-                                /*_stridx*/ 0x00), /* Feature Unit Descriptor(4.7.2.8) */ \
-      TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(/*_length*/ TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN, \
-                                            /*_unitid*/ UAC2_ENTITY_SPK_FEATURE_UNIT, \
-                                            /*_srcid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, /*_stridx*/ 0x00, \
-                                            INPUT_CTRL), /* Output Terminal Descriptor(4.7.2.5) */ \
-      TUD_AUDIO_DESC_OUTPUT_TERM(/*_termid*/ UAC2_ENTITY_SPK_OUTPUT_TERMINAL, \
-                                 /*_termtype*/ AUDIO_TERM_TYPE_OUT_GENERIC_SPEAKER, /*_assocTerm*/ 0x00, \
-                                 /*_srcid*/ UAC2_ENTITY_SPK_FEATURE_UNIT, /*_clkid*/ UAC2_ENTITY_CLOCK, \
-                                 /*_ctrl*/ 0x0000, /*_stridx*/ 0x00), /* Input Terminal Descriptor(4.7.2.4) */ \
-      TUD_AUDIO_DESC_INPUT_TERM( \
-          /*_termid*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, /*_termtype*/ AUDIO_TERM_TYPE_IN_GENERIC_MIC, \
-          /*_assocTerm*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, /*_clkid*/ UAC2_ENTITY_CLOCK, \
-          /*_nchannelslogical*/ MIC_CHANNEL_NUM, /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_FRONT_CENTER, \
-          /*_idxchannelnames*/ 0x00, /*_ctrl*/ (AUDIO_CTRL_R << AUDIO_IN_TERM_CTRL_CONNECTOR_POS), \
-          /*_stridx*/ 0x00), /* Output Terminal Descriptor(4.7.2.5) */ \
-      TUD_AUDIO_DESC_OUTPUT_TERM(/*_termid*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, \
-                                 /*_termtype*/ AUDIO_TERM_TYPE_USB_STREAMING, /*_assocTerm*/ 0x00, \
-                                 /*_srcid*/ UAC2_ENTITY_MIC_FEATURE_TERMINAL, /*_clkid*/ UAC2_ENTITY_CLOCK, \
-                                 /*_ctrl*/ 0x0000, /*_stridx*/ 0x00), \
-      TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(/*_length*/ TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN, \
-                                            /*_unitid*/ UAC2_ENTITY_MIC_FEATURE_TERMINAL, \
-                                            /*_srcid*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, /*_stridx*/ 0x00, MIC_CTRL), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 1, Alternate 0 - default alternate \
-                                                       setting with 0 bandwidth */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x00, /*_nEPs*/ 0x00, /*_stridx*/ _stridx + 1), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 1, Alternate 1 - alternate interface for \
-                                                       data streaming */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x01, /*_nEPs*/ 0x02, \
-                                /*_stridx*/ _stridx + 1), /* Class-Specific AS Interface Descriptor(4.9.2) */ \
-      TUD_AUDIO_DESC_CS_AS_INT(/*_termid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                               /*_formattype*/ AUDIO_FORMAT_TYPE_I, /*_formats*/ AUDIO_DATA_FORMAT_TYPE_I_PCM, \
-                               /*_nchannelsphysical*/ SPEAK_CHANNEL_NUM, \
-                               /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, \
-                               /*_stridx*/ 0x00), /* Type I Format Type Descriptor(2.3.1.6 - Audio Formats) */ \
-      TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX, \
-                                   CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX), /* Standard AS Isochronous Audio Data \
-                                                                                    Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_EP( \
-          /*_ep*/ _epout, /*_attr*/ (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | TUSB_ISO_EP_ATT_DATA), \
-          /*_maxEPsize*/ CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_OUT, \
-          /*_interval*/ 1), /* Class-Specific AS Isochronous Audio Data Endpoint Descriptor(4.10.1.2) */ \
-      TUD_AUDIO_DESC_CS_AS_ISO_EP( \
-          /*_attr*/ AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, /*_ctrl*/ AUDIO_CTRL_NONE, \
-          /*_lockdelayunit*/ AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, \
-          /*_lockdelay*/ 0x0001), /* Standard AS Isochronous Audio Data Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_FB_EP(/*_ep*/ _epfb, /*_epsize*/ 4, /*_interval*/ 1), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 2, Alternate 0 - default \
-                                                       alternate setting with 0 bandwidth */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 2, /*_altset*/ 0x00, /*_nEPs*/ 0x00, /*_stridx*/ _stridx + 2), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 2, Alternate 1 - alternate interface for \
-                                                       data streaming */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 2, /*_altset*/ 0x01, /*_nEPs*/ 0x01, \
-                                /*_stridx*/ _stridx + 2), /* Class-Specific AS Interface Descriptor(4.9.2) */ \
-      TUD_AUDIO_DESC_CS_AS_INT(/*_termid*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                               /*_formattype*/ AUDIO_FORMAT_TYPE_I, /*_formats*/ AUDIO_DATA_FORMAT_TYPE_I_PCM, \
-                               /*_nchannelsphysical*/ MIC_CHANNEL_NUM, \
-                               /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_FRONT_CENTER, \
-                               /*_stridx*/ 0x00), /* Type I Format Type Descriptor(2.3.1.6 - Audio Formats) */ \
-      TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_TX, \
-                                   CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_TX), /* Standard AS Isochronous Audio Data \
-                                                                                    Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_EP( \
-          /*_ep*/ _epin, /*_attr*/ (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | TUSB_ISO_EP_ATT_DATA), \
-          /*_maxEPsize*/ CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_IN, \
-          /*_interval*/ 1), /* Class-Specific AS Isochronous Audio Data Endpoint Descriptor(4.10.1.2) */ \
-      TUD_AUDIO_DESC_CS_AS_ISO_EP(/*_attr*/ AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                                  /*_lockdelayunit*/ AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, \
-                                  /*_lockdelay*/ 0x0000)
-#endif
-
-/**
- * @brief UAC 2.0 Stereo Microphone
- *
- */
+// Descriptor lengths, grouped the same way as the descriptor entries below.
+#define UAD_PLAYBACK_TERMINALS_LEN \
+  (TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN)
 #if MIC_CHANNEL_NUM
-#define TUD_AUDIO_MIC_DESCRIPTOR(_itfnum, _stridx, _epin) \
-  /* Standard Interface Association Descriptor (IAD) */ \
-  TUD_AUDIO_DESC_IAD(/*_firstitfs*/ _itfnum, /*_nitfs*/ NUM_INTERFACES, \
-                     /*_stridx*/ 0x00), /* Standard AC Interface Descriptor(4.7.1) */ \
-      TUD_AUDIO_DESC_STD_AC(/*_itfnum*/ _itfnum, /*_nEPs*/ 0x00, \
-                            /*_stridx*/ _stridx), /* Class-Specific AC Interface Header Descriptor(4.7.2) */ \
-      TUD_AUDIO_DESC_CS_AC(/*_bcdADC*/ 0x0200, /*_category*/ AUDIO_FUNC_MICROPHONE, \
-                           /*_totallen*/ TUD_AUDIO_DESC_CS_AC_TOTAL_LEN, \
-                           /*_ctrl*/ AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS), /* Clock Source Descriptor(4.7.2.1) */ \
-      TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 1, /*_ctrl*/ 1, \
-                             /*_assocTerm*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, \
-                             /*_stridx*/ 0x00), /* Input Terminal Descriptor(4.7.2.4) */ \
-      TUD_AUDIO_DESC_INPUT_TERM( \
-          /*_termid*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, /*_termtype*/ AUDIO_TERM_TYPE_IN_GENERIC_MIC, \
-          /*_assocTerm*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, /*_clkid*/ UAC2_ENTITY_CLOCK, \
-          /*_nchannelslogical*/ MIC_CHANNEL_NUM, /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_FRONT_CENTER, \
-          /*_idxchannelnames*/ 0x00, /*_ctrl*/ (AUDIO_CTRL_R << AUDIO_IN_TERM_CTRL_CONNECTOR_POS), \
-          /*_stridx*/ 0x00), /* Output Terminal Descriptor(4.7.2.5) */ \
-      TUD_AUDIO_DESC_OUTPUT_TERM( \
-          /*_termid*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, /*_termtype*/ AUDIO_TERM_TYPE_USB_STREAMING, \
-          /*_assocTerm*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, /*_srcid*/ UAC2_ENTITY_MIC_FEATURE_TERMINAL, \
-          /*_clkid*/ UAC2_ENTITY_CLOCK, /*_ctrl*/ 0x0000, /*_stridx*/ 0x00), \
-      TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(/*_length*/ TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN, \
-                                            /*_unitid*/ UAC2_ENTITY_MIC_FEATURE_TERMINAL, \
-                                            /*_srcid*/ UAC2_ENTITY_MIC_INPUT_TERMINAL, /*_stridx*/ 0x00, MIC_CTRL), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 1, Alternate 0 - default alternate \
-                                                       setting with 0 bandwidth */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x00, /*_nEPs*/ 0x00, /*_stridx*/ _stridx + 1), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 1, Alternate 1 - alternate interface for \
-                                                       data streaming */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x01, /*_nEPs*/ 0x01, \
-                                /*_stridx*/ _stridx + 1), /* Class-Specific AS Interface Descriptor(4.9.2) */ \
-      TUD_AUDIO_DESC_CS_AS_INT(/*_termid*/ UAC2_ENTITY_MIC_OUTPUT_TERMINAL, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                               /*_formattype*/ AUDIO_FORMAT_TYPE_I, /*_formats*/ AUDIO_DATA_FORMAT_TYPE_I_PCM, \
-                               /*_nchannelsphysical*/ MIC_CHANNEL_NUM, \
-                               /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_FRONT_CENTER, \
-                               /*_stridx*/ 0x00), /* Type I Format Type Descriptor(2.3.1.6 - Audio Formats) */ \
-      TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_TX, \
-                                   CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_TX), /* Standard AS Isochronous Audio Data \
-                                                                                    Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_EP( \
-          /*_ep*/ _epin, /*_attr*/ (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | TUSB_ISO_EP_ATT_DATA), \
-          /*_maxEPsize*/ CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_IN, \
-          /*_interval*/ 1), /* Class-Specific AS Isochronous Audio Data Endpoint Descriptor(4.10.1.2) */ \
-      TUD_AUDIO_DESC_CS_AS_ISO_EP(/*_attr*/ AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                                  /*_lockdelayunit*/ AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, \
-                                  /*_lockdelay*/ 0x0000)
+#define UAD_CAPTURE_TERMINALS_LEN \
+  (TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN + TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN)
+#define UAD_CAPTURE_STREAM_LEN UAD_STREAM_DESCRIPTOR_LEN
+#else
+#define UAD_CAPTURE_TERMINALS_LEN 0
+#define UAD_CAPTURE_STREAM_LEN 0
+#endif
+#define TUD_AUDIO_DESC_CS_AC_TOTAL_LEN \
+  (TUD_AUDIO_DESC_CLK_SRC_LEN + UAD_PLAYBACK_TERMINALS_LEN + UAD_CAPTURE_TERMINALS_LEN)
+
+// Each stream has idle/active alternate settings, PCM format, and a data endpoint.
+// Playback additionally has a feedback endpoint for the host's audio clock.
+#define UAD_STREAM_DESCRIPTOR_LEN \
+  (2 * TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + \
+   TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN)
+#define UAD_PLAYBACK_STREAM_LEN (UAD_STREAM_DESCRIPTOR_LEN + TUD_AUDIO_DESC_STD_AS_ISO_FB_EP_LEN)
+#define TUD_AUDIO_DEVICE_DESC_LEN \
+  (TUD_AUDIO_DESC_IAD_LEN + TUD_AUDIO_DESC_STD_AC_LEN + TUD_AUDIO_DESC_CS_AC_LEN + TUD_AUDIO_DESC_CS_AC_TOTAL_LEN + \
+   UAD_PLAYBACK_STREAM_LEN + UAD_CAPTURE_STREAM_LEN)
+
+// Keep each descriptor entry on its own line so its order remains visible.
+// clang-format off
+
+// Control interface and the shared audio clock.
+#define UAD_AUDIO_CONTROL_DESCRIPTOR(_itfnum, _stridx) \
+  TUD_AUDIO_DESC_IAD(_itfnum, NUM_INTERFACES, 0x00), \
+  TUD_AUDIO_DESC_STD_AC(_itfnum, 0x00, _stridx), \
+  TUD_AUDIO_DESC_CS_AC(0x0200, UAD_AUDIO_CATEGORY, TUD_AUDIO_DESC_CS_AC_TOTAL_LEN, \
+      AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS), \
+  TUD_AUDIO_DESC_CLK_SRC(UAC2_ENTITY_CLOCK, 3, 7, 0x00, 0x00)
+
+// Playback: USB input -> volume/mute feature unit -> speaker output.
+#define UAD_PLAYBACK_TERMINALS_DESCRIPTOR() \
+  TUD_AUDIO_DESC_INPUT_TERM(UAC2_ENTITY_SPK_INPUT_TERMINAL, AUDIO_TERM_TYPE_USB_STREAMING, 0x00, \
+      UAC2_ENTITY_CLOCK, SPEAK_CHANNEL_NUM, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00, (AUDIO_CTRL_R << \
+      AUDIO_IN_TERM_CTRL_CONNECTOR_POS), 0x00), \
+  TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN, \
+      UAC2_ENTITY_SPK_FEATURE_UNIT, UAC2_ENTITY_SPK_INPUT_TERMINAL, 0x00, INPUT_CTRL), \
+  TUD_AUDIO_DESC_OUTPUT_TERM(UAC2_ENTITY_SPK_OUTPUT_TERMINAL, AUDIO_TERM_TYPE_OUT_GENERIC_SPEAKER, 0x00, \
+      UAC2_ENTITY_SPK_FEATURE_UNIT, UAC2_ENTITY_CLOCK, 0x0000, 0x00)
+
+#if MIC_CHANNEL_NUM
+// Capture: microphone input, USB output, and microphone feature unit.
+#define UAD_CAPTURE_TERMINALS_DESCRIPTOR() \
+  TUD_AUDIO_DESC_INPUT_TERM(UAC2_ENTITY_MIC_INPUT_TERMINAL, AUDIO_TERM_TYPE_IN_GENERIC_MIC, \
+      UAC2_ENTITY_MIC_OUTPUT_TERMINAL, UAC2_ENTITY_CLOCK, MIC_CHANNEL_NUM, AUDIO_CHANNEL_CONFIG_FRONT_CENTER, \
+      0x00, (AUDIO_CTRL_R << AUDIO_IN_TERM_CTRL_CONNECTOR_POS), 0x00), \
+  TUD_AUDIO_DESC_OUTPUT_TERM(UAC2_ENTITY_MIC_OUTPUT_TERMINAL, AUDIO_TERM_TYPE_USB_STREAMING, 0x00, \
+      UAC2_ENTITY_MIC_FEATURE_TERMINAL, UAC2_ENTITY_CLOCK, 0x0000, 0x00), \
+  TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(TUD_AUDIO_DESC_MIC_FEATURE_UNIT_N_CHANNEL_LEN, \
+      UAC2_ENTITY_MIC_FEATURE_TERMINAL, UAC2_ENTITY_MIC_INPUT_TERMINAL, 0x00, MIC_CTRL)
+
 #endif
 
-/**
- * @brief UAC 2.0 Stereo Speaker
- *
- */
-#if SPEAK_CHANNEL_NUM
-#define TUD_AUDIO_SPEAK_DESCRIPTOR(_itfnum, _stridx, _epout, _epfb) \
-  /* Standard Interface Association Descriptor (IAD) */ \
-  TUD_AUDIO_DESC_IAD(/*_firstitfs*/ _itfnum, /*_nitfs*/ NUM_INTERFACES, \
-                     /*_stridx*/ 0x00), /* Standard AC Interface Descriptor(4.7.1) */ \
-      TUD_AUDIO_DESC_STD_AC(/*_itfnum*/ _itfnum, /*_nEPs*/ 0x00, \
-                            /*_stridx*/ _stridx), /* Class-Specific AC Interface Header Descriptor(4.7.2) */ \
-      TUD_AUDIO_DESC_CS_AC(/*_bcdADC*/ 0x0200, /*_category*/ AUDIO_FUNC_DESKTOP_SPEAKER, \
-                           /*_totallen*/ TUD_AUDIO_DESC_CS_AC_TOTAL_LEN, \
-                           /*_ctrl*/ AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS), /* Clock Source Descriptor(4.7.2.1) */ \
-      TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 3, /*_ctrl*/ 7, /*_assocTerm*/ 0x00, \
-                             /*_stridx*/ 0x00), /* Input Terminal Descriptor(4.7.2.4) */ \
-      TUD_AUDIO_DESC_INPUT_TERM(/*_termid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, \
-                                /*_termtype*/ AUDIO_TERM_TYPE_USB_STREAMING, /*_assocTerm*/ 0x00, \
-                                /*_clkid*/ UAC2_ENTITY_CLOCK, /*_nchannelslogical*/ SPEAK_CHANNEL_NUM, \
-                                /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, /*_idxchannelnames*/ 0x00, \
-                                /*_ctrl*/ (AUDIO_CTRL_R << AUDIO_IN_TERM_CTRL_CONNECTOR_POS), \
-                                /*_stridx*/ 0x00), /* Feature Unit Descriptor(4.7.2.8) */ \
-      TUD_AUDIO_DESC_FEATURE_UNIT_N_CHANNEL(/*_length*/ TUD_AUDIO_DESC_SPK_FEATURE_UNIT_N_CHANNEL_LEN, \
-                                            /*_unitid*/ UAC2_ENTITY_SPK_FEATURE_UNIT, \
-                                            /*_srcid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, /*_stridx*/ 0x00, \
-                                            INPUT_CTRL), /* Output Terminal Descriptor(4.7.2.5) */ \
-      TUD_AUDIO_DESC_OUTPUT_TERM( \
-          /*_termid*/ UAC2_ENTITY_SPK_OUTPUT_TERMINAL, /*_termtype*/ AUDIO_TERM_TYPE_OUT_GENERIC_SPEAKER, \
-          /*_assocTerm*/ 0x00, /*_srcid*/ UAC2_ENTITY_SPK_FEATURE_UNIT, /*_clkid*/ UAC2_ENTITY_CLOCK, \
-          /*_ctrl*/ 0x0000, \
-          /*_stridx*/ 0x00), /* Interface 1, Alternate 0 - default alternate setting with 0 bandwidth */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x00, /*_nEPs*/ 0x00, /*_stridx*/ _stridx + 1), \
-      /* Standard AS Interface Descriptor(4.9.1) */ /* Interface 1, Alternate 1 - alternate interface for \
-                                                       data streaming */ \
-      TUD_AUDIO_DESC_STD_AS_INT(/*_itfnum*/ _itfnum + 1, /*_altset*/ 0x01, /*_nEPs*/ 0x02, \
-                                /*_stridx*/ _stridx + 1), /* Class-Specific AS Interface Descriptor(4.9.2) */ \
-      TUD_AUDIO_DESC_CS_AS_INT(/*_termid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, /*_ctrl*/ AUDIO_CTRL_NONE, \
-                               /*_formattype*/ AUDIO_FORMAT_TYPE_I, /*_formats*/ AUDIO_DATA_FORMAT_TYPE_I_PCM, \
-                               /*_nchannelsphysical*/ SPEAK_CHANNEL_NUM, \
-                               /*_channelcfg*/ AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, \
-                               /*_stridx*/ 0x00), /* Type I Format Type Descriptor(2.3.1.6 - Audio Formats) */ \
-      TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX, \
-                                   CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX), /* Standard AS Isochronous Audio Data \
-                                                                                    Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_EP( \
-          /*_ep*/ _epout, /*_attr*/ (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | TUSB_ISO_EP_ATT_DATA), \
-          /*_maxEPsize*/ CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_OUT, \
-          /*_interval*/ 1), /* Class-Specific AS Isochronous Audio Data Endpoint Descriptor(4.10.1.2) */ \
-      TUD_AUDIO_DESC_CS_AS_ISO_EP( \
-          /*_attr*/ AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, /*_ctrl*/ AUDIO_CTRL_NONE, \
-          /*_lockdelayunit*/ AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, \
-          /*_lockdelay*/ 0x0001), /* Standard AS Isochronous Audio Data Endpoint Descriptor(4.10.1.1) */ \
-      TUD_AUDIO_DESC_STD_AS_ISO_FB_EP(/*_ep*/ _epfb, /*_epsize*/ 4, /*_interval*/ 1)
+// Playback interface: idle, active PCM stream, data endpoint, feedback endpoint.
+#define UAD_PLAYBACK_STREAM_DESCRIPTOR(_itfnum, _stridx, _epout, _epfb) \
+  TUD_AUDIO_DESC_STD_AS_INT(_itfnum + 1, 0x00, 0x00, _stridx + 1), \
+  TUD_AUDIO_DESC_STD_AS_INT(_itfnum + 1, 0x01, 0x02, _stridx + 1), \
+  TUD_AUDIO_DESC_CS_AS_INT(UAC2_ENTITY_SPK_INPUT_TERMINAL, AUDIO_CTRL_NONE, AUDIO_FORMAT_TYPE_I, \
+      AUDIO_DATA_FORMAT_TYPE_I_PCM, SPEAK_CHANNEL_NUM, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0x00), \
+  TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX, \
+      CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX), \
+  TUD_AUDIO_DESC_STD_AS_ISO_EP(_epout, (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | \
+      TUSB_ISO_EP_ATT_DATA), CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_OUT, 1), \
+  TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
+      AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, 0x0001), \
+  TUD_AUDIO_DESC_STD_AS_ISO_FB_EP(_epfb, 4, 1)
+
+#if MIC_CHANNEL_NUM
+// Capture interface: idle, active PCM stream, and data endpoint.
+#define UAD_CAPTURE_STREAM_DESCRIPTOR(_itfnum, _stridx, _epin) \
+  TUD_AUDIO_DESC_STD_AS_INT(_itfnum + 2, 0x00, 0x00, _stridx + 2), \
+  TUD_AUDIO_DESC_STD_AS_INT(_itfnum + 2, 0x01, 0x01, _stridx + 2), \
+  TUD_AUDIO_DESC_CS_AS_INT(UAC2_ENTITY_MIC_OUTPUT_TERMINAL, AUDIO_CTRL_NONE, AUDIO_FORMAT_TYPE_I, \
+      AUDIO_DATA_FORMAT_TYPE_I_PCM, MIC_CHANNEL_NUM, AUDIO_CHANNEL_CONFIG_FRONT_CENTER, 0x00), \
+  TUD_AUDIO_DESC_TYPE_I_FORMAT(CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_TX, \
+      CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_TX), \
+  TUD_AUDIO_DESC_STD_AS_ISO_EP(_epin, (TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | \
+      TUSB_ISO_EP_ATT_DATA), CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_IN, 1), \
+  TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
+      AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, 0x0000)
+
 #endif
 
-#ifdef __cplusplus
-}
+// Preserve descriptor order for both headset and playback-only devices.
+#if MIC_CHANNEL_NUM
+#define TUD_AUDIO_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) \
+  UAD_AUDIO_CONTROL_DESCRIPTOR(_itfnum, _stridx), \
+  UAD_PLAYBACK_TERMINALS_DESCRIPTOR(), \
+  UAD_CAPTURE_TERMINALS_DESCRIPTOR(), \
+  UAD_PLAYBACK_STREAM_DESCRIPTOR(_itfnum, _stridx, _epout, _epfb), \
+  UAD_CAPTURE_STREAM_DESCRIPTOR(_itfnum, _stridx, _epin)
+
+#else
+#define TUD_AUDIO_DESCRIPTOR(_itfnum, _stridx, _epout, _epin, _epfb) \
+  UAD_AUDIO_CONTROL_DESCRIPTOR(_itfnum, _stridx), \
+  UAD_PLAYBACK_TERMINALS_DESCRIPTOR(), \
+  UAD_PLAYBACK_STREAM_DESCRIPTOR(_itfnum, _stridx, _epout, _epfb)
 #endif
 
-#endif  // ESPHOME_USB_AUDIO_DEVICE_UAC_DESCRIPTORS_H
+// clang-format on

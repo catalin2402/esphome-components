@@ -17,11 +17,11 @@ void USBMediaControl::setup() {
   }
 }
 bool USBMediaControl::is_ready() const {
-  return !this->shutting_down_.load() && !this->is_failed() && this->media_keys_ != nullptr &&
-         usb_media_control_mounted() && usb_media_control_ready();
+  return !this->shutting_down_ && !this->is_failed() && this->media_keys_ != nullptr && usb_media_control_mounted() &&
+         usb_media_control_ready();
 }
 void USBMediaControl::send_media_key(uint16_t usage) {
-  if (this->shutting_down_.load() || this->is_failed())
+  if (this->shutting_down_ || this->is_failed())
     return;
   if (!this->media_keys_ || !usb_media_control_mounted()) {
     ESP_LOGW(TAG, "HID key 0x%04X dropped: queue %s, USB mounted %s", usage, this->media_keys_ ? "ready" : "missing",
@@ -35,23 +35,24 @@ void USBMediaControl::send_media_key(uint16_t usage) {
   ESP_LOGD(TAG, "HID key queued: 0x%04X", usage);
 }
 void USBMediaControl::press_media_key(uint16_t usage) {
-  if (this->shutting_down_.load() || this->is_failed())
+  if (this->shutting_down_ || this->is_failed())
     return;
   if (!usb_media_control_mounted()) {
     ESP_LOGW(TAG, "HID hold 0x%04X dropped: USB not mounted", usage);
     return;
   }
-  this->media_held_.store(usage);
+  this->media_held_ = usage;
   ESP_LOGD(TAG, "HID hold requested: 0x%04X", usage);
 }
 void USBMediaControl::release_media_key(uint16_t usage) {
   // Releasing an older gesture must not cancel a newer held control.
-  const uint16_t released = usage;
-  if (this->media_held_.compare_exchange_strong(usage, 0))
-    ESP_LOGD(TAG, "HID hold release requested: 0x%04X", released);
+  if (this->media_held_ == usage) {
+    this->media_held_ = 0;
+    ESP_LOGD(TAG, "HID hold release requested: 0x%04X", usage);
+  }
 }
 void USBMediaControl::release_all_media_keys() {
-  this->media_held_.store(0);
+  this->media_held_ = 0;
   if (this->media_keys_)
     xQueueReset(this->media_keys_);
   this->media_waiting_ = 0;
@@ -59,17 +60,17 @@ void USBMediaControl::release_all_media_keys() {
   // loop() sends the neutral report when the HID endpoint becomes ready.
 }
 void USBMediaControl::loop() {
-  if (!this->media_keys_ || this->shutting_down_.load())
+  if (!this->media_keys_ || this->shutting_down_)
     return;
   if (!usb_media_control_mounted()) {
     this->media_current_ = this->media_waiting_ = 0;
-    this->media_held_.store(0);
+    this->media_held_ = 0;
     this->media_pulse_active_ = false;
     uint16_t discard;
     while (xQueueReceive(this->media_keys_, &discard, 0) == pdTRUE) {
     }
   } else if (usb_media_control_ready()) {
-    const uint16_t held = this->media_held_.load();
+    const uint16_t held = this->media_held_;
     if (held) {
       if (this->media_current_ == held || usb_media_control_send_report(held)) {
         if (this->media_current_ != held)
@@ -99,7 +100,7 @@ void USBMediaControl::loop() {
   }
 }
 void USBMediaControl::on_shutdown() {
-  this->shutting_down_.store(true);
+  this->shutting_down_ = true;
   this->release_all_media_keys();
   if (usb_media_control_ready())
     usb_media_control_send_report(0);

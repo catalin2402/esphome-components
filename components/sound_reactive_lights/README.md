@@ -35,7 +35,7 @@ select:
 | `id` | Optional speaker ID used by the playback pipeline, select, and actions. |
 | `output_speaker` | Required ID of the speaker that receives the audio. |
 | `light_id` | Required ID of the light to control. Each light can have one reactive speaker. |
-| `mode` | Initial mode: `off`, `vu`, `spectrum`, or `rainbow_pulse`. Default: `spectrum`. |
+| `mode` | Fallback mode when no saved selection exists: `off`, `vu`, `spectrum`, or `rainbow_pulse`. Default: `spectrum`. |
 | `enabled` | Whether reactive lighting starts enabled. Default: `true`. |
 | `sensitivity` | Audio response multiplier, from 0.1 to 100. Default: `4.0`. |
 | `max_brightness` | Maximum reactive brightness. Default: `100%`. |
@@ -50,6 +50,12 @@ lighting remains enabled. Monochrome lights use the brightness response.
 Disabling reactive lighting restores the previously saved light state and
 effect. Manually turning the light off or selecting another effect disables
 reactive control. Audio forwarding continues when reactive lighting is disabled.
+
+The last selected mode is restored after a restart, including changes made
+through the mode select, `next_mode`, or `set_mode`. Each reactive speaker stores
+its mode separately using its ID. Keep an explicit speaker ID to retain the
+same saved selection when reorganizing the configuration. Saves use ESPHome's
+normal preferences write interval.
 
 ## Mode select
 

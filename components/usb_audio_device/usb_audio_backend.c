@@ -41,20 +41,26 @@ enum {
 // Resolution per format
 const uint8_t spk_resolutions_per_format[CFG_TUD_AUDIO_FUNC_1_N_FORMATS] = {
     CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX};
+#if MIC_CHANNEL_NUM
 const uint8_t mic_resolutions_per_format[CFG_TUD_AUDIO_FUNC_1_N_FORMATS] = {
     CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_TX};
+#endif
 
 typedef struct {
   usb_phy_handle_t phy_hdl;
   uac_device_config_t user_cfg;
   int8_t mute[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX + 1];     // SPK feature unit (RX = OUT = SPK), +1 for master channel 0
   int16_t volume[CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX + 1];  // SPK feature unit (RX = OUT = SPK), +1 for master channel 0
+#if MIC_CHANNEL_NUM
   uint8_t mic_buf1[CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ];  // Buffer for microphone data
   uint8_t mic_buf2[CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ];  // Buffer for microphone data
+#endif
   uint8_t spk_buf[CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ];  // Buffer for speaker data
-  uint8_t *mic_buf_write;                                  // Pointer to the buffer to write to
-  uint8_t *mic_buf_read;                                   // Pointer to the buffer to read from
-  int spk_data_size;                                       // Speaker data size received in the last frame
+#if MIC_CHANNEL_NUM
+  uint8_t *mic_buf_write;  // Pointer to the buffer to write to
+  uint8_t *mic_buf_read;   // Pointer to the buffer to read from
+#endif
+  int spk_data_size;  // Speaker data size received in the last frame
   int mic_data_size;
   int spk_itf_num;
   int mic_itf_num;
@@ -69,9 +75,11 @@ typedef struct {
 } uac_device_t;
 
 static uac_device_t *s_uac_device = NULL;
+#if MIC_CHANNEL_NUM
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 #define UAC_ENTER_CRITICAL() portENTER_CRITICAL(&s_mux)
 #define UAC_EXIT_CRITICAL() portEXIT_CRITICAL(&s_mux)
+#endif
 
 static void usb_phy_init(void) {
   // Configure USB PHY
@@ -394,6 +402,7 @@ bool tud_audio_rx_done_isr(uint8_t rhport, uint16_t n_bytes_received, uint8_t fu
   return true;
 }
 
+#if MIC_CHANNEL_NUM
 bool tud_audio_tx_done_isr(uint8_t rhport, uint16_t n_bytes_sent, uint8_t func_id, uint8_t ep_in,
                            uint8_t cur_alt_setting) {
   (void) rhport;
@@ -419,7 +428,6 @@ bool tud_audio_tx_done_isr(uint8_t rhport, uint16_t n_bytes_sent, uint8_t func_i
   return true;
 }
 
-#if MIC_CHANNEL_NUM
 static void usb_mic_task(void *pvParam) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while (1) {
@@ -467,8 +475,10 @@ esp_err_t uac_device_init(uac_device_config_t *config) {
   s_uac_device->user_cfg.set_mute_cb = config->set_mute_cb;
   s_uac_device->user_cfg.set_volume_cb = config->set_volume_cb;
   s_uac_device->current_sample_rate = DEFAULT_SAMPLE_RATE;
+#if MIC_CHANNEL_NUM
   s_uac_device->mic_buf_write = s_uac_device->mic_buf1;
   s_uac_device->mic_buf_read = s_uac_device->mic_buf2;
+#endif
 
 #if UAD_AS_PART
   s_uac_device->spk_itf_num = config->spk_itf_num;

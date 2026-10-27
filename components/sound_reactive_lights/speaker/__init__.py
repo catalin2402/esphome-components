@@ -14,6 +14,7 @@ from esphome.const import (
     CONF_UPDATE_INTERVAL,
 )
 import esphome.final_validate as fv
+from esphome.helpers import fnv1_hash
 
 from .. import (
     CONF_MAX_BRIGHTNESS,
@@ -122,6 +123,11 @@ FINAL_VALIDATE_SCHEMA = final_validate
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    cg.add(
+        var.set_preference_key(
+            fnv1_hash(f"sound_reactive_lights.{config[CONF_ID].id}.mode")
+        )
+    )
     await speaker.register_speaker(var, config)
     cg.add(var.set_output_speaker(await cg.get_variable(config[CONF_OUTPUT_SPEAKER])))
     cg.add(var.set_light(await cg.get_variable(config[CONF_LIGHT_ID])))

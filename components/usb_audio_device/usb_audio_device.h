@@ -2,7 +2,6 @@
 #include "esphome/core/component.h"
 #include "esphome/core/helpers.h"
 #include "esphome/components/speaker/speaker.h"
-#include "esphome/components/microphone/microphone.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <atomic>
@@ -10,6 +9,10 @@
 #ifdef USE_OTA_STATE_LISTENER
 #include "esphome/components/ota/ota_backend.h"
 #endif
+
+namespace esphome::microphone {
+class Microphone;
+}
 
 namespace esphome::usb_audio_device {
 enum MediaKey : uint16_t {
@@ -90,10 +93,11 @@ class USBAudioDevice : public Component
   void set_connected(bool connected) { this->connected_.store(connected); }
   bool is_connected() const { return this->ready_.load() && !this->shutting_down_.load() && this->connected_.load(); }
   bool is_capture_active() const {
-    return this->ready_.load() && !this->shutting_down_.load() && !this->audio_suspended_.load() &&
-           this->capture_active_.load();
+    return this->has_microphone() && this->ready_.load() && !this->shutting_down_.load() &&
+           !this->audio_suspended_.load() && this->capture_active_.load();
   }
-  bool is_microphone_muted() const { return this->mic_muted_.load(); }
+  bool has_microphone() const { return this->microphone_ != nullptr; }
+  bool is_microphone_muted() const { return this->has_microphone() && this->mic_muted_.load(); }
   template<typename F> void add_connection_callback(F &&callback) {
     this->connection_callback_.add(std::forward<F>(callback));
   }
@@ -132,6 +136,8 @@ class USBAudioDevice : public Component
   static void playback_task_(void *arg);
   void receive_microphone_(const std::vector<uint8_t> &data);
   void fail_setup_(const char *message);
+  void update_microphone_();
+  void stop_microphone_();
 #ifdef USE_OTA_STATE_LISTENER
   void apply_ota_state_();
 #endif

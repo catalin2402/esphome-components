@@ -5,7 +5,12 @@ from esphome.components import switch
 import esphome.config_validation as cv
 import esphome.final_validate as fv
 
-from .. import CONF_USB_AUDIO_DEVICE_ID, USBAudioDevice, usb_audio_device_ns
+from .. import (
+    CONF_CAPTURE,
+    CONF_USB_AUDIO_DEVICE_ID,
+    USBAudioDevice,
+    usb_audio_device_ns,
+)
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["usb_audio_device"]
@@ -25,7 +30,16 @@ CONFIG_SCHEMA = (
 )
 
 
+def require_capture(config):
+    if CONF_CAPTURE not in config:
+        raise cv.Invalid(
+            "The microphone mute switch requires capture: on its USB audio device"
+        )
+    return config
+
+
 def final_validate(config):
+    fv.id_declaration_match_schema(require_capture)(config[CONF_USB_AUDIO_DEVICE_ID])
     matching = [
         item
         for item in fv.full_config.get().get("switch", [])

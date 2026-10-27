@@ -3,7 +3,6 @@
 #include "esphome/components/usb_audio_device/usb_audio_device.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
-#include <atomic>
 
 namespace esphome::usb_media_control {
 class USBMediaControl : public Component, public usb_audio_device::USBMediaTransport {
@@ -21,10 +20,11 @@ class USBMediaControl : public Component, public usb_audio_device::USBMediaTrans
 
  protected:
   usb_audio_device::USBAudioDevice *parent_{nullptr};
-  std::atomic<bool> shutting_down_{false};
+  // Media key state is owned by the main loop and its automations.
+  bool shutting_down_{false};
   QueueHandle_t media_keys_{nullptr};
   uint16_t media_current_{0}, media_waiting_{0};
-  std::atomic<uint16_t> media_held_{0};
+  uint16_t media_held_{0};
   bool media_pulse_active_{false};
   uint32_t media_started_{0};
 };

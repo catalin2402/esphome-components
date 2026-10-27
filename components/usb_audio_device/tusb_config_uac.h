@@ -50,7 +50,7 @@ extern "C" {
   (CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX * CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX)
 
 // EP and buffer size - for isochronous EP´s, the buffer and EP size are equal (different sizes would not make sense)
-#define CFG_TUD_AUDIO_ENABLE_EP_IN 1
+#define CFG_TUD_AUDIO_ENABLE_EP_IN (MIC_CHANNEL_NUM > 0)
 
 // MIC IN EP (device-to-host = TX): keep EP size aligned to one complete audio frame.
 #define CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_IN \
@@ -77,7 +77,7 @@ extern "C" {
 // remember the current alternate settings of these interfaces - We restrict us here to have a constant number for all
 // audio functions (which means this has to be the maximum number of AS interfaces an audio function has and a second
 // audio function with less AS interfaces just wastes a few bytes)
-#define CFG_TUD_AUDIO_FUNC_1_N_AS_INT 2
+#define CFG_TUD_AUDIO_FUNC_1_N_AS_INT (NUM_INTERFACES - 1)
 
 // Size of control request buffer
 #define CFG_TUD_AUDIO_FUNC_1_CTRL_BUF_SZ 64
