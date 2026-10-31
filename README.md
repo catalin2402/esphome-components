@@ -11,6 +11,7 @@ External ESPHome components maintained by
 | [cd405x](components/cd405x/) | CD405x analog multiplexer control |
 | [climate_ir_hyundai](components/climate_ir_hyundai/) | Hyundai air-conditioner IR climate |
 | [esp32_hosted_gpio](components/esp32_hosted_gpio/) | GPIO expander over ESP32 Hosted |
+| [graphic_equalizer](components/graphic_equalizer/) | Five-band speaker equalizer with saved user presets |
 | [hub75_icn2053](components/hub75_icn2053/) | ICN2053 HUB75 RGB matrix display |
 | [lcd_base](components/lcd_base/) | Local override of base ESPHome LCD support | ESPHome base |
 | [pt2258](components/pt2258/) | Six-channel volume controller |
