@@ -114,7 +114,7 @@ size_t SoundReactiveLightsSpeaker::play(const uint8_t *data, size_t bytes, TickT
   // Bound analysis copying to four blocks per call, even for a large producer.
   size_t offset = 0;
   for (unsigned n = 0; n < 4 && offset + frame_bytes <= accepted; ++n) {
-    Block block{};
+    auto &block = this->producer_block_;
     block.frames = std::min<size_t>(256, (accepted - offset) / frame_bytes);
     block.channels = channels;
     block.rate = info.get_sample_rate();

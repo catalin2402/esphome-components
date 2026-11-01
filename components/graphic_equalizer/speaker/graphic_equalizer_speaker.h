@@ -106,7 +106,7 @@ class GraphicEqualizerSpeaker : public Component, public speaker::Speaker {
   void save_preferences_();
   static bool valid_curve_(const Curve &curve);
   static Curve builtin_curve_(uint8_t preset);
-  static FilterBank make_bank_(const Settings &settings, uint32_t sample_rate);
+  static void make_bank_(FilterBank &bank, const Settings &settings, uint32_t sample_rate);
   static float filter_sample_(FilterBank &bank, uint8_t channel, float sample);
   void prepare_processing_(const Settings &settings, uint32_t sample_rate, uint8_t channels);
   void process_frames_(const uint8_t *data, int16_t *output, size_t frames, uint8_t channels);
@@ -124,6 +124,8 @@ class GraphicEqualizerSpeaker : public Component, public speaker::Speaker {
   bool reported_format_error_{false};
   // Only the audio producer touches processing state and the partial-frame tail.
   ProcessingState processing_{};
+  ProcessingState rollback_{};
+  std::array<int16_t, 128 * 2> output_buffer_{};
   std::array<uint8_t, 4> pending_frame_{};
   size_t pending_offset_{0}, pending_size_{0};
 };

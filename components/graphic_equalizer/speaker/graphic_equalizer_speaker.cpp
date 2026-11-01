@@ -215,11 +215,10 @@ void GraphicEqualizerSpeaker::dump_config() {
   ESP_LOGCONFIG(TAG, "  Preamp: %.1f dB", settings.curve.preamp);
 }
 
-GraphicEqualizerSpeaker::FilterBank GraphicEqualizerSpeaker::make_bank_(const Settings &settings,
-                                                                        uint32_t sample_rate) {
-  FilterBank bank{};
+void GraphicEqualizerSpeaker::make_bank_(FilterBank &bank, const Settings &settings, uint32_t sample_rate) {
+  bank = {};
   if (!settings.enabled)
-    return bank;
+    return;
   float preamp = settings.curve.preamp;
   if (settings.auto_headroom)
     for (float gain : settings.curve.bands)
@@ -241,7 +240,6 @@ GraphicEqualizerSpeaker::FilterBank GraphicEqualizerSpeaker::make_bank_(const Se
                                (1.0f - alpha * amplitude) / a0, cosine / a0,
                                (1.0f - alpha / amplitude) / a0, true};
   }
-  return bank;
 }
 float GraphicEqualizerSpeaker::filter_sample_(FilterBank &bank, uint8_t channel, float sample) {
   if (bank.bypass)
@@ -265,7 +263,7 @@ void GraphicEqualizerSpeaker::prepare_processing_(const Settings &settings, uint
   if (!state.initialized || state.reset_generation != generation || state.sample_rate != sample_rate ||
       state.channels != channels) {
     state = {};
-    state.current = make_bank_(settings, sample_rate);
+    make_bank_(state.current, settings, sample_rate);
     state.sample_rate = sample_rate;
     state.channels = channels;
     state.reset_generation = generation;
@@ -273,7 +271,7 @@ void GraphicEqualizerSpeaker::prepare_processing_(const Settings &settings, uint
     state.initialized = true;
     this->pending_offset_ = this->pending_size_ = 0;
   } else if (state.fade_frames == 0 && state.revision != settings.revision) {
-    state.next = make_bank_(settings, sample_rate);
+    make_bank_(state.next, settings, sample_rate);
     state.next_revision = settings.revision;
     if (state.current.bypass && state.next.bypass) {
       state.current = state.next;
@@ -330,7 +328,7 @@ size_t GraphicEqualizerSpeaker::play(const uint8_t *data, size_t length, TickTyp
   };
   const uint32_t generation = this->reset_generation_.load();
   size_t consumed = 0;
-  int16_t output[BLOCK_FRAMES * 2];
+  auto *output = this->output_buffer_.data();
   this->prepare_processing_(this->snapshot_(), rate, channels);
   // An output speaker may accept only part of a PCM frame. The caller retries
   // the same input bytes; send the already filtered tail instead of filtering twice.
@@ -350,7 +348,7 @@ size_t GraphicEqualizerSpeaker::play(const uint8_t *data, size_t length, TickTyp
          this->reset_generation_.load() == generation) {
     this->prepare_processing_(this->snapshot_(), rate, channels);
     const size_t frames = std::min(BLOCK_FRAMES, (length - consumed) / frame_bytes);
-    const auto before = this->processing_;
+    this->rollback_ = this->processing_;
     const size_t requested = frames * frame_bytes;
     if (this->processing_.fade_frames == 0 && this->processing_.current.bypass)
       std::memcpy(output, data + consumed, requested);
@@ -369,7 +367,7 @@ size_t GraphicEqualizerSpeaker::play(const uint8_t *data, size_t length, TickTyp
         std::memcpy(this->pending_frame_.data(), bytes + written, this->pending_size_);
       }
       // Only advance filter and fade state for frames accepted by the output.
-      this->processing_ = before;
+      this->processing_ = this->rollback_;
       const size_t committed_frames = written / frame_bytes + (partial != 0);
       this->process_frames_(data + consumed, output, committed_frames, channels);
       return consumed + written;

@@ -35,7 +35,7 @@ switch:
   - platform: graphic_equalizer
     name: Equalizer Enabled
 
-number:
+number:IT WO
   - platform: graphic_equalizer
     type: 63hz
     name: Equalizer 63 Hz

@@ -85,6 +85,8 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
   speaker::Speaker *output_{nullptr};
   light::LightState *light_{nullptr};
   QueueHandle_t queue_{nullptr};
+  // Audio-producer scratch; the queue copies each block before this is reused.
+  Block producer_block_{};
   std::atomic<bool> enabled_{true};
   std::atomic<bool> shutting_down_{false};
   std::atomic<float> analysis_gain_{1.0f};
