@@ -8,12 +8,15 @@ External ESPHome components maintained by
 | Component | Purpose | 
 | --- | --- | 
 | [auriol_4ld5661](components/auriol_4ld5661/) | Auriol weather and rain sensor decoder |
+| [bambu_lab_tags](components/bambu_lab_tags/) | Bambu Lab spool NFC tag reader |
 | [cd405x](components/cd405x/) | CD405x analog multiplexer control |
 | [climate_ir_hyundai](components/climate_ir_hyundai/) | Hyundai air-conditioner IR climate |
 | [esp32_hosted_gpio](components/esp32_hosted_gpio/) | GPIO expander over ESP32 Hosted |
 | [graphic_equalizer](components/graphic_equalizer/) | Five-band speaker equalizer with saved user presets |
 | [hub75_icn2053](components/hub75_icn2053/) | ICN2053 HUB75 RGB matrix display |
 | [lcd_base](components/lcd_base/) | Local override of base ESPHome LCD support | ESPHome base |
+| [mifare_classic](components/mifare_classic/) | Shared MIFARE Classic reader interface |
+| [pn532](components/pn532/) | PN532 override with MIFARE Classic reader support |
 | [pt2258](components/pt2258/) | Six-channel volume controller |
 | [pt2323](components/pt2323/) | Audio selector and processor |
 | [generic_ev1527](components/generic_ev1527/) | EV1527 packet logger and binary sensors |
@@ -40,6 +43,3 @@ external_components:
       - generic_ev1527
 ```
 
-The `lcd_base` and `remote_receiver` directories override components included
-with ESPHome. They are documented here but intentionally retain upstream
-ESPHome ownership.
