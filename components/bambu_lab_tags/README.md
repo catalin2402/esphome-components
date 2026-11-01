@@ -46,7 +46,7 @@ text_sensor:
   - platform: bambu_lab_tags
     bambu_lab_tags_id: spool_decoder
     type: COLOR
-    name: Spool Color
+    name: Spool Color Name
 
 sensor:
   - platform: bambu_lab_tags
@@ -109,7 +109,7 @@ Type values are case-insensitive.
 | `VARIANT_ID` | Material variant identifier. |
 | `FILAMENT_TYPE` | Filament family, such as PLA. |
 | `DETAILED_FILAMENT_TYPE` | Detailed filament name stored on the tag. |
-| `COLOR` | Eight hexadecimal RGBA digits without a prefix. |
+| `COLOR` | English color name, such as Jade White; eight hexadecimal RGBA digits for unlisted variants. |
 | `PRODUCTION_DATE` | Production date text stored on the tag, without timezone conversion. |
 
 ## Numeric sensors
@@ -142,3 +142,8 @@ produce authentication warnings. Other readers retain their normal behavior.
 
 The reported weight is the nominal filament weight, not the remaining amount.
 The color sensor reports the primary color. Tag authenticity is not verified.
+
+Color names are matched by RFID variant ID and material ID using an embedded
+[catalogue](https://github.com/piitaya/bambu-filaments). No network lookup is
+required. The catalogue is a snapshot; newer or unlisted variants report
+the RGBA value instead. `spool.color_name` is also available in tag automations.

@@ -1,4 +1,5 @@
 #include "spool.h"
+#include "color_names.h"
 
 #include <cstdio>
 
@@ -32,6 +33,8 @@ bool parse_spool(const uint8_t *data, size_t size, Spool &spool) {
   char color[9];
   snprintf(color, sizeof(color), "%02X%02X%02X%02X", data[80], data[81], data[82], data[83]);
   result.color = color;
+  const char *color_name = get_color_name(result.material_id, result.variant_id);
+  result.color_name = color_name != nullptr ? color_name : result.color;
   result.weight = le16(data + 84);
   result.drying_temperature = le16(data + 96);
   result.drying_time = le16(data + 98);

@@ -30,7 +30,7 @@ void BambuLabTagsTextSensor::publish_spool_(const Spool &spool) {
       this->publish_state(spool.detailed_filament_type);
       break;
     case TextSensorType::COLOR:
-      this->publish_state(spool.color);
+      this->publish_state(spool.color_name);
       break;
     case TextSensorType::PRODUCTION_DATE:
       this->publish_state(spool.production_date);
