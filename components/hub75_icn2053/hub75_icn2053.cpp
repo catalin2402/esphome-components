@@ -45,6 +45,19 @@ void HUB75Display::dump_config() {
   LOG_UPDATE_INTERVAL(this);
 }
 
+void HUB75Display::fill(Color color) {
+  if (this->panel_ == nullptr || this->is_failed())
+    return;
+  // A uniform screen needs no per-pixel layout remapping, rotation, or DMA
+  // readiness checks. Preserve the generic pixel path for clipped drawing.
+  if (this->is_clipping()) {
+    display::Display::fill(color);
+    return;
+  }
+  this->panel_->fillScreenRGB888(this->gamma_[color.r], this->gamma_[color.g], this->gamma_[color.b]);
+  this->dirty_ = true;
+}
+
 void HUB75Display::draw_absolute_pixel_internal(int x, int y, Color color) {
   if (this->panel_ == nullptr || this->is_failed() || x < 0 || y < 0 || x >= this->get_width_internal() ||
       y >= this->get_height_internal())

@@ -37,6 +37,7 @@ class HUB75Display : public display::DisplayBuffer {
   void setup() override;
   void dump_config() override;
   void update() override;
+  void fill(Color color) override;
   void loop() override;
   void on_shutdown() override;
   float get_setup_priority() const override { return setup_priority::PROCESSOR; }
