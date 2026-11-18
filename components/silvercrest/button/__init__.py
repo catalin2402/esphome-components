@@ -5,7 +5,7 @@ import esphome.config_validation as cv
 from .. import CONF_SILVERCREST_ID, Silvercrest, silvercrest_ns
 
 CODEOWNERS = ["@catalin2402"]
-DEPENDENCIES = ["silvercrest"]
+DEPENDENCIES = ["silvercrest", "remote_transmitter"]
 
 BUTTON = "button"
 BUTTON_TYPE = {

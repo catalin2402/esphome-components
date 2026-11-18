@@ -25,6 +25,7 @@ External ESPHome components maintained by
 | [status_light](components/status_light/) | Device status indication using monochrome or RGB lights |
 | [tea5767](components/tea5767/) | FM radio tuner |
 | [usb_audio_device](components/usb_audio_device/) | USB audio playback and microphone capture |
+| [tinyusb_audio](components/tinyusb_audio/) | TinyUSB Audio Class 2 device with independent playback and capture formats |
 | [usb_media_control](components/usb_media_control/) | USB HID media controls |
 | [xiron](components/xiron/) | Xiron weather sensor decoder |
 

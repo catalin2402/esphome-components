@@ -5,8 +5,8 @@ from esphome.const import CONF_CHANNEL, CONF_ID, CONF_STATE
 
 CODEOWNERS = ["@catalin2402"]
 AUTO_LOAD = ["remote_base"]
-DEPENDENCIES = ["remote_transmitter"]
 
+CONF_TRANSMITTER_ID = "transmitter_id"
 CONF_SILVERCREST_ID = "silvercrest"
 CONF_REPEAT_TIMES = "repeat_times"
 silvercrest_ns = cg.esphome_ns.namespace("silvercrest")
@@ -77,16 +77,19 @@ CONFIG_SCHEMA = (
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(Silvercrest),
+            cv.OnlyWith(CONF_TRANSMITTER_ID, "remote_transmitter"): cv.use_id(
+                remote_base.RemoteTransmitterBase
+            ),
             cv.Optional(CONF_REPEAT_TIMES, default=5): cv.int_range(min=1, max=255),
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
-    .extend(remote_base.REMOTE_TRANSMITTABLE_SCHEMA)
 )
 
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    await remote_base.register_transmittable(var, config)
+    if CONF_TRANSMITTER_ID in config:
+        await remote_base.register_transmittable(var, config)
     cg.add(var.set_repeat_times(config[CONF_REPEAT_TIMES]))

@@ -6,7 +6,7 @@ from esphome.const import CONF_CHANNEL
 from .. import CHANNELS, CONF_SILVERCREST_ID, Silvercrest, silvercrest_ns
 
 CODEOWNERS = ["@catalin2402"]
-DEPENDENCIES = ["silvercrest"]
+DEPENDENCIES = ["silvercrest", "remote_transmitter"]
 
 SilvercrestSwitch = silvercrest_ns.class_(
     "SilvercrestSwitch", switch.Switch, cg.Component
