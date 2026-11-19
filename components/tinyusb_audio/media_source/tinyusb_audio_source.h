@@ -8,13 +8,12 @@
 #include "esphome/components/tinyusb_keyboard/keyboard.h"
 #endif
 
-#include "freertos/task.h"
+#include "esphome/core/static_task.h"
 
 namespace esphome::tinyusb_audio {
 
-class TinyUSBAudioSource final : public Component, public media_source::MediaSource {
+class TinyUSBAudioSource final : public Component, public media_source::MediaSource, public Parented<TinyUSBAudio> {
  public:
-  void set_parent(TinyUSBAudio *parent) { this->parent_ = parent; }
 #ifdef USE_TINYUSB_AUDIO_KEYBOARD
   void set_keyboard(tinyusb_keyboard::TinyUSBKeyboard *keyboard) { this->keyboard_ = keyboard; }
 #endif
@@ -28,15 +27,16 @@ class TinyUSBAudioSource final : public Component, public media_source::MediaSou
 
  protected:
   void stop_();
-  void playback_task_();
+  void playback_task_run_();
   bool is_selected_() const { return (this->selection_.load() & 1) != 0; }
 #ifdef USE_TINYUSB_AUDIO_KEYBOARD
   void send_media_key_(uint16_t usage);
   tinyusb_keyboard::TinyUSBKeyboard *keyboard_{nullptr};
 #endif
 
-  TinyUSBAudio *parent_{nullptr};
-  TaskHandle_t playback_task_handle_{nullptr};
+  // Keep the pending audio outside the FreeRTOS task stack.
+  std::array<uint8_t, TINYUSB_AUDIO_PLAYBACK_PACKET * 4> pending_{};
+  StaticTask playback_task_;
   uint32_t generation_{0};
   bool auto_start_ready_{false};
   // Transitions increment this counter. The low bit indicates an active selection.

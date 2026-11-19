@@ -3,7 +3,7 @@
 
 namespace esphome::silvercrest {
 
-static const char *const TAG = "silvercrest.switch";
+ESPHOME_LOG_TAG(TAG, "silvercrest.switch");
 
 void SilvercrestSwitch::dump_config() {
   LOG_SWITCH("", "Silvercrest Switch", this);

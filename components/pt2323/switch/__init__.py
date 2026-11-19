@@ -1,25 +1,23 @@
+from esphome import automation
 import esphome.codegen as cg
 from esphome.components import switch
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_TYPE
+from esphome.const import CONF_TYPE
+from esphome.types import ConfigType
 
-from .. import CONF_PT2323_ID, PT2323, pt2323_ns
+from .. import (
+    CONF_PT2323_ID,
+    DUMP_PUBLISHER,
+    PT2323,
+    RESTORE_PUBLISHER,
+    STATE_PUBLISHER,
+)
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2323"]
 
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
-
-PT2323Switch = pt2323_ns.class_("PT2323Switch", switch.Switch, cg.Component)
-SwitchType = pt2323_ns.enum("SwitchType")
-
-SWITCH_TYPE = {
-    "ENHANCE": SwitchType.ENHANCE,
-    "BOOST": SwitchType.BOOST,
-    "MUTE": SwitchType.MUTE,
-    "MUTE_ALL": SwitchType.MUTE_ALL,
-}
 
 
 def validate_channels(value):
@@ -37,28 +35,54 @@ def validate_channels(value):
 
 
 CONFIG_SCHEMA = cv.All(
-    switch.switch_schema(PT2323Switch)
-    .extend(
+    switch.switch_schema(switch.ApplySwitch, default_restore_mode="DISABLED").extend(
         {
             cv.GenerateID(CONF_PT2323_ID): cv.use_id(PT2323),
-            cv.Required(CONF_TYPE): cv.enum(SWITCH_TYPE, upper=True),
+            cv.Required(CONF_TYPE): cv.one_of(
+                "ENHANCE", "BOOST", "MUTE", "MUTE_ALL", upper=True
+            ),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
         }
-    )
-    .extend(cv.COMPONENT_SCHEMA),
+    ),
     validate_channels,
 )
 
 
-async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
-    await switch.register_switch(var, config)
-    parent = await cg.get_variable(config[CONF_PT2323_ID])
-    cg.add(var.set_parent(parent))
-    cg.add(var.set_type(config[CONF_TYPE]))
-    if CONF_CHANNEL_A in config:
-        cg.add(var.set_channel_a(config[CONF_CHANNEL_A]))
-    if CONF_CHANNEL_B in config:
-        cg.add(var.set_channel_b(config[CONF_CHANNEL_B]))
+async def to_code(config: ConfigType) -> None:
+    hub = await cg.get_variable(config[CONF_PT2323_ID])
+    channel_a = config.get(CONF_CHANNEL_A, 0)
+    channel_b = config.get(CONF_CHANNEL_B, 0)
+    parent = automation.parent_ref(hub)
+    kind = config[CONF_TYPE]
+    if kind == "MUTE":
+        calls = [
+            f"mute_channel({channel}, state)"
+            for channel in (channel_a, channel_b)
+            if channel
+        ]
+        apply = f"; {parent}->".join(calls)
+        state = parent.get_channel_mute(channel_a or channel_b)
+    else:
+        method, getter = {
+            "ENHANCE": ("set_enhance", "get_enhance"),
+            "BOOST": ("set_boost", "get_boost"),
+            "MUTE_ALL": ("mute_all_channels", "get_mute"),
+        }[kind]
+        apply = f"{method}(state)"
+        state = getattr(parent, getter)()
+    switches = switch.sub_switches(config, parent=hub)
+    var = await switches.create(config, None, apply=apply)
+    entity = automation.parent_ref(var)
+    RESTORE_PUBLISHER.add(hub, entity.restore())
+    STATE_PUBLISHER.add(hub, entity.publish_state(state))
+    DUMP_PUBLISHER.add(
+        hub, cg.RawStatement(f'LOG_SWITCH("", "PT2323 Switch", {entity});')
+    )
+    DUMP_PUBLISHER.add(hub, cg.RawStatement(f'ESP_LOGCONFIG(TAG, "  Type: {kind}");'))
+    DUMP_PUBLISHER.add(
+        hub,
+        cg.RawStatement(
+            f'ESP_LOGCONFIG(TAG, "  Channel A: {channel_a}, Channel B: {channel_b}");'
+        ),
+    )

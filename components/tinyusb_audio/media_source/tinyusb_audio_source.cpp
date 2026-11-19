@@ -4,14 +4,17 @@
 
 namespace esphome::tinyusb_audio {
 
-static const char *const USB_URI = "usb://current";
+static constexpr char USB_URI[] = "usb://current";
+#ifdef USE_TINYUSB_AUDIO_KEYBOARD
+static constexpr uint32_t MEDIA_KEY_RELEASE_TIMEOUT = 0;
+#endif
 // Run above the ESPHome loop while leaving TinyUSB and the I²S driver ahead of the producer.
 static constexpr UBaseType_t PLAYBACK_TASK_PRIORITY = 4;
 static constexpr uint32_t PLAYBACK_TASK_STACK_SIZE = 4096;
 
 void TinyUSBAudioSource::setup() {
-  if (xTaskCreate([](void *arg) { static_cast<TinyUSBAudioSource *>(arg)->playback_task_(); }, "usb_audio_play",
-                  PLAYBACK_TASK_STACK_SIZE, this, PLAYBACK_TASK_PRIORITY, &this->playback_task_handle_) != pdPASS) {
+  if (!this->playback_task_.create([](void *arg) { static_cast<TinyUSBAudioSource *>(arg)->playback_task_run_(); },
+                                   "usb_audio_play", PLAYBACK_TASK_STACK_SIZE, this, PLAYBACK_TASK_PRIORITY, false)) {
     this->mark_failed(LOG_STR("Could not create USB audio playback task"));
   }
 }
@@ -25,7 +28,7 @@ bool TinyUSBAudioSource::play_uri(const std::string &uri) {
   this->selected_generation_.store(this->generation_);
   this->set_state_(media_source::MediaSourceState::PLAYING);
   this->selection_.fetch_add(this->is_selected_() ? 2 : 1);
-  xTaskNotifyGive(this->playback_task_handle_);
+  xTaskNotifyGive(this->playback_task_.get_handle());
   return true;
 }
 
@@ -68,7 +71,7 @@ void TinyUSBAudioSource::handle_command(media_source::MediaSourceCommand command
 #ifdef USE_TINYUSB_AUDIO_KEYBOARD
 void TinyUSBAudioSource::send_media_key_(uint16_t usage) {
   this->keyboard_->press_media(usage);
-  this->set_timeout("media_key_release", 50, [this]() { this->keyboard_->release_media(); });
+  this->set_timeout(MEDIA_KEY_RELEASE_TIMEOUT, 50, [this]() { this->keyboard_->release_media(); });
 }
 #endif
 
@@ -106,9 +109,8 @@ void TinyUSBAudioSource::loop() {
   }
 }
 
-void TinyUSBAudioSource::playback_task_() {
+void TinyUSBAudioSource::playback_task_run_() {
   const audio::AudioStreamInfo format(TINYUSB_AUDIO_PLAYBACK_BITS, 2, TINYUSB_AUDIO_PLAYBACK_RATE);
-  std::array<uint8_t, TINYUSB_AUDIO_PLAYBACK_PACKET * 4> pending;
   uint32_t last_selection = 0;
   size_t bytes = 0;
   size_t offset = 0;
@@ -130,7 +132,7 @@ void TinyUSBAudioSource::playback_task_() {
       continue;
     }
     if (offset == bytes) {
-      bytes = this->parent_->read_playback(pending);
+      bytes = this->parent_->read_playback(this->pending_);
       offset = 0;
     }
     if (bytes == 0 || selection != this->selection_.load() || generation != this->parent_->playback_generation()) {
@@ -138,7 +140,7 @@ void TinyUSBAudioSource::playback_task_() {
       continue;
     }
 
-    const size_t accepted = this->write_output(pending.data() + offset, bytes - offset, 2, format);
+    const size_t accepted = this->write_output(this->pending_.data() + offset, bytes - offset, 2, format);
     offset += accepted;
     if (accepted == 0)
       vTaskDelay(1);

@@ -5,7 +5,7 @@
 
 namespace esphome::status_light {
 
-class StatusLightLightOutput : public light::LightOutput, public StatusLight {
+class StatusLightLightOutput final : public light::LightOutput, public StatusLight {
  public:
   light::LightTraits get_traits() override { return this->light_->get_traits(); }
   void setup_state(light::LightState *state) override { this->control_state_ = state; }

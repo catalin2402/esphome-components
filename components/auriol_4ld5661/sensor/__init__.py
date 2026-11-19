@@ -10,8 +10,9 @@ from esphome.const import (
     UNIT_CELSIUS,
     UNIT_MILLIMETER,
 )
+from esphome.types import ConfigType
 
-from . import (
+from .. import (
     CONF_AURIOL_ID,
     CONF_MM_PER_TIP,
     Auriol4LD5661Base,
@@ -19,16 +20,15 @@ from . import (
     register_auriol,
 )
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 AuriolSensor = auriol_4ld5661_ns.class_(
     "AuriolSensor", Auriol4LD5661Base, sensor.Sensor
 )
 AuriolSensorType = auriol_4ld5661_ns.enum("AuriolSensorType", is_class=True)
-SENSOR_TYPES = {
-    "temperature": AuriolSensorType.TEMPERATURE,
-    "rain": AuriolSensorType.RAIN,
-    "rain_tips": AuriolSensorType.RAIN_TIPS,
-}
+SENSOR_TYPES = AuriolSensorType.options(
+    "temperature", "rain", "rain_tips", prefix="AURIOL_SENSOR_TYPE_"
+)
 
 
 def entity_schema(**kwargs):
@@ -63,9 +63,8 @@ CONFIG_SCHEMA = cv.typed_schema(
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await sensor.new_sensor(config)
     await register_auriol(var, config)
     cg.add(var.set_type(SENSOR_TYPES[config[CONF_TYPE]]))
-    if CONF_MM_PER_TIP in config:
-        cg.add(var.set_mm_per_tip(config[CONF_MM_PER_TIP]))
+    cg.add_optional(var.set_mm_per_tip, config.get(CONF_MM_PER_TIP))

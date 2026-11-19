@@ -4,13 +4,14 @@
 
 namespace esphome::tea5767 {
 
-static const char *const TAG = "tea5767";
+ESPHOME_LOG_TAG(TAG, "tea5767");
 static constexpr uint32_t REFERENCE_FREQUENCY_HZ = 32768;
 static constexpr uint32_t INTERMEDIATE_FREQUENCY_HZ = 225000;
 static constexpr uint32_t MIN_FREQUENCY_HZ = 87500000;
 static constexpr uint32_t JAPAN_MIN_FREQUENCY_HZ = 76000000;
 static constexpr uint32_t MAX_FREQUENCY_HZ = 108000000;
 static constexpr uint32_t TUNING_SETTLE_MS = 100;
+static constexpr uint32_t READ_STATUS_TIMEOUT_ID = 0;
 static constexpr uint8_t PLL_HIGH_MASK = 0x3F;
 static constexpr uint8_t MUTE_MASK = 0x80;
 static constexpr uint8_t MONO_MASK = 0x08;
@@ -28,12 +29,32 @@ void TEA5767::dump_config() {
   ESP_LOGCONFIG(TAG, "  Mute: %s", ONOFF(this->is_muted()));
   ESP_LOGCONFIG(TAG, "  Forced mono: %s", ONOFF(this->is_mono()));
   LOG_UPDATE_INTERVAL(this);
+  this->dump_callback_.call(TAG);
+#if defined(USE_TEA5767_STATE_PUBLISHER) || defined(USE_TEA5767_STATUS_PUBLISHER)
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
+}
+
+void TEA5767::publish_state_() {
+  this->state_callback_.call();
+#ifdef USE_TEA5767_STATE_PUBLISHER
+  if (this->initialized_ && this->state_publisher_ != nullptr)
+    this->state_publisher_();
+#endif
 }
 
 void TEA5767::setup() {
+  // Restore before the first hardware write or any generated child publication.
+#ifdef USE_TEA5767_STATE_PUBLISHER
+  if (this->restore_publisher_ != nullptr)
+    this->restore_publisher_();
+#endif
   this->initialized_ = true;
   if (this->save_registers_())
     this->schedule_read_();
+  // Child switches report the requested startup settings, independently of readback.
+  this->publish_state_();
 }
 
 void TEA5767::set_frequency(uint64_t frequency) {
@@ -49,7 +70,7 @@ void TEA5767::set_frequency(uint64_t frequency) {
     this->schedule_read_();
   }
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->frequency_callback_.call(frequency);
   }
 }
@@ -60,7 +81,7 @@ void TEA5767::set_setting_(Setting setting, bool enabled) {
   value = enabled;
   this->save_registers_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->setting_callback_.call(setting, enabled);
   }
 }
@@ -81,20 +102,15 @@ bool TEA5767::save_registers_() {
       CRYSTAL_MASK,
       0,
   };
-  if (this->is_muted())
-    registers[0] |= MUTE_MASK;
-  if (this->is_mono())
-    registers[2] |= MONO_MASK;
+  assign_bits(registers[0], MUTE_MASK, this->is_muted());
+  assign_bits(registers[2], MONO_MASK, this->is_mono());
   if (this->in_japan_) {
     registers[3] |= JAPAN_BAND_MASK;
     registers[4] = 0x40;
   }
-  if (this->is_soft_muted())
-    registers[3] |= SOFT_MUTE_MASK;
-  if (this->get_high_cut_control())
-    registers[3] |= HIGH_CUT_MASK;
-  if (this->get_stereo_noise_canceling())
-    registers[3] |= STEREO_NOISE_CANCELING_MASK;
+  assign_bits(registers[3], SOFT_MUTE_MASK, this->is_soft_muted());
+  assign_bits(registers[3], HIGH_CUT_MASK, this->get_high_cut_control());
+  assign_bits(registers[3], STEREO_NOISE_CANCELING_MASK, this->get_stereo_noise_canceling());
   this->write_failed_ = this->write(registers, sizeof(registers)) != i2c::ERROR_OK;
   if (this->write_failed_)
     ESP_LOGW(TAG, "Failed to write tuner settings");
@@ -104,14 +120,14 @@ bool TEA5767::save_registers_() {
 
 void TEA5767::schedule_read_() {
   this->read_pending_ = true;
-  this->set_timeout("read_status", TUNING_SETTLE_MS, [this]() {
+  this->set_timeout(READ_STATUS_TIMEOUT_ID, TUNING_SETTLE_MS, [this]() {
     this->read_pending_ = false;
     this->update();
   });
 }
 
 uint64_t TEA5767::get_frequency() const {
-  const uint16_t pll = (static_cast<uint16_t>(this->status_[0] & PLL_HIGH_MASK) << 8) | this->status_[1];
+  const uint16_t pll = encode_uint16(this->status_[0] & PLL_HIGH_MASK, this->status_[1]);
   const uint64_t oscillator = uint64_t{pll} * REFERENCE_FREQUENCY_HZ / 4;
   return oscillator >= INTERMEDIATE_FREQUENCY_HZ ? oscillator - INTERMEDIATE_FREQUENCY_HZ : 0;
 }
@@ -134,7 +150,12 @@ void TEA5767::update() {
   this->status_valid_ = true;
   const bool stereo = this->is_stereo();
   const uint8_t level = this->get_level();
-  this->status_callback_.call(this->get_frequency(), level, stereo);
+  const uint64_t frequency = this->get_frequency();
+  this->status_callback_.call(frequency, level, stereo);
+#ifdef USE_TEA5767_STATUS_PUBLISHER
+  if (this->status_publisher_ != nullptr)
+    this->status_publisher_(frequency, level, stereo);
+#endif
   if (first || previous_stereo != stereo)
     this->stereo_callback_.call(stereo);
   if (first || previous_level != level)

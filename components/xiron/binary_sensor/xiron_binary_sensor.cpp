@@ -4,7 +4,7 @@
 
 namespace esphome::xiron {
 
-static const char *const TAG = "xiron.binary_sensor";
+ESPHOME_LOG_TAG(TAG, "xiron.binary_sensor");
 
 void XironBatterySensor::dump_config() {
   XironBase::dump_config();

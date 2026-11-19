@@ -3,13 +3,14 @@
 #include <algorithm>
 #include <cinttypes>
 
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
 namespace esphome::unitec {
 
-static const char *const TAG = "remote.unitec";
+ESPHOME_LOG_TAG(TAG, "remote.unitec");
 // RFLink R51 selects the nibble permutation using bit 1 of the serial ID.
-static constexpr uint8_t SUBSTITUTION[2][16] = {
+static constexpr uint8_t SUBSTITUTION[2][16] PROGMEM = {
     {0xA, 0x0, 0x4, 0xC, 0x2, 0xE, 0x7, 0x5, 0x1, 0xF, 0xB, 0xD, 0x9, 0x6, 0x3, 0x8},
     {0x2, 0xC, 0x5, 0xE, 0x7, 0x4, 0x1, 0xF, 0xB, 0xD, 0x6, 0x3, 0x8, 0x9, 0xA, 0x0},
 };
@@ -28,7 +29,8 @@ void UnitecProtocol::encode(remote_base::RemoteTransmitData *dst, const UnitecDa
     return;
 
   const uint16_t address = data.address;
-  const auto &table = SUBSTITUTION[(address >> 1) & 1];
+  uint8_t table[16];
+  progmem_memcpy(table, SUBSTITUTION[(address >> 1) & 1], sizeof(table));
   const uint8_t unit = table[data.channel];
   const uint8_t selector = table[unit ^ (static_cast<uint8_t>(data.state) << 1)];
   const uint8_t high = table[(address >> 12) ^ selector];
@@ -36,7 +38,7 @@ void UnitecProtocol::encode(remote_base::RemoteTransmitData *dst, const UnitecDa
   const uint8_t low = table[((address >> 4) & 0xF) ^ middle];
   const uint32_t group = (address & 0xF) ^ 0x9;
   const uint32_t frame = (group << 20) | (uint32_t{low} << 16) | (uint32_t{middle} << 12) | (uint32_t{high} << 8) |
-          (uint32_t{selector} << 4) | unit;
+                         (uint32_t{selector} << 4) | unit;
 
   dst->set_carrier_frequency(0);
   dst->reserve(FRAME_REPEATS * (2 + 2 * NBITS));
@@ -53,7 +55,8 @@ void UnitecProtocol::encode(remote_base::RemoteTransmitData *dst, const UnitecDa
 
 static optional<UnitecData> decode_fields(uint32_t code) {
   const uint8_t group = (code >> 20) ^ 0x9;
-  const auto &table = SUBSTITUTION[(group >> 1) & 1];
+  uint8_t table[16];
+  progmem_memcpy(table, SUBSTITUTION[(group >> 1) & 1], sizeof(table));
   const uint8_t unit = code & 0xF;
   const uint8_t selector = (code >> 4) & 0xF;
   const uint8_t high = (code >> 8) & 0xF;
@@ -64,8 +67,8 @@ static optional<UnitecData> decode_fields(uint32_t code) {
   const auto command = invert(selector) ^ unit;
   if (channel > 4 || (command & 1) != 0)
     return {};
-  const auto address = ((invert(high) ^ selector) << 12) | ((invert(middle) ^ high) << 8) |
-                       ((invert(low) ^ middle) << 4) | group;
+  const auto address =
+      ((invert(high) ^ selector) << 12) | ((invert(middle) ^ high) << 8) | ((invert(low) ^ middle) << 4) | group;
   return UnitecData{static_cast<uint16_t>(address), static_cast<uint8_t>(channel), (command & 2) != 0, code};
 }
 
@@ -104,8 +107,7 @@ optional<UnitecData> UnitecProtocol::decode(remote_base::RemoteReceiveData src) 
 void UnitecProtocol::dump(const UnitecData &data) {
   if (data.channel <= 4) {
     ESP_LOGI(TAG, "Received Unitec: address=%04X, channel=%u, command=%s, code=0x%06" PRIX32,
-             static_cast<unsigned>(data.address), static_cast<unsigned>(data.channel),
-             ONOFF(data.state), data.code);
+             static_cast<unsigned>(data.address), static_cast<unsigned>(data.channel), ONOFF(data.state), data.code);
     return;
   }
   ESP_LOGI(TAG, "Received Unitec waveform: code=0x%06" PRIX32 ", address=unknown, channel=unknown, command=unknown",

@@ -4,7 +4,7 @@
 
 namespace esphome::pt2323 {
 
-static const char *const TAG = "pt2323";
+ESPHOME_LOG_TAG(TAG, "pt2323");
 static constexpr uint8_t INPUT_COMMAND = 0xC7;
 static constexpr uint8_t ENHANCE_ON_COMMAND = 0xD0;
 static constexpr uint8_t ENHANCE_OFF_COMMAND = 0xD1;
@@ -21,11 +21,30 @@ void PT2323::dump_config() {
   ESP_LOGCONFIG(TAG, "  Enhance: %s", ONOFF(this->enhance_));
   ESP_LOGCONFIG(TAG, "  Boost: %s", ONOFF(this->boost_));
   ESP_LOGCONFIG(TAG, "  Mute: %s", ONOFF(this->mute_));
+  this->dump_callback_.call(TAG);
+#ifdef USE_PT2323_STATE_PUBLISHER
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
+}
+
+void PT2323::publish_state_() {
+  this->state_callback_.call();
+#ifdef USE_PT2323_STATE_PUBLISHER
+  if (this->initialized_ && this->state_publisher_ != nullptr)
+    this->state_publisher_();
+#endif
 }
 
 void PT2323::setup() {
+  // Restore before the first hardware write or any generated child publication.
+#ifdef USE_PT2323_STATE_PUBLISHER
+  if (this->restore_publisher_ != nullptr)
+    this->restore_publisher_();
+#endif
   this->initialized_ = true;
   this->send_data_();
+  this->publish_state_();
 }
 
 void PT2323::set_input(int input) {
@@ -37,7 +56,7 @@ void PT2323::set_input(int input) {
   this->input_ = input;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->input_callback_.call(input);
   }
 }
@@ -47,7 +66,7 @@ void PT2323::set_enhance(bool enhance) {
   this->enhance_ = enhance;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->enhance_callback_.call(enhance);
   }
 }
@@ -57,7 +76,7 @@ void PT2323::set_boost(bool boost) {
   this->boost_ = boost;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->boost_callback_.call(boost);
   }
 }
@@ -67,7 +86,7 @@ void PT2323::mute_all_channels(bool mute) {
   this->mute_ = mute;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->mute_callback_.call(mute);
   }
 }
@@ -81,7 +100,7 @@ void PT2323::mute_channel(int channel, bool mute) {
   this->channels_muted_[channel - 1] = mute;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->channel_mute_callback_.call(channel, mute);
   }
 }

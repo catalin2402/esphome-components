@@ -4,7 +4,7 @@
 
 namespace esphome::auriol_4ld5661 {
 
-static const char *const TAG = "auriol_4ld5661.binary_sensor";
+ESPHOME_LOG_TAG(TAG, "auriol_4ld5661.binary_sensor");
 
 void AuriolBatterySensor::dump_config() {
   Auriol4LD5661Base::dump_config();

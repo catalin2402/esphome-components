@@ -4,7 +4,7 @@
 
 namespace esphome::unitec {
 
-static const char *const TAG = "unitec.switch";
+ESPHOME_LOG_TAG(TAG, "unitec.switch");
 
 void UnitecSwitch::dump_config() {
   LOG_SWITCH("", "Unitec Switch", this);

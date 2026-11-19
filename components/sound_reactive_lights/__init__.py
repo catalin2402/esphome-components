@@ -15,7 +15,8 @@ CONF_ON_ENABLED = "on_enabled"
 AUTO_LOAD = ["speaker", "light"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["esp32"]
-sound_reactive_lights_ns = cg.esphome_ns.namespace("sound_reactive_lights")
+DOMAIN = "sound_reactive_lights"
+sound_reactive_lights_ns = cg.esphome_ns.namespace(DOMAIN)
 SoundReactiveLightsSpeaker = sound_reactive_lights_ns.class_(
     "SoundReactiveLightsSpeaker", speaker.Speaker, cg.Component
 )
@@ -27,62 +28,86 @@ MODES = {
     "spectrum": ReactiveMode.MODE_SPECTRUM,
     "rainbow_pulse": ReactiveMode.MODE_RAINBOW_PULSE,
 }
-ModeTrigger = sound_reactive_lights_ns.class_(
-    "ModeTrigger", automation.Trigger.template(cg.uint8)
+STATE_PUBLISHER = cg.HubFunction(
+    "state",
+    cg.void,
+    [
+        (cg.uint8, "mode"),
+        (cg.bool_, "enabled"),
+        (cg.float_, "sensitivity"),
+        (cg.float_, "max_brightness"),
+    ],
+    define="USE_SOUND_REACTIVE_LIGHTS_STATE_PUBLISHER",
 )
-EnabledTrigger = sound_reactive_lights_ns.class_(
-    "EnabledTrigger", automation.Trigger.template(cg.bool_)
-)
+MODE = STATE_PUBLISHER.param("mode")
+ENABLED = STATE_PUBLISHER.param("enabled")
+SENSITIVITY = STATE_PUBLISHER.param("sensitivity")
+MAX_BRIGHTNESS = STATE_PUBLISHER.param("max_brightness")
+RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
+DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 CONFIG_SCHEMA = cv.Schema({})
-
-for name, call in (
-    ("next_mode", "next_mode()"),
-    ("enable", "set_enabled(true)"),
-    ("disable", "set_enabled(false)"),
-):
-    automation.register_apply_action(
-        f"sound_reactive_lights.{name}",
-        automation.maybe_simple_id(
-            {cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker)}
-        ),
-        automation.ApplyCall(call),
-    )
 
 REACTIVE_ACTION_SCHEMA = automation.maybe_simple_id(
     {cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker)}
 )
+
+automation.register_apply_action(
+    "sound_reactive_lights.next_mode",
+    REACTIVE_ACTION_SCHEMA,
+    automation.ApplyCall("next_mode()"),
+)
+
+automation.register_apply_action(
+    "sound_reactive_lights.enable",
+    REACTIVE_ACTION_SCHEMA,
+    automation.ApplyCall("set_enabled(true)"),
+)
+
+automation.register_apply_action(
+    "sound_reactive_lights.disable",
+    REACTIVE_ACTION_SCHEMA,
+    automation.ApplyCall("set_enabled(false)"),
+)
+
+automation.register_apply_action(
+    "sound_reactive_lights.set_mode",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker),
+            cv.Required(CONF_MODE): cv.templatable(cv.enum(MODES, lower=True)),
+        }
+    ),
+    automation.ApplyField(CONF_MODE, "set_mode", cg.uint8),
+)
+
+automation.register_apply_action(
+    "sound_reactive_lights.set_sensitivity",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker),
+            cv.Required(CONF_SENSITIVITY): cv.templatable(
+                cv.float_range(min=0.1, max=100)
+            ),
+        }
+    ),
+    automation.ApplyField(CONF_SENSITIVITY, "set_sensitivity", cg.float_),
+)
+
+automation.register_apply_action(
+    "sound_reactive_lights.set_max_brightness",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker),
+            cv.Required(CONF_MAX_BRIGHTNESS): cv.templatable(cv.percentage),
+        }
+    ),
+    automation.ApplyField(CONF_MAX_BRIGHTNESS, "set_max_brightness", cg.float_),
+)
+
 automation.register_apply_condition(
     "sound_reactive_lights.is_enabled", REACTIVE_ACTION_SCHEMA, "is_enabled()"
 )
-
-for name, key, validator, method, value_type in (
-    ("set_mode", CONF_MODE, cv.enum(MODES, lower=True), "set_mode", cg.uint8),
-    (
-        "set_sensitivity",
-        CONF_SENSITIVITY,
-        cv.float_range(min=0.1, max=100),
-        "set_sensitivity",
-        cg.float_,
-    ),
-    (
-        "set_max_brightness",
-        CONF_MAX_BRIGHTNESS,
-        cv.percentage,
-        "set_max_brightness",
-        cg.float_,
-    ),
-):
-    automation.register_apply_action(
-        f"sound_reactive_lights.{name}",
-        cv.Schema(
-            {
-                cv.GenerateID(): cv.use_id(SoundReactiveLightsSpeaker),
-                cv.Required(key): cv.templatable(validator),
-            }
-        ),
-        automation.ApplyField(key, method, value_type),
-    )
 
 automation.register_apply_condition(
     "sound_reactive_lights.selected_mode",

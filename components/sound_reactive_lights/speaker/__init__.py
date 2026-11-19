@@ -10,11 +10,11 @@ from esphome.const import (
     CONF_NUM_CHANNELS,
     CONF_PLATFORM,
     CONF_SAMPLE_RATE,
-    CONF_TRIGGER_ID,
     CONF_UPDATE_INTERVAL,
 )
 import esphome.final_validate as fv
 from esphome.helpers import fnv1_hash
+from esphome.types import ConfigType
 
 from .. import (
     CONF_MAX_BRIGHTNESS,
@@ -22,8 +22,6 @@ from .. import (
     CONF_ON_MODE,
     CONF_SENSITIVITY,
     MODES,
-    EnabledTrigger,
-    ModeTrigger,
     SoundReactiveLightsSpeaker,
 )
 
@@ -34,7 +32,7 @@ CONF_SILENCE_TIMEOUT = "silence_timeout"
 DEPENDENCIES = ["esp32"]
 
 
-def stream_limits(config):
+def stream_limits(config: ConfigType) -> ConfigType:
     if CONF_BITS_PER_SAMPLE in config:
         cv.one_of(16, int=True)(config[CONF_BITS_PER_SAMPLE])
     if CONF_NUM_CHANNELS in config:
@@ -56,12 +54,8 @@ CONFIG_SCHEMA = cv.All(
     speaker.SPEAKER_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(SoundReactiveLightsSpeaker),
-            cv.Optional(CONF_ON_MODE): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ModeTrigger)}
-            ),
-            cv.Optional(CONF_ON_ENABLED): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(EnabledTrigger)}
-            ),
+            cv.Optional(CONF_ON_MODE): automation.validate_automation({}),
+            cv.Optional(CONF_ON_ENABLED): automation.validate_automation({}),
             cv.Required(CONF_OUTPUT_SPEAKER): cv.use_id(speaker.Speaker),
             cv.Required(CONF_LIGHT_ID): cv.use_id(light.LightState),
             cv.Optional(CONF_MODE, default="spectrum"): cv.enum(MODES, lower=True),
@@ -82,7 +76,7 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-def final_validate(config):
+def final_validate(config: ConfigType) -> ConfigType:
     speakers = fv.full_config.get().get("speaker", [])
     mapping = {str(item[CONF_ID]): item for item in speakers}
     seen = {str(config[CONF_ID])}
@@ -120,7 +114,17 @@ def final_validate(config):
 FINAL_VALIDATE_SCHEMA = final_validate
 
 
-async def to_code(config):
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_MODE, "add_mode_callback", [(cg.uint8, "mode")]
+    ),
+    automation.CallbackAutomation(
+        CONF_ON_ENABLED, "add_enabled_callback", [(cg.bool_, "enabled")]
+    ),
+)
+
+
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(
@@ -129,16 +133,13 @@ async def to_code(config):
         )
     )
     await speaker.register_speaker(var, config)
-    cg.add(var.set_output_speaker(await cg.get_variable(config[CONF_OUTPUT_SPEAKER])))
-    cg.add(var.set_light(await cg.get_variable(config[CONF_LIGHT_ID])))
-    for key in (CONF_MODE, CONF_ENABLED, CONF_SENSITIVITY, CONF_MAX_BRIGHTNESS):
-        cg.add(getattr(var, f"set_{key}")(config[key]))
+    await cg.add_variable(var.set_output_speaker, config[CONF_OUTPUT_SPEAKER])
+    await cg.add_variable(var.set_light, config[CONF_LIGHT_ID])
+    cg.add(var.set_mode(config[CONF_MODE]))
+    cg.add(var.set_enabled(config[CONF_ENABLED]))
+    cg.add(var.set_sensitivity(config[CONF_SENSITIVITY]))
+    cg.add(var.set_max_brightness(config[CONF_MAX_BRIGHTNESS]))
     cg.add(var.set_update_interval(config[CONF_UPDATE_INTERVAL].total_milliseconds))
     cg.add(var.set_silence_timeout(config[CONF_SILENCE_TIMEOUT].total_milliseconds))
 
-    for conf in config.get(CONF_ON_MODE, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [(cg.uint8, "mode")], conf)
-    for conf in config.get(CONF_ON_ENABLED, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [(cg.bool_, "enabled")], conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)

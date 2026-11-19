@@ -1,10 +1,12 @@
 #include "pt2258.h"
 
+#include <cmath>
+
 #include "esphome/core/log.h"
 
 namespace esphome::pt2258 {
 
-static const char *const TAG = "pt2258";
+ESPHOME_LOG_TAG(TAG, "pt2258");
 static constexpr uint8_t MAX_VOLUME = 79;
 static constexpr uint8_t CHANNEL_COUNT = 6;
 static constexpr uint8_t RESET_COMMAND = 0xC0;
@@ -17,9 +19,23 @@ void PT2258::dump_config() {
   LOG_I2C_DEVICE(this);
   ESP_LOGCONFIG(TAG, "  Default volume: %d", this->default_volume_);
   ESP_LOGCONFIG(TAG, "  Muted: %s", YESNO(this->muted_));
+  this->dump_callback_.call(TAG);
+#ifdef USE_PT2258_STATE_PUBLISHER
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
+}
+
+void PT2258::publish_state_() {
+  this->state_callback_.call();
+#ifdef USE_PT2258_STATE_PUBLISHER
+  if (this->state_publisher_ != nullptr)
+    this->state_publisher_();
+#endif
 }
 
 void PT2258::setup() {
+  this->publish_state_();
   // Allow the audio controller to stabilize without blocking the main loop.
   this->set_timeout(200, [this]() {
     this->startup_delay_complete_ = true;
@@ -32,6 +48,24 @@ void PT2258::setup() {
     this->send_data_();
   });
 }
+
+#ifdef USE_NUMBER
+void PT2258::control_number(number::Number *entity, float value, uint8_t channel_a, uint8_t channel_b, bool is_offset) {
+  if (!std::isfinite(value))
+    return;
+  const int volume =
+      static_cast<int>(roundf(clamp(value, entity->traits.get_min_value(), entity->traits.get_max_value())));
+  if (channel_a == 0 && channel_b == 0) {
+    this->set_master_volume(volume);
+    return;
+  }
+  const int channel_volume = is_offset ? this->get_channel_volume(0) + volume : volume;
+  if (channel_a != 0)
+    this->set_channel_volume(channel_volume, channel_a);
+  if (channel_b != 0)
+    this->set_channel_volume(channel_volume, channel_b);
+}
+#endif
 
 void PT2258::set_default_volume(int volume) {
   this->default_volume_ = clamp(volume, 0, int(MAX_VOLUME));
@@ -73,7 +107,7 @@ void PT2258::set_mute(bool mute) {
   this->muted_ = mute;
   this->send_data_();
   if (changed) {
-    this->state_callback_.call();
+    this->publish_state_();
     this->mute_callback_.call(mute);
   }
 }
@@ -90,7 +124,7 @@ void PT2258::notify_volume_changes_(const std::array<int, 7> &previous) {
   const auto current = this->volumes_;
   if (previous == current)
     return;
-  this->state_callback_.call();
+  this->publish_state_();
   for (int channel = 0; channel <= CHANNEL_COUNT; channel++) {
     if (previous[channel] != current[channel])
       this->volume_callback_.call(channel, current[channel]);

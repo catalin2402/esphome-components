@@ -29,8 +29,13 @@ struct Curve {
   float preamp{0.0f};
 };
 
-class GraphicEqualizerSpeaker : public Component, public speaker::Speaker {
+class GraphicEqualizerSpeaker final : public Component, public speaker::Speaker {
  public:
+#ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
+  HUB_PUBLISHER(state, const Curve &, uint8_t, bool)
+  HUB_PUBLISHER(restore)
+  HUB_PUBLISHER(dump, const char *)
+#endif
   void set_output_speaker(speaker::Speaker *output) { this->output_ = output; }
   void set_preference_key(uint32_t key) { this->preference_key_ = key; }
   void select_preset(uint8_t preset);
@@ -68,6 +73,7 @@ class GraphicEqualizerSpeaker : public Component, public speaker::Speaker {
   bool get_mute_state() override { return this->output_->get_mute_state(); }
 
  protected:
+  void publish_state_();
   struct Settings {
     Curve curve{};
     uint32_t revision{0};

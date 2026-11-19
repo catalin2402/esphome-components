@@ -9,16 +9,17 @@ from esphome.const import (
     UNIT_CELSIUS,
     UNIT_PERCENT,
 )
+from esphome.types import ConfigType
 
 from .. import CONF_XIRON_ID, XironBase, register_xiron, xiron_ns
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 XironSensor = xiron_ns.class_("XironSensor", XironBase, sensor.Sensor)
 XironSensorType = xiron_ns.enum("XironSensorType", is_class=True)
-SENSOR_TYPES = {
-    "temperature": XironSensorType.TEMPERATURE,
-    "humidity": XironSensorType.HUMIDITY,
-}
+SENSOR_TYPES = XironSensorType.options(
+    "temperature", "humidity", prefix="XIRON_SENSOR_TYPE_"
+)
 
 
 def entity_schema(**kwargs):
@@ -47,7 +48,7 @@ CONFIG_SCHEMA = cv.typed_schema(
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await sensor.new_sensor(config)
     await register_xiron(var, config)
     cg.add(var.set_type(SENSOR_TYPES[config[CONF_TYPE]]))

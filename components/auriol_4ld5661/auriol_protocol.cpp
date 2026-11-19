@@ -2,11 +2,12 @@
 
 #include <cinttypes>
 
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
 namespace esphome::auriol_4ld5661 {
 
-static const char *const TAG = "remote.auriol";
+ESPHOME_LOG_TAG(TAG, "remote.auriol");
 static constexpr uint8_t NBITS = 52;
 // Provisional mark width; upstream documents the PPM spaces only.
 static constexpr uint32_t BIT_MARK_US = 500;
@@ -59,10 +60,7 @@ optional<AuriolData> AuriolProtocol::decode_data_(const std::array<uint8_t, 7> &
   if (bytes[3] != 0xF0)
     return {};
 
-  // Sign-extend the protocol's 12-bit two's-complement temperature explicitly.
-  int16_t temperature = ((bytes[1] & 0x0F) << 8) | bytes[2];
-  if ((temperature & 0x0800) != 0)
-    temperature -= 0x1000;
+  const int32_t temperature = sign_extend<12>(encode_uint16(bytes[1] & 0x0F, bytes[2]));
   if (temperature < -600 || temperature > 800)
     return {};
 

@@ -9,7 +9,7 @@
 #include "esp_attr.h"
 #include "esp_err.h"
 #include "esp_heap_caps.h"
-#include "esp_log.h"
+#include "esphome/core/log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,10 +17,10 @@
 namespace esphome::hub75_icn2053 {
 
 namespace {
-constexpr char kTag[] = "hub75_icn2053";
-constexpr std::size_t kBrightnessTableSize = 256;
+ESPHOME_LOG_TAG(TAG, "hub75_icn2053.driver");
+constexpr size_t BRIGHTNESS_TABLE_SIZE = 256;
 
-constexpr std::uint8_t kLuminance[kBrightnessTableSize] = {
+constexpr uint8_t LUMINANCE[BRIGHTNESS_TABLE_SIZE] = {
     0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   1,   1,   1,   1,   1,   1,   1,   1,   2,   2,   2,
     2,   2,   2,   2,   2,   3,   3,   3,   3,   3,   3,   3,   4,   4,   4,   4,   4,   5,   5,   5,   5,   5,
     6,   6,   6,   6,   6,   7,   7,   7,   7,   8,   8,   8,   8,   9,   9,   9,   10,  10,  10,  11,  11,  11,
@@ -35,27 +35,27 @@ constexpr std::uint8_t kLuminance[kBrightnessTableSize] = {
     223, 226, 228, 230, 233, 235, 238, 240, 243, 245, 248, 250, 253, 255,
 };
 
-std::uint16_t rgb565(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue) {
-  return static_cast<std::uint16_t>(((red & 0xf8U) << 8U) | ((green & 0xfcU) << 3U) | (blue >> 3U));
+uint16_t rgb565(const uint8_t red, const uint8_t green, const uint8_t blue) {
+  return static_cast<uint16_t>(((red & 0xf8U) << 8U) | ((green & 0xfcU) << 3U) | (blue >> 3U));
 }
 
-void IRAM_ATTR rgb888(const std::uint16_t color, std::uint8_t &red, std::uint8_t &green, std::uint8_t &blue) {
-  red = static_cast<std::uint8_t>(((color >> 11U) * 527U + 23U) >> 6U);
-  green = static_cast<std::uint8_t>((((color >> 5U) & 0x3fU) * 259U + 33U) >> 6U);
-  blue = static_cast<std::uint8_t>(((color & 0x1fU) * 527U + 23U) >> 6U);
+void IRAM_ATTR rgb888(const uint16_t color, uint8_t &red, uint8_t &green, uint8_t &blue) {
+  red = static_cast<uint8_t>(((color >> 11U) * 527U + 23U) >> 6U);
+  green = static_cast<uint8_t>((((color >> 5U) & 0x3fU) * 259U + 33U) >> 6U);
+  blue = static_cast<uint8_t>(((color & 0x1fU) * 527U + 23U) >> 6U);
 }
 
-MatrixPanel_I2S_DMA *active_panel;
+ICN2053Panel *active_panel;
 
-std::uint16_t descriptors_for(const std::size_t buffer_length, const std::uint8_t buffer_count) {
-  const auto bytes = buffer_length * sizeof(std::uint16_t);
+uint16_t descriptors_for(const size_t buffer_length, const uint8_t buffer_count) {
+  const auto bytes = buffer_length * sizeof(uint16_t);
   const auto per_buffer = (bytes + ICN2053_DMA_MAX_BYTES - 1) / ICN2053_DMA_MAX_BYTES;
-  return static_cast<std::uint16_t>(per_buffer * buffer_count);
+  return static_cast<uint16_t>(per_buffer * buffer_count);
 }
 
-lldesc_t *link_buffer(lldesc_t *descriptor, lldesc_t *previous, std::uint8_t *buffer, std::size_t bytes) {
+lldesc_t *link_buffer(lldesc_t *descriptor, lldesc_t *previous, uint8_t *buffer, size_t bytes) {
   while (bytes > 0) {
-    const auto chunk = std::min<std::size_t>(bytes, ICN2053_DMA_MAX_BYTES);
+    const auto chunk = std::min<size_t>(bytes, ICN2053_DMA_MAX_BYTES);
     icn2053_link_dma_descriptor(descriptor, previous, buffer, chunk);
     previous = descriptor++;
     buffer += chunk;
@@ -64,99 +64,98 @@ lldesc_t *link_buffer(lldesc_t *descriptor, lldesc_t *previous, std::uint8_t *bu
   return previous;
 }
 
-void link_buffers(lldesc_t *descriptors, std::uint16_t **buffers, const std::uint8_t buffer_count,
-                  const std::size_t buffer_length) {
+void link_buffers(lldesc_t *descriptors, uint16_t **buffers, const uint8_t buffer_count, const size_t buffer_length) {
   lldesc_t *previous = nullptr;
   auto *next = descriptors;
-  const auto bytes = buffer_length * sizeof(std::uint16_t);
-  for (std::uint8_t index = 0; index < buffer_count; ++index) {
-    previous = link_buffer(next, previous, reinterpret_cast<std::uint8_t *>(buffers[index]), bytes);
+  const auto bytes = buffer_length * sizeof(uint16_t);
+  for (uint8_t index = 0; index < buffer_count; ++index) {
+    previous = link_buffer(next, previous, reinterpret_cast<uint8_t *>(buffers[index]), bytes);
     next = previous + 1;
   }
 }
 
 void IRAM_ATTR transport_callback() {
   if (active_panel != nullptr) {
-    active_panel->sendCallback();
+    active_panel->send_callback();
   }
 }
+}  // namespace
+
+ICN2053Panel::ICN2053Panel(const Hub75Config &configuration) : configuration_(configuration) {}
+
+ICN2053Panel::~ICN2053Panel() { this->end(); }
+
+void ICN2053Panel::set_color_(const uint8_t red, const uint8_t green, const uint8_t blue) {
+  this->current_color_ = rgb565(red, green, blue);
 }
 
-MatrixPanel_I2S_DMA::MatrixPanel_I2S_DMA(const hub75_i2s_cfg_t &configuration) : configuration_(configuration) {}
-
-MatrixPanel_I2S_DMA::~MatrixPanel_I2S_DMA() { end(); }
-
-void MatrixPanel_I2S_DMA::set_color(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue) {
-  current_color_ = rgb565(red, green, blue);
+void ICN2053Panel::fill(const uint8_t red, const uint8_t green, const uint8_t blue) {
+  this->set_color_(red, green, blue);
+  this->fill_rectangle_(0, 0, static_cast<int16_t>(this->pixels_per_row_),
+                        static_cast<int16_t>(this->configuration_.panel_height));
 }
 
-void MatrixPanel_I2S_DMA::fillScreenRGB888(const std::uint8_t red, const std::uint8_t green, const std::uint8_t blue) {
-  set_color(red, green, blue);
-  fill_rectangle(0, 0, static_cast<std::int16_t>(pixels_per_row_),
-                 static_cast<std::int16_t>(configuration_.panel_height));
+void ICN2053Panel::fill_rect(const int16_t x, const int16_t y, const int16_t width, const int16_t height,
+                             const uint8_t red, const uint8_t green, const uint8_t blue) {
+  this->set_color_(red, green, blue);
+  this->fill_rectangle_(x, y, width, height);
 }
 
-void MatrixPanel_I2S_DMA::fillRect(const std::int16_t x, const std::int16_t y, const std::int16_t width,
-                                   const std::int16_t height, const std::uint8_t red, const std::uint8_t green,
-                                   const std::uint8_t blue) {
-  set_color(red, green, blue);
-  fill_rectangle(x, y, width, height);
-}
-
-bool MatrixPanel_I2S_DMA::begin() {
-  if (initialized_) {
+bool ICN2053Panel::begin() {
+  if (this->initialized_) {
     return true;
   }
 
-  last_error_ = ESP_OK;
-  pixels_per_row_ = static_cast<std::uint16_t>(configuration_.panel_width * configuration_.chain_length_x *
-                                               configuration_.chain_length_y);
-  rows_per_frame_ = static_cast<std::uint8_t>(configuration_.panel_height / kIcn2053RowsInParallel);
+  this->last_error_ = ESP_OK;
+  this->pixels_per_row_ = static_cast<uint16_t>(this->configuration_.panel_width * this->configuration_.chain_length_x *
+                                                this->configuration_.chain_length_y);
+  this->rows_per_frame_ = static_cast<uint8_t>(this->configuration_.panel_height / ICN2053_ROWS_IN_PARALLEL);
 
-  if (pixels_per_row_ == 0 || rows_per_frame_ == 0 || (pixels_per_row_ % kIcn2053DriverBits) != 0) {
-    last_error_ = ESP_ERR_INVALID_ARG;
-    ESP_LOGE(kTag, "Invalid geometry: width=%d height=%d chain=%dx%d", configuration_.panel_width,
-             configuration_.panel_height, configuration_.chain_length_x, configuration_.chain_length_y);
+  if (this->pixels_per_row_ == 0 || this->rows_per_frame_ == 0 || (this->pixels_per_row_ % ICN2053_DRIVER_BITS) != 0) {
+    this->last_error_ = ESP_ERR_INVALID_ARG;
+    ESP_LOGE(TAG, "Invalid geometry: width=%d height=%d chain=%dx%d", this->configuration_.panel_width,
+             this->configuration_.panel_height, this->configuration_.chain_length_x,
+             this->configuration_.chain_length_y);
     return false;
   }
 
-  driver_count_ = pixels_per_row_ / kIcn2053DriverBits;
-  if (!allocate_memory()) {
-    last_error_ = ESP_ERR_NO_MEM;
-    release_memory();
+  this->driver_count_ = this->pixels_per_row_ / ICN2053_DRIVER_BITS;
+  if (!this->allocate_memory_()) {
+    this->last_error_ = ESP_ERR_NO_MEM;
+    this->release_memory_();
     return false;
   }
-  if (!configure_dma()) {
-    portENTER_CRITICAL(&state_mutex_);
-    initialized_ = false;
-    if (last_error_ == ESP_OK)
-      last_error_ = ESP_FAIL;
-    portEXIT_CRITICAL(&state_mutex_);
+  if (!this->configure_dma_()) {
+    portENTER_CRITICAL(&this->state_mutex_);
+    this->initialized_ = false;
+    if (this->last_error_ == ESP_OK)
+      this->last_error_ = ESP_FAIL;
+    portEXIT_CRITICAL(&this->state_mutex_);
     icn2053_transport_set_callback(nullptr);
     icn2053_transport_uninstall();
     if (active_panel == this)
       active_panel = nullptr;
-    release_memory();
+    this->release_memory_();
     return false;
   }
 
-  ESP_LOGI(kTag, "Ready: %dx%d pixels, %d ICN2053 drivers, %" PRIu32 " Hz", pixels_per_row_,
-           configuration_.panel_height, driver_count_, configuration_.clock_hz);
+  ESP_LOGI(TAG, "Ready: %dx%d pixels, %d ICN2053 drivers, %" PRIu32 " Hz", this->pixels_per_row_,
+           this->configuration_.panel_height, this->driver_count_, this->configuration_.clock_hz);
   return true;
 }
 
-void MatrixPanel_I2S_DMA::end() {
-  if (initialized_) {
-    fillScreenRGB888(0, 0, 0);
-    present();
-    wait_dma_ready();
-    panel_off();
-    wait_dma_ready();
+void ICN2053Panel::end() {
+  if (this->initialized_) {
+    this->fill(0, 0, 0);
+    this->present();
+    this->wait_dma_ready_();
+    this->panel_off_();
+    this->wait_dma_ready_();
   }
 
-  portENTER_CRITICAL(&state_mutex_);
-  initialized_ = false;
-  portEXIT_CRITICAL(&state_mutex_);
+  portENTER_CRITICAL(&this->state_mutex_);
+  this->initialized_ = false;
+  portEXIT_CRITICAL(&this->state_mutex_);
 
   icn2053_transport_set_callback(nullptr);
   icn2053_transport_stop();
@@ -164,270 +163,256 @@ void MatrixPanel_I2S_DMA::end() {
   if (active_panel == this) {
     active_panel = nullptr;
   }
-  release_memory();
+  this->release_memory_();
 }
 
-esp_err_t MatrixPanel_I2S_DMA::error() const {
-  portENTER_CRITICAL(&state_mutex_);
-  const esp_err_t result = last_error_;
-  portEXIT_CRITICAL(&state_mutex_);
+esp_err_t ICN2053Panel::error() const {
+  portENTER_CRITICAL(&this->state_mutex_);
+  const esp_err_t result = this->last_error_;
+  portEXIT_CRITICAL(&this->state_mutex_);
   return result;
 }
 
-void MatrixPanel_I2S_DMA::release_memory() {
-  if (dma_.rows != nullptr) {
-    for (std::uint8_t index = 0; index < dma_.total_count; ++index) {
-      heap_caps_free(dma_.rows[index]);
-    }
-    heap_caps_free(dma_.rows);
-  }
-  heap_caps_free(frame_buffer_);
-  heap_caps_free(descriptor_storage_);
-  heap_caps_free(driver_registers_);
-  heap_caps_free(brightness_table_);
+void ICN2053Panel::release_memory_() {
+  for (auto *row : this->dma_.rows)
+    heap_caps_free(row);
+  heap_caps_free(this->frame_buffer_);
+  heap_caps_free(this->descriptor_storage_);
 
-  dma_ = {};
-  frame_buffer_ = nullptr;
-  frame_pixel_count_ = 0;
-  descriptor_storage_ = nullptr;
-  data_descriptors_ = nullptr;
-  prefix_descriptors_ = nullptr;
-  suffix_descriptors_[0] = nullptr;
-  suffix_descriptors_[1] = nullptr;
-  extended_descriptors_ = nullptr;
-  driver_registers_ = nullptr;
-  brightness_table_ = nullptr;
-  data_descriptor_count_ = 0;
-  prefix_descriptor_count_ = 0;
-  suffix_descriptor_count_ = 0;
+  this->dma_ = {};
+  this->frame_buffer_ = nullptr;
+  this->frame_pixel_count_ = 0;
+  this->descriptor_storage_ = nullptr;
+  this->data_descriptors_ = nullptr;
+  this->prefix_descriptors_ = nullptr;
+  this->suffix_descriptors_[0] = nullptr;
+  this->suffix_descriptors_[1] = nullptr;
+  this->extended_descriptors_ = nullptr;
+  this->data_descriptor_count_ = 0;
+  this->prefix_descriptor_count_ = 0;
+  this->suffix_descriptor_count_ = 0;
 }
 
-bool MatrixPanel_I2S_DMA::allocate_memory() {
-  dma_.prefix_length = kIcn2053FramePadding + kIcn2053PrefixStartLength + pixels_per_row_;
-  dma_.suffix_length = kIcn2053RowOeLength * rows_per_frame_;
-  dma_.row_length = (pixels_per_row_ + kIcn2053SubrowPadding) * kIcn2053DriverBits + kIcn2053RowPadding;
-  dma_.row_count = std::min<std::uint8_t>(kIcn2053DmaRowBufferCount, rows_per_frame_);
-  dma_.total_count = dma_.row_count + kIcn2053PrefixBufferCount + kIcn2053SuffixBufferCount;
-  frame_pixel_count_ = static_cast<std::size_t>(pixels_per_row_) * configuration_.panel_height;
+bool ICN2053Panel::allocate_memory_() {
+  this->dma_.prefix_length = ICN2053_FRAME_PADDING + ICN2053_PREFIX_START_LENGTH + this->pixels_per_row_;
+  this->dma_.suffix_length = ICN2053_ROW_OE_LENGTH * this->rows_per_frame_;
+  this->dma_.row_length = (this->pixels_per_row_ + ICN2053_SUBROW_PADDING) * ICN2053_DRIVER_BITS + ICN2053_ROW_PADDING;
+  this->dma_.row_count = std::min<uint8_t>(ICN2053_DMA_ROW_BUFFER_COUNT, this->rows_per_frame_);
+  this->dma_.total_count = this->dma_.row_count + ICN2053_PREFIX_BUFFER_COUNT + ICN2053_SUFFIX_BUFFER_COUNT;
+  this->frame_pixel_count_ = static_cast<size_t>(this->pixels_per_row_) * this->configuration_.panel_height;
 
-  data_descriptor_count_ = descriptors_for(dma_.row_length, dma_.row_count);
-  prefix_descriptor_count_ = descriptors_for(dma_.prefix_length, kIcn2053PrefixBufferCount);
-  suffix_descriptor_count_ = descriptors_for(dma_.suffix_length, kIcn2053SuffixBufferCount);
-  const std::size_t descriptor_count = data_descriptor_count_ + prefix_descriptor_count_ +
-                                       suffix_descriptor_count_ * kIcn2053SuffixDescriptorSets + ICN2053_EXT_COUNT;
+  this->data_descriptor_count_ = descriptors_for(this->dma_.row_length, this->dma_.row_count);
+  this->prefix_descriptor_count_ = descriptors_for(this->dma_.prefix_length, ICN2053_PREFIX_BUFFER_COUNT);
+  this->suffix_descriptor_count_ = descriptors_for(this->dma_.suffix_length, ICN2053_SUFFIX_BUFFER_COUNT);
+  const size_t descriptor_count = this->data_descriptor_count_ + this->prefix_descriptor_count_ +
+                                  this->suffix_descriptor_count_ * ICN2053_SUFFIX_DESCRIPTOR_SETS + ICN2053_EXT_COUNT;
 
-  const std::size_t dma_buffer_bytes =
-      (dma_.row_length * dma_.row_count + dma_.prefix_length + dma_.suffix_length) * sizeof(std::uint16_t);
-  const std::size_t descriptor_bytes = descriptor_count * sizeof(lldesc_t);
+  const size_t dma_buffer_bytes =
+      (this->dma_.row_length * this->dma_.row_count + this->dma_.prefix_length + this->dma_.suffix_length) *
+      sizeof(uint16_t);
+  const size_t descriptor_bytes = descriptor_count * sizeof(lldesc_t);
 
-  ESP_LOGI(kTag, "Allocating %zu B DMA buffers, %zu B descriptors, %zu B framebuffer", dma_buffer_bytes,
-           descriptor_bytes, frame_pixel_count_ * sizeof(std::uint16_t));
+  ESP_LOGI(TAG, "Allocating %zu B DMA buffers, %zu B descriptors, %zu B framebuffer", dma_buffer_bytes,
+           descriptor_bytes, this->frame_pixel_count_ * sizeof(uint16_t));
 
-  dma_.rows = static_cast<std::uint16_t **>(
-      heap_caps_calloc(dma_.total_count, sizeof(std::uint16_t *), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
-  if (dma_.rows == nullptr) {
-    ESP_LOGE(kTag, "Unable to allocate DMA buffer pointer table");
-    return false;
-  }
-
-  for (std::uint8_t index = 0; index < dma_.total_count; ++index) {
-    std::size_t length = dma_.row_length;
-    if (index == dma_.row_count) {
-      length = dma_.prefix_length;
-    } else if (index > dma_.row_count) {
-      length = dma_.suffix_length;
+  for (uint8_t index = 0; index < this->dma_.total_count; ++index) {
+    size_t length = this->dma_.row_length;
+    if (index == this->dma_.row_count) {
+      length = this->dma_.prefix_length;
+    } else if (index > this->dma_.row_count) {
+      length = this->dma_.suffix_length;
     }
 
-    dma_.rows[index] = static_cast<std::uint16_t *>(
-        heap_caps_calloc(length, sizeof(std::uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
-    if (dma_.rows[index] == nullptr) {
-      ESP_LOGE(kTag, "Unable to allocate DMA buffer %d (%zu bytes)", index, length * sizeof(std::uint16_t));
+    this->dma_.rows[index] =
+        static_cast<uint16_t *>(heap_caps_calloc(length, sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
+    if (this->dma_.rows[index] == nullptr) {
+      ESP_LOGE(TAG, "Unable to allocate DMA buffer %d (%zu bytes)", index, length * sizeof(uint16_t));
       return false;
     }
   }
 
-  frame_buffer_ = static_cast<std::uint16_t *>(
-      heap_caps_calloc(frame_pixel_count_, sizeof(std::uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-  brightness_table_ = static_cast<std::uint16_t *>(
-      heap_caps_calloc(kBrightnessTableSize, sizeof(std::uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
-  descriptor_storage_ = static_cast<lldesc_t *>(
+  this->frame_buffer_ = static_cast<uint16_t *>(
+      heap_caps_calloc(this->frame_pixel_count_, sizeof(uint16_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  this->brightness_table_.fill(0);
+  this->descriptor_storage_ = static_cast<lldesc_t *>(
       heap_caps_calloc(descriptor_count, sizeof(lldesc_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA));
-  driver_registers_ = static_cast<driver_rgb_t *>(
-      heap_caps_calloc(ICN2053_REGISTER_COUNT, sizeof(driver_rgb_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
 
-  if (frame_buffer_ == nullptr || brightness_table_ == nullptr || descriptor_storage_ == nullptr ||
-      driver_registers_ == nullptr) {
-    ESP_LOGE(kTag, "Unable to allocate framebuffer, descriptors, or driver state");
+  if (this->frame_buffer_ == nullptr || this->descriptor_storage_ == nullptr) {
+    ESP_LOGE(TAG, "Unable to allocate framebuffer or descriptors");
     return false;
   }
 
-  data_descriptors_ = descriptor_storage_;
-  prefix_descriptors_ = data_descriptors_ + data_descriptor_count_;
-  suffix_descriptors_[0] = prefix_descriptors_ + prefix_descriptor_count_;
-  suffix_descriptors_[1] = suffix_descriptors_[0] + suffix_descriptor_count_;
-  extended_descriptors_ = suffix_descriptors_[1] + suffix_descriptor_count_;
+  this->data_descriptors_ = this->descriptor_storage_;
+  this->prefix_descriptors_ = this->data_descriptors_ + this->data_descriptor_count_;
+  this->suffix_descriptors_[0] = this->prefix_descriptors_ + this->prefix_descriptor_count_;
+  this->suffix_descriptors_[1] = this->suffix_descriptors_[0] + this->suffix_descriptor_count_;
+  this->extended_descriptors_ = this->suffix_descriptors_[1] + this->suffix_descriptor_count_;
   return true;
 }
 
-bool MatrixPanel_I2S_DMA::configure_dma() {
-  link_buffers(prefix_descriptors_, &dma_.rows[dma_.row_count], kIcn2053PrefixBufferCount, dma_.prefix_length);
-  link_buffers(suffix_descriptors_[0], &dma_.rows[dma_.row_count + 1], kIcn2053SuffixBufferCount, dma_.suffix_length);
-  link_buffers(suffix_descriptors_[1], &dma_.rows[dma_.row_count + 1], kIcn2053SuffixBufferCount, dma_.suffix_length);
-  link_buffers(data_descriptors_, dma_.rows, dma_.row_count, dma_.row_length);
+bool ICN2053Panel::configure_dma_() {
+  link_buffers(this->prefix_descriptors_, &this->dma_.rows[this->dma_.row_count], ICN2053_PREFIX_BUFFER_COUNT,
+               this->dma_.prefix_length);
+  link_buffers(this->suffix_descriptors_[0], &this->dma_.rows[this->dma_.row_count + 1], ICN2053_SUFFIX_BUFFER_COUNT,
+               this->dma_.suffix_length);
+  link_buffers(this->suffix_descriptors_[1], &this->dma_.rows[this->dma_.row_count + 1], ICN2053_SUFFIX_BUFFER_COUNT,
+               this->dma_.suffix_length);
+  link_buffers(this->data_descriptors_, this->dma_.rows.data(), this->dma_.row_count, this->dma_.row_length);
 
-  for (std::uint8_t index = 0; index < ICN2053_EXT_COUNT; ++index) {
-    icn2053_link_dma_descriptor(&extended_descriptors_[index], nullptr, nullptr, 0);
+  for (uint8_t index = 0; index < ICN2053_EXT_COUNT; ++index) {
+    icn2053_link_dma_descriptor(&this->extended_descriptors_[index], nullptr, nullptr, 0);
   }
 
-  std::memcpy(driver_registers_, kIcn2053RegisterDefaults, sizeof(kIcn2053RegisterDefaults));
-  set_icn2053_register_rgb(&driver_registers_[ICN2053_CFG1], static_cast<driver_reg_t>(rows_per_frame_ - 1),
-                           kIcn2053Cfg1LineCountMask, kIcn2053Cfg1LineCountOffset);
-  initialize_dma_buffers();
+  std::copy_n(ICN2053_REGISTER_DEFAULTS, this->driver_registers_.size(), this->driver_registers_.begin());
+  set_icn2053_register_rgb(&this->driver_registers_[ICN2053_CFG1],
+                           static_cast<ICN2053RegisterValue>(this->rows_per_frame_ - 1), ICN2053_CFG1_LINE_COUNT_MASK,
+                           ICN2053_CFG1_LINE_COUNT_OFFSET);
+  this->initialize_dma_buffers_();
 
   icn2053_transport_config_t transport_configuration{};
   const int data_pins[16] = {
-      configuration_.gpio.r1,
-      configuration_.gpio.g1,
-      configuration_.gpio.b1,
-      configuration_.gpio.r2,
-      configuration_.gpio.g2,
-      configuration_.gpio.b2,
-      configuration_.gpio.lat,
-      configuration_.gpio.oe,
-      configuration_.gpio.a,
-      configuration_.gpio.b,
-      configuration_.gpio.c,
-      configuration_.gpio.d,
-      configuration_.gpio.e,
+      this->configuration_.gpio.r1,
+      this->configuration_.gpio.g1,
+      this->configuration_.gpio.b1,
+      this->configuration_.gpio.r2,
+      this->configuration_.gpio.g2,
+      this->configuration_.gpio.b2,
+      this->configuration_.gpio.lat,
+      this->configuration_.gpio.oe,
+      this->configuration_.gpio.a,
+      this->configuration_.gpio.b,
+      this->configuration_.gpio.c,
+      this->configuration_.gpio.d,
+      this->configuration_.gpio.e,
       -1,
       -1,
       -1,
   };
   std::copy_n(data_pins, 16, transport_configuration.gpio_bus);
-  transport_configuration.gpio_clk = configuration_.gpio.clk;
-  transport_configuration.clock_hz = configuration_.clock_hz;
-  transport_configuration.clock_phase_inverted = configuration_.clock_phase_inverted;
+  transport_configuration.gpio_clk = this->configuration_.gpio.clk;
+  transport_configuration.clock_hz = this->configuration_.clock_hz;
+  transport_configuration.clock_phase_inverted = this->configuration_.clock_phase_inverted;
 
   const esp_err_t result = icn2053_transport_install(&transport_configuration);
   if (result != ESP_OK) {
-    last_error_ = result;
-    ESP_LOGE(kTag, "I2S parallel driver setup failed: %s", esp_err_to_name(result));
+    this->last_error_ = result;
+    ESP_LOGE(TAG, "I2S parallel driver setup failed: %s", esp_err_to_name(result));
     return false;
   }
 
-  buffer_ready_ = false;
-  buffer_busy_ = false;
-  clear_frame_ = false;
-  automatic_vsync_ = false;
-  current_register_ = 0;
-  current_suffix_ = 0;
-  rows_to_send_ = 0;
-  dma_interrupt_count_ = 0;
-  current_color_ = 0;
+  this->buffer_ready_ = false;
+  this->buffer_busy_ = false;
+  this->clear_frame_ = false;
+  this->automatic_vsync_ = false;
+  this->current_register_ = 0;
+  this->current_suffix_ = 0;
+  this->rows_to_send_ = 0;
+  this->dma_interrupt_count_ = 0;
+  this->current_color_ = 0;
 
   active_panel = this;
   icn2053_transport_set_callback(transport_callback);
-  initialized_ = true;
+  this->initialized_ = true;
 
-  const esp_err_t start_result = icn2053_transport_start(suffix_descriptors_[0]);
+  const esp_err_t start_result = icn2053_transport_start(this->suffix_descriptors_[0]);
   if (start_result != ESP_OK) {
-    ESP_LOGE(kTag, "I2S DMA start failed: %s", esp_err_to_name(start_result));
-    initialized_ = false;
-    last_error_ = start_result;
+    ESP_LOGE(TAG, "I2S DMA start failed: %s", esp_err_to_name(start_result));
+    this->initialized_ = false;
+    this->last_error_ = start_result;
     return false;
   }
 
-  if (!initialize_driver())
+  if (!this->initialize_driver_())
     return false;
-  set_panel_brightness(kIcn2053DefaultBrightness);
-  return error() == ESP_OK;
+  this->set_panel_brightness_(ICN2053_DEFAULT_BRIGHTNESS);
+  return this->error() == ESP_OK;
 }
 
-bool MatrixPanel_I2S_DMA::initialize_driver() {
-  if (!wait_dma_ready())
+bool ICN2053Panel::initialize_driver_() {
+  if (!this->wait_dma_ready_())
     return false;
-  set_vsync(false, true);
-  for (std::uint8_t index = 0; index < ICN2053_REGISTER_COUNT; ++index) {
-    if (!send_vsync())
+  this->set_vsync_(false, true);
+  for (uint8_t index = 0; index < ICN2053_REGISTER_COUNT; ++index) {
+    if (!this->send_vsync_())
       return false;
   }
-  if (!wait_dma_ready())
+  if (!this->wait_dma_ready_())
     return false;
-  portENTER_CRITICAL(&state_mutex_);
-  clear_frame_ = true;
-  portEXIT_CRITICAL(&state_mutex_);
-  if (!send_frame(true))
+  portENTER_CRITICAL(&this->state_mutex_);
+  this->clear_frame_ = true;
+  portEXIT_CRITICAL(&this->state_mutex_);
+  if (!this->send_frame_(true))
     return false;
-  portENTER_CRITICAL(&state_mutex_);
-  clear_frame_ = true;
-  portEXIT_CRITICAL(&state_mutex_);
-  if (!send_frame(true))
+  portENTER_CRITICAL(&this->state_mutex_);
+  this->clear_frame_ = true;
+  portEXIT_CRITICAL(&this->state_mutex_);
+  if (!this->send_frame_(true))
     return false;
-  set_vsync(true, true);
-  return send_vsync();
+  this->set_vsync_(true, true);
+  return this->send_vsync_();
 }
 
-void IRAM_ATTR MatrixPanel_I2S_DMA::prepare_dma_rows(std::uint8_t row_offset) {
-  if (clear_frame_) {
+void IRAM_ATTR ICN2053Panel::prepare_dma_rows_(uint8_t row_offset) {
+  if (this->clear_frame_) {
     return;
   }
 
-  for (std::uint8_t row_buffer = 0; row_buffer < dma_.row_count; ++row_buffer) {
-    if (row_offset >= rows_per_frame_) {
-      row_offset = static_cast<std::uint8_t>(row_offset - rows_per_frame_);
+  for (uint8_t row_buffer = 0; row_buffer < this->dma_.row_count; ++row_buffer) {
+    if (row_offset >= this->rows_per_frame_) {
+      row_offset = static_cast<uint8_t>(row_offset - this->rows_per_frame_);
     }
 
-    const std::size_t upper_row = static_cast<std::size_t>(row_offset) * pixels_per_row_;
-    const std::size_t lower_row = upper_row + frame_pixel_count_ / kIcn2053RowsInParallel;
+    const size_t upper_row = static_cast<size_t>(row_offset) * this->pixels_per_row_;
+    const size_t lower_row = upper_row + this->frame_pixel_count_ / ICN2053_ROWS_IN_PARALLEL;
     int dma_offset = 0;
     int next_driver_offset = 0;
-    int driver_bit = kIcn2053DriverBits;
-    int x = pixels_per_row_ - 1;
+    int driver_bit = ICN2053_DRIVER_BITS;
+    int x = this->pixels_per_row_ - 1;
 
-    for (std::uint16_t pixel = 0; pixel < pixels_per_row_; ++pixel) {
-      std::uint8_t upper_red;
-      std::uint8_t upper_green;
-      std::uint8_t upper_blue;
-      std::uint8_t lower_red;
-      std::uint8_t lower_green;
-      std::uint8_t lower_blue;
-      rgb888(frame_buffer_[upper_row + x], upper_red, upper_green, upper_blue);
-      rgb888(frame_buffer_[lower_row + x], lower_red, lower_green, lower_blue);
+    for (uint16_t pixel = 0; pixel < this->pixels_per_row_; ++pixel) {
+      uint8_t upper_red;
+      uint8_t upper_green;
+      uint8_t upper_blue;
+      uint8_t lower_red;
+      uint8_t lower_green;
+      uint8_t lower_blue;
+      rgb888(this->frame_buffer_[upper_row + x], upper_red, upper_green, upper_blue);
+      rgb888(this->frame_buffer_[lower_row + x], lower_red, lower_green, lower_blue);
 
-      std::uint16_t upper_channels[3] = {
-          brightness_table_[upper_red],
-          brightness_table_[upper_green],
-          brightness_table_[upper_blue],
+      uint16_t upper_channels[3] = {
+          this->brightness_table_[upper_red],
+          this->brightness_table_[upper_green],
+          this->brightness_table_[upper_blue],
       };
-      std::uint16_t lower_channels[3] = {
-          brightness_table_[lower_red],
-          brightness_table_[lower_green],
-          brightness_table_[lower_blue],
+      uint16_t lower_channels[3] = {
+          this->brightness_table_[lower_red],
+          this->brightness_table_[lower_green],
+          this->brightness_table_[lower_blue],
       };
 
-      for (int bit = 0; bit < kIcn2053DriverBits; ++bit) {
-        std::uint16_t rgb = 0;
+      for (int bit = 0; bit < ICN2053_DRIVER_BITS; ++bit) {
+        uint16_t rgb = 0;
         if ((upper_channels[0] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitR2;
+          rgb |= ICN2053_BIT_R2;
         }
         if ((upper_channels[1] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitG2;
+          rgb |= ICN2053_BIT_G2;
         }
         if ((upper_channels[2] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitB2;
+          rgb |= ICN2053_BIT_B2;
         }
         if ((lower_channels[0] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitR1;
+          rgb |= ICN2053_BIT_R1;
         }
         if ((lower_channels[1] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitG1;
+          rgb |= ICN2053_BIT_G1;
         }
         if ((lower_channels[2] & 0x8000U) != 0) {
-          rgb |= kIcn2053BitB1;
+          rgb |= ICN2053_BIT_B1;
         }
 
-        auto &destination = dma_.rows[row_buffer][dma_offset++ ^ 1];
-        destination = static_cast<std::uint16_t>((destination & ~kIcn2053RgbMask) | rgb);
+        auto &destination = this->dma_.rows[row_buffer][dma_offset++ ^ 1];
+        destination = static_cast<uint16_t>((destination & ~ICN2053_RGB_MASK) | rgb);
         for (int channel = 0; channel < 3; ++channel) {
           upper_channels[channel] <<= 1;
           lower_channels[channel] <<= 1;
@@ -435,175 +420,178 @@ void IRAM_ATTR MatrixPanel_I2S_DMA::prepare_dma_rows(std::uint8_t row_offset) {
       }
 
       if (--driver_bit == 0) {
-        driver_bit = kIcn2053DriverBits;
-        next_driver_offset += kIcn2053DriverBits;
+        driver_bit = ICN2053_DRIVER_BITS;
+        next_driver_offset += ICN2053_DRIVER_BITS;
         dma_offset = next_driver_offset;
       } else {
-        dma_offset += pixels_per_row_ + kIcn2053SubrowPadding - kIcn2053DriverBits;
+        dma_offset += this->pixels_per_row_ + ICN2053_SUBROW_PADDING - ICN2053_DRIVER_BITS;
       }
-      x = x == 0 ? pixels_per_row_ - 1 : x - 1;
+      x = x == 0 ? this->pixels_per_row_ - 1 : x - 1;
     }
 
     row_offset =
-        row_offset == 0 ? static_cast<std::uint8_t>(rows_per_frame_ - 1) : static_cast<std::uint8_t>(row_offset - 1);
+        row_offset == 0 ? static_cast<uint8_t>(this->rows_per_frame_ - 1) : static_cast<uint8_t>(row_offset - 1);
   }
 }
 
-void IRAM_ATTR MatrixPanel_I2S_DMA::send_vsync_callback() {
-  set_register(current_register_, &driver_registers_[current_register_]);
-  current_register_ = static_cast<std::uint8_t>((current_register_ + 1) % ICN2053_REGISTER_COUNT);
+void IRAM_ATTR ICN2053Panel::send_vsync_callback_() {
+  this->set_register_(this->current_register_, &this->driver_registers_[this->current_register_]);
+  this->current_register_ = static_cast<uint8_t>((this->current_register_ + 1) % ICN2053_REGISTER_COUNT);
 
-  extended_descriptors_[ICN2053_EXT_PREFIX].qe.stqe_next = &suffix_descriptors_[current_suffix_][prefix_to_suffix_];
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].qe.stqe_next =
-      suffix_descriptors_[current_suffix_];
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].eof = 1;
-  current_suffix_ ^= 1;
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].qe.stqe_next = prefix_descriptors_;
-  dma_interrupt_count_ = -1;
+  this->extended_descriptors_[ICN2053_EXT_PREFIX].qe.stqe_next =
+      &this->suffix_descriptors_[this->current_suffix_][this->prefix_to_suffix_];
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].qe.stqe_next =
+      this->suffix_descriptors_[this->current_suffix_];
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].eof = 1;
+  this->current_suffix_ ^= 1;
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].qe.stqe_next =
+      this->prefix_descriptors_;
+  this->dma_interrupt_count_ = -1;
 }
 
-void IRAM_ATTR MatrixPanel_I2S_DMA::send_row_callback() {
-  extended_descriptors_[ICN2053_EXT_DATA].qe.stqe_next = &suffix_descriptors_[current_suffix_][data_to_suffix_];
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].qe.stqe_next =
-      suffix_descriptors_[current_suffix_];
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].eof = 1;
-  current_suffix_ ^= 1;
-  suffix_descriptors_[current_suffix_][suffix_descriptor_count_ - 1].qe.stqe_next = data_descriptors_;
-  dma_interrupt_count_ = -1;
+void IRAM_ATTR ICN2053Panel::send_row_callback_() {
+  this->extended_descriptors_[ICN2053_EXT_DATA].qe.stqe_next =
+      &this->suffix_descriptors_[this->current_suffix_][this->data_to_suffix_];
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].qe.stqe_next =
+      this->suffix_descriptors_[this->current_suffix_];
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].eof = 1;
+  this->current_suffix_ ^= 1;
+  this->suffix_descriptors_[this->current_suffix_][this->suffix_descriptor_count_ - 1].qe.stqe_next =
+      this->data_descriptors_;
+  this->dma_interrupt_count_ = -1;
 }
 
-void IRAM_ATTR MatrixPanel_I2S_DMA::sendCallback() {
-  portENTER_CRITICAL_ISR(&state_mutex_);
-  if (!initialized_ || buffer_busy_ || buffer_ready_ || dma_interrupt_count_ > 0) {
-    portEXIT_CRITICAL_ISR(&state_mutex_);
+void IRAM_ATTR ICN2053Panel::send_callback() {
+  portENTER_CRITICAL_ISR(&this->state_mutex_);
+  if (!this->initialized_ || this->buffer_busy_ || this->buffer_ready_ || this->dma_interrupt_count_ > 0) {
+    portEXIT_CRITICAL_ISR(&this->state_mutex_);
     return;
   }
 
-  buffer_busy_ = true;
-  dma_interrupt_count_ = dma_interrupt_count_ + 1;
-  if (dma_interrupt_count_ > 0) {
-    suffix_descriptors_[current_suffix_ ^ 1][suffix_descriptor_count_ - 1].eof = 0;
-    if (rows_to_send_ > 0) {
-      prepare_dma_rows(static_cast<std::uint8_t>(rows_to_send_ - 1));
-      send_row_callback();
-      rows_to_send_ = static_cast<std::int16_t>(rows_to_send_ - dma_.row_count);
-      if (rows_to_send_ <= 0) {
-        clear_frame_ = false;
-        rows_to_send_ = automatic_vsync_ ? 0 : -1;
-        dma_interrupt_count_ = -4;
+  this->buffer_busy_ = true;
+  this->dma_interrupt_count_ = this->dma_interrupt_count_ + 1;
+  if (this->dma_interrupt_count_ > 0) {
+    this->suffix_descriptors_[this->current_suffix_ ^ 1][this->suffix_descriptor_count_ - 1].eof = 0;
+    if (this->rows_to_send_ > 0) {
+      this->prepare_dma_rows_(static_cast<uint8_t>(this->rows_to_send_ - 1));
+      this->send_row_callback_();
+      this->rows_to_send_ = static_cast<int16_t>(this->rows_to_send_ - this->dma_.row_count);
+      if (this->rows_to_send_ <= 0) {
+        this->clear_frame_ = false;
+        this->rows_to_send_ = this->automatic_vsync_ ? 0 : -1;
+        this->dma_interrupt_count_ = -4;
       }
-    } else if (rows_to_send_ == 0) {
-      send_vsync_callback();
-      rows_to_send_ = -1;
+    } else if (this->rows_to_send_ == 0) {
+      this->send_vsync_callback_();
+      this->rows_to_send_ = -1;
     } else {
-      buffer_ready_ = true;
+      this->buffer_ready_ = true;
     }
   }
-  buffer_busy_ = false;
-  portEXIT_CRITICAL_ISR(&state_mutex_);
+  this->buffer_busy_ = false;
+  portEXIT_CRITICAL_ISR(&this->state_mutex_);
 }
 
-bool MatrixPanel_I2S_DMA::wait_dma_ready() {
-  const std::int64_t deadline_us = esp_timer_get_time() + 1'000'000;
+bool ICN2053Panel::wait_dma_ready_() {
+  const int64_t deadline_us = esp_timer_get_time() + 1'000'000;
   while (true) {
-    portENTER_CRITICAL(&state_mutex_);
-    const bool initialized = initialized_;
-    const bool ready = buffer_ready_;
-    portEXIT_CRITICAL(&state_mutex_);
+    portENTER_CRITICAL(&this->state_mutex_);
+    const bool initialized = this->initialized_;
+    const bool ready = this->buffer_ready_;
+    portEXIT_CRITICAL(&this->state_mutex_);
     if (!initialized)
       return false;
     if (ready)
       return true;
     if (esp_timer_get_time() >= deadline_us) {
-      portENTER_CRITICAL(&state_mutex_);
-      last_error_ = ESP_ERR_TIMEOUT;
-      initialized_ = false;
-      portEXIT_CRITICAL(&state_mutex_);
+      portENTER_CRITICAL(&this->state_mutex_);
+      this->last_error_ = ESP_ERR_TIMEOUT;
+      this->initialized_ = false;
+      portEXIT_CRITICAL(&this->state_mutex_);
       icn2053_transport_stop();
-      ESP_LOGE(kTag, "ICN2053 DMA did not complete within 1000 ms");
+      ESP_LOGE(TAG, "ICN2053 DMA did not complete within 1000 ms");
       return false;
     }
     vTaskDelay(1);
   }
 }
 
-bool MatrixPanel_I2S_DMA::send_vsync() {
-  if (!wait_dma_ready())
+bool ICN2053Panel::send_vsync_() {
+  if (!this->wait_dma_ready_())
     return false;
-  portENTER_CRITICAL(&state_mutex_);
-  buffer_ready_ = false;
-  buffer_busy_ = true;
-  send_vsync_callback();
-  buffer_busy_ = false;
-  portEXIT_CRITICAL(&state_mutex_);
+  portENTER_CRITICAL(&this->state_mutex_);
+  this->buffer_ready_ = false;
+  this->buffer_busy_ = true;
+  this->send_vsync_callback_();
+  this->buffer_busy_ = false;
+  portEXIT_CRITICAL(&this->state_mutex_);
   return true;
 }
 
-bool MatrixPanel_I2S_DMA::send_frame(const bool wait, const bool automatic_vsync) {
-  if (!wait_dma_ready())
+bool ICN2053Panel::send_frame_(const bool wait, const bool automatic_vsync) {
+  if (!this->wait_dma_ready_())
     return false;
-  portENTER_CRITICAL(&state_mutex_);
-  buffer_ready_ = false;
-  dma_interrupt_count_ = 0;
-  automatic_vsync_ = automatic_vsync;
-  suffix_descriptors_[current_suffix_ ^ 1][suffix_descriptor_count_ - 1].eof = 1;
-  rows_to_send_ = rows_per_frame_;
-  portEXIT_CRITICAL(&state_mutex_);
-  return !wait || wait_dma_ready();
+  portENTER_CRITICAL(&this->state_mutex_);
+  this->buffer_ready_ = false;
+  this->dma_interrupt_count_ = 0;
+  this->automatic_vsync_ = automatic_vsync;
+  this->suffix_descriptors_[this->current_suffix_ ^ 1][this->suffix_descriptor_count_ - 1].eof = 1;
+  this->rows_to_send_ = this->rows_per_frame_;
+  portEXIT_CRITICAL(&this->state_mutex_);
+  return !wait || this->wait_dma_ready_();
 }
 
-bool MatrixPanel_I2S_DMA::panel_off() {
-  if (!wait_dma_ready())
+bool ICN2053Panel::panel_off_() {
+  if (!this->wait_dma_ready_())
     return false;
-  set_vsync(false, false);
-  if (!send_vsync() || !wait_dma_ready())
+  this->set_vsync_(false, false);
+  if (!this->send_vsync_() || !this->wait_dma_ready_())
     return false;
-  set_vsync(false, true);
+  this->set_vsync_(false, true);
   return true;
 }
 
-void MatrixPanel_I2S_DMA::present() {
-  if (initialized_) {
-    send_frame(true);
+void ICN2053Panel::present() {
+  if (this->initialized_) {
+    this->send_frame_(true);
   }
 }
 
-void MatrixPanel_I2S_DMA::set_panel_brightness(const std::uint8_t brightness) {
-  if (!initialized_ || brightness_table_ == nullptr) {
+void ICN2053Panel::set_panel_brightness_(const uint8_t brightness) {
+  if (!this->initialized_) {
     return;
   }
-  if (!wait_dma_ready())
+  if (!this->wait_dma_ready_())
     return;
 
-  const auto maximum = static_cast<std::uint16_t>(kLuminance[brightness] | (kLuminance[brightness] << 8));
-  for (std::size_t value = 0; value < kBrightnessTableSize; ++value) {
-    brightness_table_[value] = static_cast<std::uint16_t>(maximum * value / (kBrightnessTableSize - 1));
+  const auto maximum = static_cast<uint16_t>(LUMINANCE[brightness] | (LUMINANCE[brightness] << 8));
+  for (size_t value = 0; value < BRIGHTNESS_TABLE_SIZE; ++value) {
+    this->brightness_table_[value] = static_cast<uint16_t>(maximum * value / (BRIGHTNESS_TABLE_SIZE - 1));
   }
 }
 
-void MatrixPanel_I2S_DMA::setBrightness8(const std::uint8_t brightness) { set_panel_brightness(brightness); }
+void ICN2053Panel::set_brightness(const uint8_t brightness) { this->set_panel_brightness_(brightness); }
 
-void MatrixPanel_I2S_DMA::fill_rectangle(std::int16_t x, std::int16_t y, const std::int16_t width,
-                                         const std::int16_t height) {
-  if (!initialized_ || width <= 0 || height <= 0) {
+void ICN2053Panel::fill_rectangle_(int16_t x, int16_t y, const int16_t width, const int16_t height) {
+  if (!this->initialized_ || width <= 0 || height <= 0) {
     return;
   }
 
-  auto right = static_cast<std::int16_t>(x + width);
-  auto bottom = static_cast<std::int16_t>(y + height);
-  x = std::max<std::int16_t>(x, 0);
-  y = std::max<std::int16_t>(y, 0);
-  right = std::min<std::int16_t>(right, static_cast<std::int16_t>(pixels_per_row_));
-  bottom = std::min<std::int16_t>(bottom, static_cast<std::int16_t>(configuration_.panel_height));
+  auto right = static_cast<int16_t>(x + width);
+  auto bottom = static_cast<int16_t>(y + height);
+  x = std::max<int16_t>(x, 0);
+  y = std::max<int16_t>(y, 0);
+  right = std::min<int16_t>(right, static_cast<int16_t>(this->pixels_per_row_));
+  bottom = std::min<int16_t>(bottom, static_cast<int16_t>(this->configuration_.panel_height));
   if (x >= right || y >= bottom) {
     return;
   }
 
-  if (!wait_dma_ready())
+  if (!this->wait_dma_ready_())
     return;
-  for (std::int16_t row = y; row < bottom; ++row) {
-    auto *destination = frame_buffer_ + static_cast<std::size_t>(row) * pixels_per_row_ + x;
-    std::fill_n(destination, (right - x), current_color_);
+  for (int16_t row = y; row < bottom; ++row) {
+    auto *destination = this->frame_buffer_ + static_cast<size_t>(row) * this->pixels_per_row_ + x;
+    std::fill_n(destination, (right - x), this->current_color_);
   }
 }
 

@@ -1,25 +1,37 @@
+from esphome import automation, final_validate as fv
 import esphome.codegen as cg
-import esphome.config_validation as cv
-from esphome import automation
-from esphome import final_validate as fv
 from esphome.components import esp32, mifare_classic
-from esphome.const import CONF_ID, CONF_ON_TAG, CONF_TRIGGER_ID, Framework
+import esphome.config_validation as cv
+from esphome.const import CONF_ID, CONF_ON_TAG, Framework
+from esphome.types import ConfigType
 
+AUTO_LOAD = ["mifare_classic"]
+CODEOWNERS = ["@catalin2402"]
+DEPENDENCIES = ["esp32"]
 DOMAIN = "bambu_lab_tags"
+MULTI_CONF = True
+
 CONF_BAMBU_LAB_TAGS_ID = "bambu_lab_tags_id"
 CONF_READER_ID = "reader_id"
 
-CODEOWNERS = ["@catalin2402"]
-DEPENDENCIES = ["esp32"]
-AUTO_LOAD = ["mifare_classic"]
-MULTI_CONF = True
 bambu_lab_tags_ns = cg.esphome_ns.namespace(DOMAIN)
-BambuLabTags = bambu_lab_tags_ns.class_("BambuLabTags", cg.Component)
+BambuLabTags = bambu_lab_tags_ns.class_(
+    "BambuLabTags", cg.Component, mifare_classic.MifareClassicListener
+)
 Spool = bambu_lab_tags_ns.struct("Spool")
 SpoolRef = Spool.operator("ref").operator("const")
-SpoolTrigger = bambu_lab_tags_ns.class_(
-    "SpoolTrigger", automation.Trigger.template(SpoolRef)
+TAG_PUBLISHER = cg.HubFunction(
+    "tag", cg.void, [(SpoolRef, "spool")], define="USE_BAMBU_LAB_TAGS_TAG_PUBLISHER"
 )
+SPOOL = TAG_PUBLISHER.param("spool")
+DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_TAG, "add_on_tag_callback", [(SpoolRef, "spool")]
+    ),
+)
+
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
@@ -27,10 +39,8 @@ CONFIG_SCHEMA = cv.All(
             cv.GenerateID(CONF_READER_ID): cv.use_id(
                 mifare_classic.MifareClassicReader
             ),
-            cv.Optional(CONF_ON_TAG): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(SpoolTrigger),
-                }
+            cv.Optional(CONF_ON_TAG): automation.validate_synchronous_automation(
+                "bambu_lab_tags.on_tag", "the referenced spool data", extra_schema={}
             ),
         }
     ).extend(cv.COMPONENT_SCHEMA),
@@ -39,19 +49,17 @@ CONFIG_SCHEMA = cv.All(
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     reader = await cg.get_variable(config[CONF_READER_ID])
     cg.add(reader.set_mifare_classic_listener(var))
     esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_HKDF_C", True)
     esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_MD_C", True)
-    for conf in config.get(CONF_ON_TAG, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [(SpoolRef, "spool")], conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 
 
-def _validate_readers(config):
+def _validate_readers(config: ConfigType) -> ConfigType:
     entries = fv.full_config.get().get(DOMAIN, [])
     readers = [str(entry[CONF_READER_ID]) for entry in entries]
     if len(readers) != len(set(readers)):

@@ -39,12 +39,12 @@ class PanelLayoutRemap {
   // @param rows Number of panels vertically (layout_rows)
   // @param cols Number of panels horizontally (layout_cols)
   // @return Remapped coordinates (physical chain space)
-  static constexpr Coords remap(Coords c, Hub75PanelLayout layout, uint16_t panel_w,
-                                                       uint16_t panel_h, uint16_t rows, uint16_t cols) {
+  static constexpr Coords remap(Coords c, Hub75PanelLayout layout, uint16_t panel_w, uint16_t panel_h, uint16_t rows,
+                                uint16_t cols) {
     // HORIZONTAL: No transformation needed
     // Single row of panels, left-to-right
     // Virtual coordinates map directly to physical chain
-    if (layout == Hub75PanelLayout::HORIZONTAL) {
+    if (layout == Hub75PanelLayout::HUB75_PANEL_LAYOUT_HORIZONTAL) {
       return c;
     }
 
@@ -56,7 +56,7 @@ class PanelLayoutRemap {
     int dma_res_x = panel_w * rows * cols - 1;  // Total DMA width - 1 (for mirroring calculations)
 
     switch (layout) {
-      case Hub75PanelLayout::TOP_LEFT_DOWN: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_TOP_LEFT_DOWN: {
         // Serpentine: Start top-left, rows chain left→right, then right→left, alternating
         // Even rows (0, 2, ...): reversed X, inverted Y
         // Odd rows (1, 3, ...): normal X, normal Y
@@ -70,7 +70,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::TOP_RIGHT_DOWN: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_TOP_RIGHT_DOWN: {
         // Serpentine: Start top-right, rows chain right→left, then left→right, alternating
         // Odd rows (1, 3, ...): reversed X, inverted Y
         // Even rows (0, 2, ...): normal X, normal Y
@@ -84,7 +84,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::BOTTOM_LEFT_UP: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_BOTTOM_LEFT_UP: {
         // Serpentine: Start bottom-left, rows chain left→right, then right→left, alternating (bottom to top)
         // Row numbering inverted: physical bottom row = row 0 in chain
         int inverted_row = rows - 1 - row;
@@ -98,7 +98,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::BOTTOM_RIGHT_UP: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_BOTTOM_RIGHT_UP: {
         // Serpentine: Start bottom-right, rows chain right→left, then left→right (bottom to top)
         int inverted_row = rows - 1 - row;
         if ((inverted_row & 1) == 0) {  // Even inverted rows
@@ -111,7 +111,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::TOP_LEFT_DOWN_ZIGZAG: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_TOP_LEFT_DOWN_ZIGZAG: {
         // Zigzag: Start top-left, all panels upright (no Y-inversion)
         // All rows use the same formula (no alternating)
         c.x = ((rows - (row + 1)) * virtual_res_x) + c.x;
@@ -119,7 +119,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::TOP_RIGHT_DOWN_ZIGZAG: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_TOP_RIGHT_DOWN_ZIGZAG: {
         // Zigzag: Start top-right, all panels upright (no Y-inversion)
         // All rows use the same formula (no alternating)
         c.x = ((rows - (row + 1)) * virtual_res_x) + c.x;
@@ -127,7 +127,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::BOTTOM_LEFT_UP_ZIGZAG: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_BOTTOM_LEFT_UP_ZIGZAG: {
         // Zigzag: Start bottom-left, all panels upright (no Y-inversion)
         // All rows use the same formula (no alternating)
         int inverted_row = rows - 1 - row;
@@ -136,7 +136,7 @@ class PanelLayoutRemap {
         break;
       }
 
-      case Hub75PanelLayout::BOTTOM_RIGHT_UP_ZIGZAG: {
+      case Hub75PanelLayout::HUB75_PANEL_LAYOUT_BOTTOM_RIGHT_UP_ZIGZAG: {
         // Zigzag: Start bottom-right, all panels upright (no Y-inversion)
         // All rows use the same formula (no alternating)
         int inverted_row = rows - 1 - row;
@@ -156,6 +156,5 @@ class PanelLayoutRemap {
     return c;
   }
 };
-
 
 }  // namespace esphome::hub75_icn2053

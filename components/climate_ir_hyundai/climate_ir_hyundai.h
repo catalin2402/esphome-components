@@ -4,7 +4,7 @@
 
 namespace esphome::climate_ir_hyundai {
 
-class HyundaiIrClimate : public climate_ir::ClimateIR {
+class HyundaiIrClimate final : public climate_ir::ClimateIR {
  public:
   HyundaiIrClimate();
   void dump_config() override;

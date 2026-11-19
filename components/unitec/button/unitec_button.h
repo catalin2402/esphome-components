@@ -6,7 +6,7 @@
 
 namespace esphome::unitec {
 
-class UnitecButton : public button::Button, public Component, public remote_base::RemoteTransmittable {
+class UnitecButton final : public button::Button, public Component, public remote_base::RemoteTransmittable {
  public:
   void dump_config() override;
   void set_address(uint16_t address) { this->address_ = address; }

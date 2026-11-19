@@ -9,10 +9,14 @@ from esphome.types import ConfigType
 
 from .. import CONF_TINYUSB_AUDIO_ID, TinyUSBAudio, tinyusb_audio_ns
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["tinyusb_audio"]
 
 TinyUSBAudioSource = tinyusb_audio_ns.class_(
-    "TinyUSBAudioSource", cg.Component, media_source.MediaSource
+    "TinyUSBAudioSource",
+    cg.Component,
+    media_source.MediaSource,
+    cg.Parented.template(TinyUSBAudio),
 )
 
 CONFIG_SCHEMA = (
@@ -26,6 +30,6 @@ async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await media_source.register_media_source(var, config)
-    cg.add(var.set_parent(await cg.get_variable(config[CONF_TINYUSB_AUDIO_ID])))
+    await cg.register_parented(var, config[CONF_TINYUSB_AUDIO_ID])
     if keyboard := CORE.config.get("tinyusb_keyboard"):
-        cg.add(var.set_keyboard(await cg.get_variable(keyboard[CONF_ID])))
+        await cg.add_variable(var.set_keyboard, keyboard[CONF_ID])

@@ -37,7 +37,7 @@ CONF_KEEP_ALIVE = "keep_alive"
 CONF_TINYUSB_ID = "tinyusb_id"
 CONF_TINYUSB_AUDIO_ID = "tinyusb_audio_id"
 
-# The beta exposes a descriptor setter but uses a fixed class-provider allowlist.
+# The official hub exposes a descriptor setter but keeps a fixed class-provider allowlist.
 if DOMAIN not in tinyusb._USB_CLASS_COMPONENTS:
     tinyusb._USB_CLASS_COMPONENTS += (DOMAIN,)
 
@@ -53,7 +53,7 @@ PCM_SCHEMA = cv.Schema(
 
 
 def _validate_version(config: ConfigType) -> ConfigType:
-    cv.validate_esphome_version("2026.11.0b4")
+    cv.validate_esphome_version("2026.11.0")
     if CORE.using_arduino:
         raise cv.Invalid("tinyusb_audio requires ESP-IDF")
     if get_esp32_variant() == VARIANT_ESP32S31 and idf_version() < cv.Version(6, 1, 0):
@@ -145,12 +145,11 @@ def _infer_format(
 
 def _final_validate(config: ConfigType) -> None:
     full_config = fv.full_config.get()
-    sources = [
-        source
-        for source in full_config.get("media_source", [])
-        if source.get("platform") == DOMAIN
-        and source[CONF_TINYUSB_AUDIO_ID] == config[CONF_ID]
-    ]
+    sources = fv.platform_entries(
+        domain="media_source",
+        platform=DOMAIN,
+        match={CONF_TINYUSB_AUDIO_ID: config[CONF_ID]},
+    )
     if len(sources) != 1:
         raise cv.Invalid("Configure exactly one tinyusb_audio media source per hub")
 
@@ -238,8 +237,7 @@ async def to_code(config: ConfigType) -> None:
         cg.add_build_flag(
             f"-DTINYUSB_AUDIO_CAPTURE_BITS={capture[CONF_BITS_PER_SAMPLE]}"
         )
-        mic = await cg.get_variable(capture[CONF_MICROPHONE])
-        cg.add(var.set_microphone(mic))
+        await cg.add_variable(var.set_microphone, capture[CONF_MICROPHONE])
 
     # TinyUSB and the application must see the same class and endpoint sizes.
     header = (

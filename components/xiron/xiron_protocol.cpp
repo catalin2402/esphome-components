@@ -1,10 +1,11 @@
 #include "xiron_protocol.h"
 
+#include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 
 namespace esphome::xiron {
 
-static const char *const TAG = "remote.xiron";
+ESPHOME_LOG_TAG(TAG, "remote.xiron");
 static constexpr uint8_t NBITS = 36;
 // Midpoint and tolerance preserve the original 250-800 us mark window.
 static constexpr uint32_t BIT_MARK_US = 525;
@@ -60,9 +61,7 @@ optional<XironData> XironProtocol::decode_frame_(remote_base::RemoteReceiveData 
   if (result.status_flag || result.channel > 3 || result.humidity == 0 || result.humidity > 100)
     return {};
 
-  int16_t temperature = payload & 0x0FFF;
-  if ((temperature & 0x0800) != 0)
-    temperature -= 0x1000;
+  const int32_t temperature = sign_extend<12>(payload);
   if (temperature < -600 || temperature > 600)
     return {};
   result.temperature_c = temperature * 0.1f;

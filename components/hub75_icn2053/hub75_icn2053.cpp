@@ -5,9 +5,13 @@
 #include "panel_layout.h"
 
 namespace esphome::hub75_icn2053 {
-static const char *const TAG = "hub75_icn2053";
+ESPHOME_LOG_TAG(TAG, "hub75_icn2053");
 
 void HUB75Display::setup() {
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+  if (this->state_publisher_ != nullptr)
+    this->state_publisher_(this->brightness_);
+#endif
   for (int i = 0; i < 256; i++) {
     const float value = i / 255.0f;
     float corrected = value;
@@ -19,21 +23,31 @@ void HUB75Display::setup() {
     }
     this->gamma_[i] = static_cast<uint8_t>(std::lround(corrected * 255.0f));
   }
-  this->panel_ = new MatrixPanel_I2S_DMA(this->config_);
-  if (!this->panel_->begin()) {
-    ESP_LOGE(TAG, "ICN2053 initialization failed: %s", esp_err_to_name(this->panel_->error()));
-    this->mark_failed();
+  RAMAllocator<ICN2053Panel> allocator(RAMAllocator<ICN2053Panel>::ALLOC_INTERNAL);
+  this->panel_ = allocator.make_unique(this->config_);
+  if (this->panel_ == nullptr) {
+    this->mark_failed(LOG_STR("Could not allocate the ICN2053 backend"));
     this->error_callback_.call();
     return;
   }
-  this->panel_->setBrightness8(this->brightness_);
-  this->panel_->fillScreenRGB888(0, 0, 0);
+  if (!this->panel_->begin()) {
+    ESP_LOGE(TAG, "ICN2053 initialization failed: %s", esp_err_to_name(this->panel_->error()));
+    this->mark_failed(LOG_STR("ICN2053 initialization failed"));
+    this->error_callback_.call();
+    return;
+  }
+  this->panel_->set_brightness(this->brightness_);
+  this->panel_->fill(0, 0, 0);
   this->dirty_ = true;
   this->present_();
   if (this->is_failed())
     return;
   this->initialized_ = true;
   this->ready_callback_.call();
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+  if (this->state_publisher_ != nullptr)
+    this->state_publisher_(this->brightness_);
+#endif
 }
 
 void HUB75Display::dump_config() {
@@ -42,6 +56,10 @@ void HUB75Display::dump_config() {
                 this->get_width_internal(), this->get_height_internal());
   ESP_LOGCONFIG(TAG, "  Clock: %u Hz; brightness: %u; layout: %u; RGB565 framebuffer",
                 static_cast<unsigned>(this->config_.clock_hz), this->brightness_, static_cast<unsigned>(this->layout_));
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
   LOG_UPDATE_INTERVAL(this);
 }
 
@@ -54,7 +72,7 @@ void HUB75Display::fill(Color color) {
     display::Display::fill(color);
     return;
   }
-  this->panel_->fillScreenRGB888(this->gamma_[color.r], this->gamma_[color.g], this->gamma_[color.b]);
+  this->panel_->fill(this->gamma_[color.r], this->gamma_[color.g], this->gamma_[color.b]);
   this->dirty_ = true;
 }
 
@@ -65,7 +83,8 @@ void HUB75Display::draw_absolute_pixel_internal(int x, int y, Color color) {
   const auto coords =
       PanelLayoutRemap::remap({x, y}, this->layout_, this->config_.panel_width, this->config_.panel_height,
                               this->config_.chain_length_y, this->config_.chain_length_x);
-  this->panel_->fillRect(coords.x, coords.y, 1, 1, this->gamma_[color.r], this->gamma_[color.g], this->gamma_[color.b]);
+  this->panel_->fill_rect(coords.x, coords.y, 1, 1, this->gamma_[color.r], this->gamma_[color.g],
+                          this->gamma_[color.b]);
   this->dirty_ = true;
 }
 
@@ -76,7 +95,7 @@ void HUB75Display::present_() {
   this->dirty_ = false;
   if (this->panel_->error() != ESP_OK) {
     ESP_LOGE(TAG, "ICN2053 transfer failed: %s", esp_err_to_name(this->panel_->error()));
-    this->mark_failed();
+    this->mark_failed(LOG_STR("ICN2053 transfer failed"));
     this->error_callback_.call();
   }
 }
@@ -97,12 +116,27 @@ void HUB75Display::set_brightness(int brightness) {
     return;
   this->brightness_ = value;
   if (this->is_display_ready()) {
-    this->panel_->setBrightness8(value);
+    this->panel_->set_brightness(value);
     this->dirty_ = true;
   }
-  if (this->initialized_)
+  if (this->initialized_) {
     this->brightness_callback_.call(value);
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+    if (this->state_publisher_ != nullptr)
+      this->state_publisher_(this->brightness_);
+#endif
+  }
 }
+
+#ifdef USE_NUMBER
+void HUB75Display::control_brightness(number::Number *entity, float value) {
+  if (!std::isfinite(value))
+    return;
+  this->set_brightness(static_cast<int>(std::lround(clamp(value, 0.0f, 255.0f))));
+  if (!entity->has_state() || entity->state != this->brightness_)
+    entity->publish_state(this->brightness_);
+}
+#endif
 
 void HUB75Display::on_shutdown() {
   this->initialized_ = false;

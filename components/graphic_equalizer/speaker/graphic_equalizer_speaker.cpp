@@ -7,7 +7,7 @@
 #include <cstring>
 
 namespace esphome::graphic_equalizer {
-static const char *const TAG = "graphic_equalizer";
+ESPHOME_LOG_TAG(TAG, "graphic_equalizer");
 static constexpr std::array<float, BAND_COUNT> FREQUENCIES{63.0f, 250.0f, 1000.0f, 4000.0f, 16000.0f};
 static constexpr const char *PRESET_NAMES[]{"Flat", "Bass Boost", "Treble Boost", "Vocal",
                                             "Rock", "User 1",     "User 2",       "User 3"};
@@ -84,6 +84,7 @@ void GraphicEqualizerSpeaker::commit_(Settings settings, bool force_save) {
     this->preset_callback_.call(settings.preset);
   if (enabled_changed)
     this->enabled_callback_.call(settings.enabled);
+  this->publish_state_();
 }
 
 void GraphicEqualizerSpeaker::select_preset(uint8_t preset) {
@@ -133,10 +134,18 @@ void GraphicEqualizerSpeaker::set_auto_headroom(bool enabled) {
 }
 uint8_t GraphicEqualizerSpeaker::get_preset() const { return this->snapshot_().preset; }
 
+void GraphicEqualizerSpeaker::publish_state_() {
+#ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
+  if (!this->ready_.load() || this->state_publisher_ == nullptr)
+    return;
+  const auto settings = this->snapshot_();
+  this->state_publisher_(settings.curve, settings.preset, settings.enabled);
+#endif
+}
+
 void GraphicEqualizerSpeaker::setup() {
   if (this->output_ == nullptr) {
-    ESP_LOGE(TAG, "An output speaker is required");
-    this->mark_failed();
+    this->mark_failed(LOG_STR("An output speaker is required"));
     return;
   }
   this->preference_ = global_preferences->make_preference<StoredPresets>(this->preference_key_);
@@ -155,6 +164,11 @@ void GraphicEqualizerSpeaker::setup() {
   this->output_->add_audio_output_callback(
       [this](uint32_t frames, int64_t time) { this->audio_output_callback_.call(frames, time); });
   this->ready_.store(true);
+#ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
+  if (this->restore_publisher_ != nullptr)
+    this->restore_publisher_();
+#endif
+  this->publish_state_();
 }
 void GraphicEqualizerSpeaker::loop() {
   this->state_ = this->output_->is_running()   ? speaker::STATE_RUNNING
@@ -165,7 +179,7 @@ void GraphicEqualizerSpeaker::loop() {
     this->reported_format_error_ = error;
     if (error) {
       ESP_LOGW(TAG, "Expected 16-bit mono/stereo PCM at 44100 or 48000 Hz");
-      this->status_set_warning("Unsupported PCM format");
+      this->status_set_warning(LOG_STR("Unsupported PCM format"));
     } else {
       this->status_clear_warning();
     }
@@ -213,6 +227,10 @@ void GraphicEqualizerSpeaker::dump_config() {
   ESP_LOGCONFIG(TAG, "  Gains: %.1f / %.1f / %.1f / %.1f / %.1f dB", settings.curve.bands[0], settings.curve.bands[1],
                 settings.curve.bands[2], settings.curve.bands[3], settings.curve.bands[4]);
   ESP_LOGCONFIG(TAG, "  Preamp: %.1f dB", settings.curve.preamp);
+#ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
 }
 
 void GraphicEqualizerSpeaker::make_bank_(FilterBank &bank, const Settings &settings, uint32_t sample_rate) {

@@ -1,7 +1,8 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import remote_base
+import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_CHANNEL, CONF_STATE
+from esphome.types import ConfigType
 
 DOMAIN = "unitec"
 CODEOWNERS = ["@catalin2402"]
@@ -13,16 +14,11 @@ UnitecData = unitec_ns.struct("UnitecData")
 UnitecBinarySensor = unitec_ns.class_(
     "UnitecBinarySensor", remote_base.RemoteReceiverBinarySensorBase
 )
-UnitecDumper = unitec_ns.class_(
-    "UnitecDumper", remote_base.RemoteReceiverDumperBase
-)
-UnitecAction = unitec_ns.class_(
-    "UnitecAction", remote_base.RemoteTransmitterActionBase
-)
+UnitecDumper = unitec_ns.class_("UnitecDumper", remote_base.RemoteReceiverDumperBase)
 
 
 @remote_base.register_dumper(DOMAIN, UnitecDumper)
-def unitec_dumper(var, config):
+def unitec_dumper(var: cg.MockObj, config: ConfigType) -> None:
     pass
 
 
@@ -36,7 +32,7 @@ PROTOCOL_SCHEMA = cv.Schema(
 
 
 @remote_base.register_binary_sensor(DOMAIN, UnitecBinarySensor, PROTOCOL_SCHEMA)
-def unitec_binary_sensor(var, config):
+def unitec_binary_sensor(var: cg.MockObj, config: ConfigType) -> None:
     cg.add(
         var.set_data(
             cg.StructInitializer(
@@ -49,12 +45,11 @@ def unitec_binary_sensor(var, config):
     )
 
 
-@remote_base.register_action(DOMAIN, UnitecAction, PROTOCOL_SCHEMA)
-async def unitec_action(var, config, args):
-    for key, type_ in (
-        (CONF_ADDRESS, cg.uint16),
-        (CONF_CHANNEL, cg.uint8),
-        (CONF_STATE, cg.bool_),
-    ):
-        value = await cg.templatable(config[key], args, type_)
-        cg.add(getattr(var, f"set_{key}")(value))
+remote_base.register_protocol_action(
+    DOMAIN,
+    "Unitec",
+    PROTOCOL_SCHEMA,
+    (CONF_ADDRESS, "address", cg.uint16),
+    (CONF_CHANNEL, "channel", cg.uint8),
+    (CONF_STATE, "state", cg.bool_),
+)

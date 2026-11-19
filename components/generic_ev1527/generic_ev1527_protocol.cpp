@@ -6,7 +6,7 @@
 
 namespace esphome::generic_ev1527 {
 
-static const char *const TAG = "remote.generic_ev1527";
+ESPHOME_LOG_TAG(TAG, "remote.generic_ev1527");
 static constexpr uint8_t NBITS = 24;
 static constexpr uint8_t DATA_BITS = 4;
 static constexpr uint8_t DATA_MASK = 0x0F;

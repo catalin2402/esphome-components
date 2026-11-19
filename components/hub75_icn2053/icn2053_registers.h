@@ -4,39 +4,39 @@
 
 namespace esphome::hub75_icn2053 {
 
-using driver_reg_t = std::int16_t;
+using ICN2053RegisterValue = int16_t;
 
-struct driver_rgb_t {
-  driver_reg_t r;
-  driver_reg_t g;
-  driver_reg_t b;
+struct ICN2053RegisterRGB {
+  ICN2053RegisterValue r;
+  ICN2053RegisterValue g;
+  ICN2053RegisterValue b;
 };
 
-inline constexpr int kIcn2053DriverBits = 16;
-inline constexpr int kIcn2053CommandDelay = 16;
-inline constexpr int kIcn2053DmaRowBufferCount = 4;
-inline constexpr int kIcn2053SubrowPadding = 8;
-inline constexpr int kIcn2053RowPadding = 8;
-inline constexpr int kIcn2053FramePadding = 16;
-inline constexpr int kIcn2053RowAddressBits = 5;
+inline constexpr int ICN2053_DRIVER_BITS = 16;
+inline constexpr int ICN2053_COMMAND_DELAY = 16;
+inline constexpr int ICN2053_DMA_ROW_BUFFER_COUNT = 4;
+inline constexpr int ICN2053_SUBROW_PADDING = 8;
+inline constexpr int ICN2053_ROW_PADDING = 8;
+inline constexpr int ICN2053_FRAME_PADDING = 16;
+inline constexpr int ICN2053_ROW_ADDRESS_BITS = 5;
 
-inline constexpr std::uint16_t kIcn2053BitR1 = 1U << 0;
-inline constexpr std::uint16_t kIcn2053BitG1 = 1U << 1;
-inline constexpr std::uint16_t kIcn2053BitB1 = 1U << 2;
-inline constexpr std::uint16_t kIcn2053BitR2 = 1U << 3;
-inline constexpr std::uint16_t kIcn2053BitG2 = 1U << 4;
-inline constexpr std::uint16_t kIcn2053BitB2 = 1U << 5;
-inline constexpr std::uint16_t kIcn2053BitLat = 1U << 6;
-inline constexpr std::uint16_t kIcn2053BitOe = 1U << 7;
-inline constexpr std::uint16_t kIcn2053BitA = 1U << 8;
-inline constexpr std::uint16_t kIcn2053BitB = 1U << 9;
-inline constexpr std::uint16_t kIcn2053BitC = 1U << 10;
-inline constexpr std::uint16_t kIcn2053BitD = 1U << 11;
-inline constexpr std::uint16_t kIcn2053BitE = 1U << 12;
-inline constexpr std::uint16_t kIcn2053RgbMask =
-    kIcn2053BitR1 | kIcn2053BitG1 | kIcn2053BitB1 | kIcn2053BitR2 | kIcn2053BitG2 | kIcn2053BitB2;
+inline constexpr uint16_t ICN2053_BIT_R1 = 1U << 0;
+inline constexpr uint16_t ICN2053_BIT_G1 = 1U << 1;
+inline constexpr uint16_t ICN2053_BIT_B1 = 1U << 2;
+inline constexpr uint16_t ICN2053_BIT_R2 = 1U << 3;
+inline constexpr uint16_t ICN2053_BIT_G2 = 1U << 4;
+inline constexpr uint16_t ICN2053_BIT_B2 = 1U << 5;
+inline constexpr uint16_t ICN2053_BIT_LAT = 1U << 6;
+inline constexpr uint16_t ICN2053_BIT_OE = 1U << 7;
+inline constexpr uint16_t ICN2053_BIT_A = 1U << 8;
+inline constexpr uint16_t ICN2053_BIT_B = 1U << 9;
+inline constexpr uint16_t ICN2053_BIT_C = 1U << 10;
+inline constexpr uint16_t ICN2053_BIT_D = 1U << 11;
+inline constexpr uint16_t ICN2053_BIT_E = 1U << 12;
+inline constexpr uint16_t ICN2053_RGB_MASK =
+    ICN2053_BIT_R1 | ICN2053_BIT_G1 | ICN2053_BIT_B1 | ICN2053_BIT_R2 | ICN2053_BIT_G2 | ICN2053_BIT_B2;
 
-enum Icn2053Command : std::uint8_t {
+enum Icn2053Command : uint8_t {
   ICN2053_WR_DEBUG = 2,
   ICN2053_V_SYNC = 3,
   ICN2053_WR_CFG1 = 4,
@@ -48,7 +48,7 @@ enum Icn2053Command : std::uint8_t {
   ICN2053_PRE_ACT = 14,
 };
 
-enum Icn2053Register : std::uint8_t {
+enum Icn2053Register : uint8_t {
   ICN2053_CFG1,
   ICN2053_CFG2,
   ICN2053_CFG3,
@@ -57,32 +57,32 @@ enum Icn2053Register : std::uint8_t {
   ICN2053_REGISTER_COUNT,
 };
 
-inline constexpr driver_reg_t kIcn2053Cfg1LineCountMask = 0x1f00;
-inline constexpr std::uint8_t kIcn2053Cfg1LineCountOffset = 8;
+inline constexpr ICN2053RegisterValue ICN2053_CFG1_LINE_COUNT_MASK = 0x1f00;
+inline constexpr uint8_t ICN2053_CFG1_LINE_COUNT_OFFSET = 8;
 
-extern const std::uint8_t kIcn2053RegisterCommands[ICN2053_REGISTER_COUNT];
-extern const driver_rgb_t kIcn2053RegisterDefaults[ICN2053_REGISTER_COUNT];
+extern const uint8_t ICN2053_REGISTER_COMMANDS[ICN2053_REGISTER_COUNT];
+extern const ICN2053RegisterRGB ICN2053_REGISTER_DEFAULTS[ICN2053_REGISTER_COUNT];
 
-inline constexpr int kIcn2053VsyncLength =
-    (kIcn2053CommandDelay + ICN2053_PRE_ACT + kIcn2053CommandDelay + ICN2053_EN_OP + kIcn2053CommandDelay +
-     ICN2053_V_SYNC + kIcn2053CommandDelay + 1) /
+inline constexpr int ICN2053_VSYNC_LENGTH =
+    (ICN2053_COMMAND_DELAY + ICN2053_PRE_ACT + ICN2053_COMMAND_DELAY + ICN2053_EN_OP + ICN2053_COMMAND_DELAY +
+     ICN2053_V_SYNC + ICN2053_COMMAND_DELAY + 1) /
     2 * 2;
-inline constexpr int kIcn2053PrefixStartLength =
-    (kIcn2053VsyncLength + ICN2053_PRE_ACT + kIcn2053CommandDelay + 1) / 2 * 2;
+inline constexpr int ICN2053_PREFIX_START_LENGTH =
+    (ICN2053_VSYNC_LENGTH + ICN2053_PRE_ACT + ICN2053_COMMAND_DELAY + 1) / 2 * 2;
 
-enum Icn2053ExtendedDescriptor : std::uint8_t {
+enum Icn2053ExtendedDescriptor : uint8_t {
   ICN2053_EXT_PREFIX,
   ICN2053_EXT_DATA,
   ICN2053_EXT_COUNT,
 };
 
-inline constexpr int kIcn2053PrefixBufferCount = 1;
-inline constexpr int kIcn2053SuffixBufferCount = 1;
-inline constexpr int kIcn2053SuffixDescriptorSets = 2;
-inline constexpr int kIcn2053RowOeCount = 138;
-inline constexpr int kIcn2053RowOeLength = kIcn2053RowOeCount * 2 + 2;
+inline constexpr int ICN2053_PREFIX_BUFFER_COUNT = 1;
+inline constexpr int ICN2053_SUFFIX_BUFFER_COUNT = 1;
+inline constexpr int ICN2053_SUFFIX_DESCRIPTOR_SETS = 2;
+inline constexpr int ICN2053_ROW_OE_COUNT = 138;
+inline constexpr int ICN2053_ROW_OE_LENGTH = ICN2053_ROW_OE_COUNT * 2 + 2;
 
-void set_icn2053_register_rgb(driver_rgb_t *driver_register, driver_reg_t value, driver_reg_t mask,
-                              std::uint8_t offset);
+void set_icn2053_register_rgb(ICN2053RegisterRGB *driver_register, ICN2053RegisterValue value,
+                              ICN2053RegisterValue mask, uint8_t offset);
 
 }  // namespace esphome::hub75_icn2053

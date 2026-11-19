@@ -7,12 +7,18 @@
 #include <cinttypes>
 
 namespace esphome::sound_reactive_lights {
-static const char *const TAG = "sound_reactive_lights";
+ESPHOME_LOG_TAG(TAG, "sound_reactive_lights");
+void SoundReactiveLightsSpeaker::publish_state_() {
+#ifdef USE_SOUND_REACTIVE_LIGHTS_STATE_PUBLISHER
+  if (this->ready_ && this->state_publisher_ != nullptr)
+    this->state_publisher_(this->mode_, this->enabled_.load(), this->sensitivity_, this->max_brightness_);
+#endif
+}
+
 void SoundReactiveLightsSpeaker::setup() {
-  this->queue_ = xQueueCreate(4, sizeof(Block));
+  this->queue_ = xQueueCreateStatic(QUEUE_LENGTH, sizeof(Block), this->queue_storage_.data(), &this->queue_control_);
   if (!this->queue_) {
-    ESP_LOGE(TAG, "Could not allocate the audio analysis queue");
-    this->mark_failed();
+    this->mark_failed(LOG_STR("Could not initialize the audio analysis queue"));
     return;
   }
   this->mode_preference_ = global_preferences->make_preference<uint8_t>(this->preference_key_);
@@ -23,26 +29,34 @@ void SoundReactiveLightsSpeaker::setup() {
   this->output_->add_audio_output_callback(
       [this](uint32_t frames, int64_t time) { this->audio_output_callback_.call(frames, time); });
   this->saved_values_ = this->light_->remote_values;
-  this->saved_effect_ = this->light_->get_effect_name().str();
+  this->saved_effect_ = this->light_->get_current_effect_index();
   this->ready_ = true;
+#ifdef USE_SOUND_REACTIVE_LIGHTS_STATE_PUBLISHER
+  if (this->restore_publisher_ != nullptr)
+    this->restore_publisher_();
+#endif
+  this->publish_state_();
 }
 void SoundReactiveLightsSpeaker::set_enabled(bool value) { this->set_enabled_(value, true); }
 void SoundReactiveLightsSpeaker::set_enabled_(bool value, bool restore_light) {
   const bool previous = this->enabled_.exchange(value);
   if (previous == value)
     return;
+  this->analysis_generation_.fetch_add(1);
   if (!this->ready_) {
     this->enabled_callback_.call(value);
+    this->publish_state_();
     return;
   }
   if (value) {
     this->saved_values_ = this->light_->remote_values;
-    this->saved_effect_ = this->light_->get_effect_name().str();
+    this->saved_effect_ = this->light_->get_current_effect_index();
     this->level_ = this->bass_ = this->mid_ = this->treble_ = 0;
   } else if (restore_light) {
     this->restore_();
   }
   this->enabled_callback_.call(value);
+  this->publish_state_();
 }
 void SoundReactiveLightsSpeaker::set_sensitivity(float value) {
   if (!std::isfinite(value))
@@ -52,6 +66,7 @@ void SoundReactiveLightsSpeaker::set_sensitivity(float value) {
     return;
   this->sensitivity_ = value;
   this->sensitivity_callback_.call(value);
+  this->publish_state_();
 }
 void SoundReactiveLightsSpeaker::set_max_brightness(float value) {
   if (!std::isfinite(value))
@@ -61,6 +76,7 @@ void SoundReactiveLightsSpeaker::set_max_brightness(float value) {
     return;
   this->max_brightness_ = value;
   this->max_brightness_callback_.call(value);
+  this->publish_state_();
 }
 void SoundReactiveLightsSpeaker::restore_() {
   this->own_light_call_ = true;
@@ -72,24 +88,27 @@ void SoundReactiveLightsSpeaker::restore_() {
 void SoundReactiveLightsSpeaker::on_light_remote_values_update() {
   if (!this->own_light_call_ && this->enabled_.load()) {
     // An explicit user off or another effect takes ownership; don't fight it.
-    if (!this->light_->remote_values.is_on() || this->light_->get_effect_name() != "None")
+    if (!this->light_->remote_values.is_on() || this->light_->get_current_effect_index() != 0)
       this->set_enabled_(false, false);
   }
 }
 void SoundReactiveLightsSpeaker::start() {
   if (this->shutting_down_.load())
     return;
+  this->stream_generation_.fetch_add(1);
   this->output_->set_audio_stream_info(this->audio_stream_info_);
   this->output_->start();
   this->state_ = speaker::STATE_STARTING;
 }
 void SoundReactiveLightsSpeaker::stop() {
+  this->stream_generation_.fetch_add(1);
   this->output_->stop();
   this->state_ = speaker::STATE_STOPPING;
   if (this->queue_)
     xQueueReset(this->queue_);
 }
 void SoundReactiveLightsSpeaker::finish() {
+  this->stream_generation_.fetch_add(1);
   this->output_->finish();
   this->state_ = speaker::STATE_STOPPING;
 }
@@ -104,26 +123,86 @@ void SoundReactiveLightsSpeaker::set_mute_state(bool value) {
 size_t SoundReactiveLightsSpeaker::play(const uint8_t *data, size_t bytes, TickType_t wait) {
   if (this->shutting_down_.load())
     return 0;
-  this->output_->set_audio_stream_info(this->audio_stream_info_);
-  const size_t accepted = this->output_->play(data, bytes, wait);
+  const uint32_t stream_generation = this->stream_generation_.load();
+  const uint32_t analysis_generation = this->analysis_generation_.load();
   const auto info = this->audio_stream_info_;
-  const size_t channels = info.get_channels(), frame_bytes = channels * 2;
-  if (!this->queue_ || !this->enabled_.load() || info.get_bits_per_sample() != 16 || channels < 1 || channels > 2)
+  this->output_->set_audio_stream_info(info);
+  const size_t accepted = this->output_->play(data, bytes, wait);
+  const uint8_t channels = info.get_channels();
+  const uint32_t rate = info.get_sample_rate();
+  if (stream_generation != this->producer_stream_generation_ || channels != this->producer_channels_ ||
+      rate != this->producer_rate_) {
+    this->partial_frame_size_ = this->frame_phase_ = 0;
+    this->producer_stream_generation_ = stream_generation;
+    this->producer_channels_ = channels;
+    this->producer_rate_ = rate;
+  }
+  if (analysis_generation != this->producer_analysis_generation_) {
+    this->partial_frame_size_ = 0;
+    this->producer_analysis_generation_ = analysis_generation;
+  }
+  if (info.get_bits_per_sample() != 16 || channels < 1 || channels > 2 ||
+      stream_generation != this->stream_generation_.load()) {
+    this->partial_frame_size_ = this->frame_phase_ = 0;
     return accepted;
-  // Observe accepted frames only; the producer retries unaccepted bytes.
-  // Bound analysis copying to four blocks per call, even for a large producer.
+  }
+
+  const size_t frame_bytes = channels * sizeof(int16_t);
+  const size_t initial_phase = this->frame_phase_;
+  this->frame_phase_ = (initial_phase + accepted) % frame_bytes;
+  // Track alignment even while disabled, but never keep samples from a previous analysis session.
+  if (this->queue_ == nullptr || !this->enabled_.load() || analysis_generation != this->analysis_generation_.load()) {
+    this->partial_frame_size_ = 0;
+    return accepted;
+  }
+  if (accepted == 0)
+    return accepted;
+
   size_t offset = 0;
-  for (unsigned n = 0; n < 4 && offset + frame_bytes <= accepted; ++n) {
-    auto &block = this->producer_block_;
-    block.frames = std::min<size_t>(256, (accepted - offset) / frame_bytes);
+  auto &block = this->producer_block_;
+  block.frames = 0;
+  if (this->partial_frame_size_ != 0) {
+    const size_t copied = std::min(frame_bytes - this->partial_frame_size_, accepted);
+    std::memcpy(this->partial_frame_.data() + this->partial_frame_size_, data, copied);
+    this->partial_frame_size_ += copied;
+    offset = copied;
+    if (this->partial_frame_size_ < frame_bytes)
+      return accepted;
+    std::memcpy(block.samples, this->partial_frame_.data(), frame_bytes);
+    block.frames = 1;
+    this->partial_frame_size_ = 0;
+  } else if (initial_phase != 0) {
+    // An enable transition may have discarded the start of this frame.
+    offset = std::min(frame_bytes - initial_phase, accepted);
+  }
+
+  // Observe accepted complete frames only, bounded to four queue blocks per call.
+  for (size_t n = 0; n < QUEUE_LENGTH; n++) {
+    const size_t frames = std::min<size_t>(256 - block.frames, (accepted - offset) / frame_bytes);
+    if (frames != 0) {
+      std::memcpy(block.samples + block.frames * channels, data + offset, frames * frame_bytes);
+      block.frames += frames;
+      offset += frames * frame_bytes;
+    }
+    if (block.frames == 0)
+      break;
     block.channels = channels;
-    block.rate = info.get_sample_rate();
+    block.rate = rate;
     block.timestamp = millis();
     block.gain = this->analysis_gain_.load();
-    std::memcpy(block.samples, data + offset, block.frames * frame_bytes);
-    if (xQueueSend(this->queue_, &block, 0) != pdTRUE)
+    if (stream_generation != this->stream_generation_.load() ||
+        analysis_generation != this->analysis_generation_.load() || xQueueSend(this->queue_, &block, 0) != pdTRUE)
       break;
-    offset += block.frames * frame_bytes;
+    block.frames = 0;
+  }
+
+  // Discard excess full frames on saturation, but retain the final partial frame to stay aligned.
+  const size_t tail = this->frame_phase_;
+  if (tail != 0 && accepted >= tail && accepted - tail >= offset &&
+      stream_generation == this->stream_generation_.load() &&
+      analysis_generation == this->analysis_generation_.load()) {
+    std::memcpy(this->partial_frame_.data(), data + accepted - tail, tail);
+    this->partial_frame_size_ = tail;
   }
   return accepted;
 }
@@ -169,6 +248,7 @@ void SoundReactiveLightsSpeaker::loop() {
   for (unsigned n = 0; n < 4 && xQueueReceive(this->queue_, &block, 0) == pdTRUE; ++n)
     if (this->enabled_.load())
       this->analyze_(block);
+  // Queue timestamps come from the audio task; read the clock after draining it.
   const uint32_t now = millis();
   if (!this->enabled_.load() || now - this->last_render_ < this->update_interval_)
     return;
@@ -206,6 +286,7 @@ void SoundReactiveLightsSpeaker::loop() {
 }
 void SoundReactiveLightsSpeaker::on_shutdown() {
   this->shutting_down_.store(true);
+  this->stream_generation_.fetch_add(1);
   this->set_enabled(false);
   this->ready_ = false;
 }
@@ -218,5 +299,9 @@ void SoundReactiveLightsSpeaker::dump_config() {
   ESP_LOGCONFIG(TAG, "  Maximum brightness: %.0f%%", this->max_brightness_ * 100.0f);
   ESP_LOGCONFIG(TAG, "  Update interval: %" PRIu32 " ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Silence timeout: %" PRIu32 " ms", this->silence_timeout_);
+#ifdef USE_SOUND_REACTIVE_LIGHTS_STATE_PUBLISHER
+  if (this->dump_publisher_ != nullptr)
+    this->dump_publisher_(TAG);
+#endif
 }
 }  // namespace esphome::sound_reactive_lights

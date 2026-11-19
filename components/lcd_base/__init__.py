@@ -1,44 +1,39 @@
-import esphome.codegen as cg
-import esphome.config_validation as cv
-from esphome import core, automation
+from typing import Any
+
+from esphome import automation, core
 from esphome.automation import maybe_simple_id
+import esphome.codegen as cg
 from esphome.components import display
+import esphome.config_validation as cv
 from esphome.const import (
-    CONF_DIMENSIONS,
-    CONF_POSITION,
     CONF_DATA,
-    CONF_PAGES,
-    CONF_LAMBDA,
+    CONF_DIMENSIONS,
     CONF_ID,
+    CONF_LAMBDA,
     CONF_PAGE_ID,
+    CONF_PAGES,
+    CONF_POSITION,
 )
+from esphome.cpp_generator import MockObj
+from esphome.types import ConfigType
+
+DOMAIN = "lcd_base"
 
 CONF_USER_CHARACTERS = "user_characters"
 CONF_AUTO_CYCLE_INTERVAL = "auto_cycle_interval"
 
 lcd_base_ns = cg.esphome_ns.namespace("lcd_base")
 LCDDisplay = lcd_base_ns.class_("LCDDisplay", cg.PollingComponent)
+
 LCDDisplayRef = LCDDisplay.operator("ref")
 LCDDisplayPage = lcd_base_ns.class_("LCDDisplayPage")
 LCDDisplayPagePtr = LCDDisplayPage.operator("ptr")
 LCDDisplayPageShowAction = lcd_base_ns.class_(
     "LCDDisplayPageShowAction", automation.Action
 )
-LCDDisplayPageShowNextAction = lcd_base_ns.class_(
-    "LCDDisplayPageShowNextAction", automation.Action
-)
-LCDDisplayPageShowPrevAction = lcd_base_ns.class_(
-    "LCDDisplayPageShowPrevAction", automation.Action
-)
-LCDDisplayIsDisplayingPageCondition = lcd_base_ns.class_(
-    "LCDDisplayIsDisplayingPageCondition", automation.Condition
-)
-LCDDisplayOnPageChangeTrigger = lcd_base_ns.class_(
-    "LCDDisplayOnPageChangeTrigger", automation.Trigger
-)
 
 
-def validate_lcd_dimensions(value):
+def validate_lcd_dimensions(value: Any) -> list[int]:
     value = cv.dimensions(value)
     if value[0] > 0x40:
         raise cv.Invalid("LCD displays can't have more than 64 columns")
@@ -47,7 +42,7 @@ def validate_lcd_dimensions(value):
     return value
 
 
-def validate_user_characters(value):
+def validate_user_characters(value: list[ConfigType]) -> list[ConfigType]:
     positions = set()
     for conf in value:
         if conf[CONF_POSITION] in positions:
@@ -56,6 +51,14 @@ def validate_user_characters(value):
             )
         positions.add(conf[CONF_POSITION])
     return value
+
+
+def validate_auto_cycle(config: ConfigType) -> ConfigType:
+    if config[CONF_AUTO_CYCLE_INTERVAL].total_milliseconds and CONF_PAGES not in config:
+        raise cv.Invalid(
+            "auto_cycle_interval requires pages", path=[CONF_AUTO_CYCLE_INTERVAL]
+        )
+    return config
 
 
 LCD_SCHEMA = display.BASIC_DISPLAY_SCHEMA.extend(
@@ -90,11 +93,18 @@ LCD_SCHEMA = display.BASIC_DISPLAY_SCHEMA.extend(
         ): cv.positive_time_period_milliseconds,
     }
 ).extend(cv.polling_component_schema("1s"))
+LCD_SCHEMA.add_extra(cv.has_at_most_one_key(CONF_LAMBDA, CONF_PAGES))
+LCD_SCHEMA.add_extra(validate_auto_cycle)
 
 
-async def setup_lcd_display(var, config):
-    await cg.register_component(var, config)
-    cg.add(var.set_dimensions(config[CONF_DIMENSIONS][0], config[CONF_DIMENSIONS][1]))
+async def setup_lcd_display(var: MockObj, config: ConfigType) -> None:
+    # LCD pages have a different writer type from graphical display pages.
+    await display.register_display(
+        var, {key: value for key, value in config.items() if key != CONF_PAGES}
+    )
+    columns, rows = config[CONF_DIMENSIONS]
+    buffer = cg.static_buffer(config[CONF_ID], cg.uint8, columns * rows)
+    cg.add(var.set_dimensions(columns, rows, buffer))
     if CONF_USER_CHARACTERS in config:
         for usr in config[CONF_USER_CHARACTERS]:
             cg.add(var.set_user_defined_char(usr[CONF_POSITION], usr[CONF_DATA]))
@@ -108,7 +118,7 @@ async def setup_lcd_display(var, config):
             pages.append(page)
         cg.add(var.set_pages(pages))
     if (auto_cycle_interval := config.get(CONF_AUTO_CYCLE_INTERVAL)) is not None:
-        cg.add(var.set_auto_cycle_interval(auto_cycle_interval))
+        cg.add(var.set_auto_cycle_interval(auto_cycle_interval.total_milliseconds))
 
 
 @automation.register_action(
@@ -132,39 +142,24 @@ async def display_page_show_to_code(config, action_id, template_arg, args):
     return var
 
 
-@automation.register_action(
+LCD_PAGE_CYCLE_ACTION_SCHEMA = maybe_simple_id(
+    {cv.GenerateID(CONF_ID): cv.use_id(LCDDisplay)}
+)
+
+automation.register_apply_action(
     "lcddisplay.page.show_next",
-    LCDDisplayPageShowNextAction,
-    maybe_simple_id(
-        {
-            cv.Required(CONF_ID): cv.templatable(cv.use_id(LCDDisplay)),
-        }
-    ),
-    synchronous=True,
+    LCD_PAGE_CYCLE_ACTION_SCHEMA,
+    automation.ApplyCall("show_next_page()"),
 )
-async def display_page_show_next_to_code(config, action_id, template_arg, args):
-    paren = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(action_id, template_arg, paren)
 
-
-@automation.register_action(
+automation.register_apply_action(
     "lcddisplay.page.show_previous",
-    LCDDisplayPageShowPrevAction,
-    maybe_simple_id(
-        {
-            cv.Required(CONF_ID): cv.templatable(cv.use_id(LCDDisplay)),
-        }
-    ),
-    synchronous=True,
+    LCD_PAGE_CYCLE_ACTION_SCHEMA,
+    automation.ApplyCall("show_prev_page()"),
 )
-async def display_page_show_previous_to_code(config, action_id, template_arg, args):
-    paren = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(action_id, template_arg, paren)
 
-
-@automation.register_condition(
+automation.register_apply_condition(
     "lcddisplay.is_displaying_page",
-    LCDDisplayIsDisplayingPageCondition,
     cv.maybe_simple_value(
         {
             cv.GenerateID(CONF_ID): cv.use_id(LCDDisplay),
@@ -172,11 +167,7 @@ async def display_page_show_previous_to_code(config, action_id, template_arg, ar
         },
         key=CONF_PAGE_ID,
     ),
+    automation.ApplyCall(
+        "get_active_page() == {}", ((CONF_PAGE_ID, LCDDisplayPagePtr),)
+    ),
 )
-async def display_is_displaying_page_to_code(config, condition_id, template_arg, args):
-    paren = await cg.get_variable(config[CONF_ID])
-    page = await cg.get_variable(config[CONF_PAGE_ID])
-    var = cg.new_Pvariable(condition_id, template_arg, paren)
-    cg.add(var.set_page(page))
-
-    return var

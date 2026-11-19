@@ -6,7 +6,7 @@
 
 namespace esphome::cd405x {
 
-class CD405x : public Component {
+class CD405x final : public Component {
  public:
   void setup() override;
   void dump_config() override;
@@ -23,11 +23,11 @@ class CD405x : public Component {
   void set_pin_b(GPIOPin *pin) { this->pin_b_ = pin; }
   void set_pin_c(GPIOPin *pin) { this->pin_c_ = pin; }
   void set_pin_inhibit(GPIOPin *pin) { this->pin_inhibit_ = pin; }
-  void add_on_channel_callback(std::function<void(int)> &&callback) {
-    this->channel_callback_.add(std::move(callback));
+  template<typename F> void add_on_channel_callback(F &&callback) {
+    this->channel_callback_.add(std::forward<F>(callback));
   }
-  void add_on_inhibit_callback(std::function<void(bool)> &&callback) {
-    this->inhibit_callback_.add(std::move(callback));
+  template<typename F> void add_on_inhibit_callback(F &&callback) {
+    this->inhibit_callback_.add(std::forward<F>(callback));
   }
 
  protected:
@@ -37,8 +37,8 @@ class CD405x : public Component {
   GPIOPin *pin_b_{nullptr};
   GPIOPin *pin_c_{nullptr};
   GPIOPin *pin_inhibit_{nullptr};
-  CallbackManager<void(int)> channel_callback_;
-  CallbackManager<void(bool)> inhibit_callback_;
+  LazyCallbackManager<void(int)> channel_callback_;
+  LazyCallbackManager<void(bool)> inhibit_callback_;
   uint8_t channel_{0};
   bool inhibited_{false};
   bool initialized_{false};

@@ -1,9 +1,11 @@
 from esphome.components import binary_sensor, remote_base
 import esphome.config_validation as cv
 from esphome.const import CONF_TYPE, DEVICE_CLASS_BATTERY
+from esphome.types import ConfigType
 
 from .. import CONF_XIRON_ID, XironBase, register_xiron, xiron_ns
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 XironBatterySensor = xiron_ns.class_(
     "XironBatterySensor", XironBase, binary_sensor.BinarySensor
@@ -24,6 +26,6 @@ CONFIG_SCHEMA = (
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await binary_sensor.new_binary_sensor(config)
     await register_xiron(var, config)

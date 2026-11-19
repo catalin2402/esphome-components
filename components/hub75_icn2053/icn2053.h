@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -11,11 +12,13 @@
 
 namespace esphome::hub75_icn2053 {
 
-class MatrixPanel_I2S_DMA {
+class ICN2053Panel {
  public:
-  explicit MatrixPanel_I2S_DMA(const hub75_i2s_cfg_t &configuration);
+  explicit ICN2053Panel(const Hub75Config &configuration);
 
-  ~MatrixPanel_I2S_DMA();
+  ~ICN2053Panel();
+  ICN2053Panel(const ICN2053Panel &) = delete;
+  ICN2053Panel &operator=(const ICN2053Panel &) = delete;
 
   bool begin();
 
@@ -25,50 +28,50 @@ class MatrixPanel_I2S_DMA {
 
   void present();
 
-  void setBrightness8(std::uint8_t brightness);
+  void set_brightness(uint8_t brightness);
 
-  void fillScreenRGB888(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
+  void fill(uint8_t red, uint8_t green, uint8_t blue);
 
-  void fillRect(std::int16_t x, std::int16_t y, std::int16_t width, std::int16_t height, std::uint8_t red,
-                std::uint8_t green, std::uint8_t blue);
+  void fill_rect(int16_t x, int16_t y, int16_t width, int16_t height, uint8_t red, uint8_t green, uint8_t blue);
 
-  void sendCallback();
+  void send_callback();
 
  private:
   struct DmaBuffers {
-    std::uint16_t **rows{};
-    std::size_t row_length{};
-    std::size_t prefix_length{};
-    std::size_t suffix_length{};
-    std::uint8_t row_count{};
-    std::uint8_t total_count{};
+    std::array<uint16_t *, ICN2053_DMA_ROW_BUFFER_COUNT + ICN2053_PREFIX_BUFFER_COUNT + ICN2053_SUFFIX_BUFFER_COUNT>
+        rows{};
+    size_t row_length{};
+    size_t prefix_length{};
+    size_t suffix_length{};
+    uint8_t row_count{};
+    uint8_t total_count{};
   };
 
-  hub75_i2s_cfg_t configuration_{};
-  std::uint16_t pixels_per_row_{};
-  std::uint8_t rows_per_frame_{};
-  std::uint16_t current_color_{};
-  volatile std::int16_t rows_to_send_{};
+  Hub75Config configuration_{};
+  uint16_t pixels_per_row_{};
+  uint8_t rows_per_frame_{};
+  uint16_t current_color_{};
+  volatile int16_t rows_to_send_{};
 
   DmaBuffers dma_{};
-  std::uint16_t *frame_buffer_{};
-  std::size_t frame_pixel_count_{};
+  uint16_t *frame_buffer_{};
+  size_t frame_pixel_count_{};
   lldesc_t *descriptor_storage_{};
   lldesc_t *data_descriptors_{};
   lldesc_t *prefix_descriptors_{};
   lldesc_t *suffix_descriptors_[2]{};
   lldesc_t *extended_descriptors_{};
-  std::uint16_t prefix_to_suffix_{};
-  std::uint16_t data_to_suffix_{};
-  std::uint16_t data_descriptor_count_{};
-  std::uint16_t prefix_descriptor_count_{};
-  std::uint16_t suffix_descriptor_count_{};
+  uint16_t prefix_to_suffix_{};
+  uint16_t data_to_suffix_{};
+  uint16_t data_descriptor_count_{};
+  uint16_t prefix_descriptor_count_{};
+  uint16_t suffix_descriptor_count_{};
 
-  driver_rgb_t *driver_registers_{};
-  std::uint16_t *brightness_table_{};
-  std::uint16_t driver_count_{};
-  std::uint8_t current_register_{};
-  std::uint8_t current_suffix_{};
+  std::array<ICN2053RegisterRGB, ICN2053_REGISTER_COUNT> driver_registers_{};
+  std::array<uint16_t, 256> brightness_table_{};
+  uint16_t driver_count_{};
+  uint8_t current_register_{};
+  uint8_t current_suffix_{};
 
   volatile int dma_interrupt_count_{};
   volatile bool buffer_ready_{};
@@ -80,39 +83,39 @@ class MatrixPanel_I2S_DMA {
   volatile bool clear_frame_{};
   volatile bool automatic_vsync_{};
 
-  void release_memory();
+  void release_memory_();
 
-  bool allocate_memory();
+  bool allocate_memory_();
 
-  bool configure_dma();
+  bool configure_dma_();
 
-  void initialize_dma_buffers();
+  void initialize_dma_buffers_();
 
-  bool initialize_driver();
+  bool initialize_driver_();
 
-  void prepare_dma_rows(std::uint8_t row_offset);
+  void prepare_dma_rows_(uint8_t row_offset);
 
-  void send_vsync_callback();
+  void send_vsync_callback_();
 
-  void send_row_callback();
+  void send_row_callback_();
 
-  bool wait_dma_ready();
+  bool wait_dma_ready_();
 
-  bool send_vsync();
+  bool send_vsync_();
 
-  bool send_frame(bool wait = false, bool automatic_vsync = true);
+  bool send_frame_(bool wait = false, bool automatic_vsync = true);
 
-  bool panel_off();
+  bool panel_off_();
 
-  void set_panel_brightness(std::uint8_t brightness);
+  void set_panel_brightness_(uint8_t brightness);
 
-  void fill_rectangle(std::int16_t x, std::int16_t y, std::int16_t width, std::int16_t height);
+  void fill_rectangle_(int16_t x, int16_t y, int16_t width, int16_t height);
 
-  void set_color(std::uint8_t red, std::uint8_t green, std::uint8_t blue);
+  void set_color_(uint8_t red, uint8_t green, uint8_t blue);
 
-  void set_vsync(bool leds_enabled, bool vsync) const;
+  void set_vsync_(bool leds_enabled, bool vsync) const;
 
-  void set_register(std::uint8_t register_index, const driver_rgb_t *register_data) const;
+  void set_register_(uint8_t register_index, const ICN2053RegisterRGB *register_data) const;
 };
 
 }  // namespace esphome::hub75_icn2053

@@ -25,9 +25,13 @@ class Auriol4LD5661Base : public remote_base::RemoteReceiverListener, public Com
 };
 
 #ifdef USE_SENSOR
-enum class AuriolSensorType : uint8_t { TEMPERATURE, RAIN, RAIN_TIPS };
+enum class AuriolSensorType : uint8_t {
+  AURIOL_SENSOR_TYPE_TEMPERATURE,
+  AURIOL_SENSOR_TYPE_RAIN,
+  AURIOL_SENSOR_TYPE_RAIN_TIPS
+};
 
-class AuriolSensor : public Auriol4LD5661Base, public sensor::Sensor {
+class AuriolSensor final : public Auriol4LD5661Base, public sensor::Sensor {
  public:
   void set_type(AuriolSensorType type) { this->type_ = type; }
   void set_mm_per_tip(float mm_per_tip) { this->mm_per_tip_ = mm_per_tip; }
@@ -35,7 +39,7 @@ class AuriolSensor : public Auriol4LD5661Base, public sensor::Sensor {
   void dump_config() override;
 
  protected:
-  AuriolSensorType type_{AuriolSensorType::TEMPERATURE};
+  AuriolSensorType type_{AuriolSensorType::AURIOL_SENSOR_TYPE_TEMPERATURE};
   float mm_per_tip_{0.3f};
 };
 #endif

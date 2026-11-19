@@ -6,7 +6,7 @@
 
 namespace esphome::silvercrest {
 
-class SilvercrestSwitch : public switch_::Switch, public Component {
+class SilvercrestSwitch final : public switch_::Switch, public Component {
  public:
   void dump_config() override;
   void set_channel(Channel channel) { this->channel_ = channel; }

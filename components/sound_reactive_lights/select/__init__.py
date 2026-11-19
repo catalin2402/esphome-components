@@ -1,56 +1,59 @@
 """Select entity for sound-reactive lighting modes."""
 
+from esphome.automation import parent_ref
 import esphome.codegen as cg
 from esphome.components import select
 import esphome.config_validation as cv
-from esphome.const import CONF_ID
 import esphome.final_validate as fv
+from esphome.types import ConfigType
 
 from .. import (
     CONF_SOUND_REACTIVE_LIGHTS_ID,
+    DOMAIN,
+    DUMP_PUBLISHER,
+    MODE,
+    STATE_PUBLISHER,
     SoundReactiveLightsSpeaker,
-    sound_reactive_lights_ns,
 )
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["speaker"]
-SoundReactiveLightsSelect = sound_reactive_lights_ns.class_(
-    "SoundReactiveLightsSelect", select.Select, cg.Component
-)
+
 OPTIONS = ["Off", "VU", "Spectrum", "Rainbow Pulse"]
-CONFIG_SCHEMA = (
-    select.select_schema(SoundReactiveLightsSelect)
-    .extend(
-        {
-            cv.GenerateID(CONF_SOUND_REACTIVE_LIGHTS_ID): cv.use_id(
-                SoundReactiveLightsSpeaker
-            ),
-        }
-    )
-    .extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = select.select_schema(select.ApplySelect).extend(
+    {
+        cv.GenerateID(CONF_SOUND_REACTIVE_LIGHTS_ID): cv.use_id(
+            SoundReactiveLightsSpeaker
+        ),
+    }
 )
 
 
-def final_validate(config):
-    matching = [
-        item
-        for item in fv.full_config.get().get("select", [])
-        if item.get("platform") == "sound_reactive_lights"
-        and item[CONF_SOUND_REACTIVE_LIGHTS_ID] == config[CONF_SOUND_REACTIVE_LIGHTS_ID]
-    ]
-    if len(matching) > 1:
-        raise cv.Invalid(
-            "Only one mode select may control each sound_reactive_lights speaker"
-        )
-
-    return config
+FINAL_VALIDATE_SCHEMA = fv.unique_platform_key(
+    domain="select",
+    platform=DOMAIN,
+    keys=(CONF_SOUND_REACTIVE_LIGHTS_ID,),
+    message="Only one mode select may control each sound_reactive_lights speaker",
+)
 
 
-FINAL_VALIDATE_SCHEMA = final_validate
-
-
-async def to_code(config):
-    cg.add_define("USE_SOUND_REACTIVE_MODE_SELECT")
-    var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
-    await select.register_select(var, config, options=OPTIONS)
-    cg.add(var.set_parent(await cg.get_variable(config[CONF_SOUND_REACTIVE_LIGHTS_ID])))
+async def to_code(config: ConfigType) -> None:
+    hub = await cg.get_variable(config[CONF_SOUND_REACTIVE_LIGHTS_ID])
+    parent = parent_ref(hub)
+    selects = select.sub_selects(config, parent=hub)
+    var = await selects.create(
+        config,
+        None,
+        options=OPTIONS,
+        apply=f"set_mode(index); {parent}->set_enabled(true)",
+    )
+    entity = parent_ref(var)
+    STATE_PUBLISHER.add(
+        hub,
+        cg.RawStatement(
+            f"if ({entity}->active_index() != {MODE}) {entity}->publish_state(static_cast<size_t>({MODE}));"
+        ),
+    )
+    DUMP_PUBLISHER.add(
+        hub, cg.RawStatement(f'LOG_SELECT("", "Sound Reactive Lights Mode", {entity});')
+    )

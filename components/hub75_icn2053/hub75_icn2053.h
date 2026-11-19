@@ -4,11 +4,21 @@
 #include "esphome/components/display/display_buffer.h"
 #include "icn2053.h"
 #include "layout_types.h"
+#ifdef USE_NUMBER
+#include "esphome/components/number/number.h"
+#endif
 
 namespace esphome::hub75_icn2053 {
 
-class HUB75Display : public display::DisplayBuffer {
+class HUB75Display final : public display::DisplayBuffer {
  public:
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+  HUB_PUBLISHER(state, int)
+  HUB_PUBLISHER(dump, const char *)
+#endif
+#ifdef USE_NUMBER
+  void control_brightness(number::Number *entity, float value);
+#endif
   void set_geometry(uint16_t width, uint16_t height, uint16_t rows, uint16_t cols, Hub75PanelLayout layout) {
     this->config_.panel_width = width;
     this->config_.panel_height = height;
@@ -16,7 +26,7 @@ class HUB75Display : public display::DisplayBuffer {
     this->config_.chain_length_y = rows;
     this->layout_ = layout;
   }
-  void set_pins(hub75_pins_t pins) { this->config_.gpio = pins; }
+  void set_pins(Hub75Pins pins) { this->config_.gpio = pins; }
   void set_clock(Hub75ClockSpeed speed, bool inverted) {
     this->config_.clock_hz = static_cast<uint32_t>(speed);
     this->config_.clock_phase_inverted = inverted;
@@ -48,9 +58,9 @@ class HUB75Display : public display::DisplayBuffer {
   int get_width_internal() override { return this->config_.panel_width * this->config_.chain_length_x; }
   int get_height_internal() override { return this->config_.panel_height * this->config_.chain_length_y; }
   void present_();
-  hub75_i2s_cfg_t config_{};
-  Hub75PanelLayout layout_{Hub75PanelLayout::HORIZONTAL};
-  MatrixPanel_I2S_DMA *panel_{nullptr};
+  Hub75Config config_{};
+  Hub75PanelLayout layout_{Hub75PanelLayout::HUB75_PANEL_LAYOUT_HORIZONTAL};
+  RAMUniquePtr<ICN2053Panel> panel_;
   uint8_t brightness_{128};
   uint8_t gamma_mode_{0};
   uint8_t gamma_[256]{};

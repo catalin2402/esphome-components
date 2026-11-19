@@ -3,7 +3,7 @@
 namespace esphome::status_light {
 
 void StatusLightLightOutput::write_state(light::LightState *state) {
-  if (this->initialized_ && this->get_status_() == Status::OK)
+  if (this->initialized_ && this->get_status_() == Status::STATUS_OK)
     this->write_idle_();
 }
 

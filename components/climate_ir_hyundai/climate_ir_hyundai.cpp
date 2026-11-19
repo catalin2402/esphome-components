@@ -7,7 +7,7 @@
 
 namespace esphome::climate_ir_hyundai {
 
-static const char *const TAG = "climate_ir_hyundai";
+ESPHOME_LOG_TAG(TAG, "climate_ir_hyundai");
 
 // Timings
 static constexpr uint32_t HEADER_MARK_US = 8000;
@@ -33,7 +33,6 @@ static constexpr uint64_t MODE_FAN_ONLY = 0x40000000000;
 static constexpr uint64_t MODE_HEAT = 0x80000000000;
 
 // Features
-static constexpr uint64_t FEATURE_MASK = 0xF000000000;
 static constexpr uint64_t FEATURE_SLEEP = 0x1000000000;
 static constexpr uint64_t FEATURE_SWING = 0x2000000000;
 static constexpr uint64_t FEATURE_FAHRENHEIT = 0x4000000000;
@@ -58,11 +57,10 @@ HyundaiIrClimate::HyundaiIrClimate()
 
 climate::ClimateTraits HyundaiIrClimate::traits() {
   auto traits = climate_ir::ClimateIR::traits();
-  traits.set_supported_modes({climate::CLIMATE_MODE_OFF, climate::CLIMATE_MODE_DRY, climate::CLIMATE_MODE_FAN_ONLY});
-  if (this->supports_cool_)
-    traits.add_supported_mode(climate::CLIMATE_MODE_COOL);
-  if (this->supports_heat_)
-    traits.add_supported_mode(climate::CLIMATE_MODE_HEAT);
+  // Keep the base's configured cooling/heating support, but omit automatic heat/cool.
+  auto modes = traits.get_supported_modes();
+  modes.erase(climate::CLIMATE_MODE_HEAT_COOL);
+  traits.set_supported_modes(modes);
   return traits;
 }
 
@@ -127,7 +125,7 @@ void HyundaiIrClimate::transmit_state() {
     remote_state |= FEATURE_SLEEP;
   }
 
-  const float temperature = clamp(this->target_temperature, float(TEMP_MIN), float(TEMP_MAX));
+  const float temperature = clamp(this->target_temperature, static_cast<float>(TEMP_MIN), static_cast<float>(TEMP_MAX));
   const auto encoded_temperature =
       static_cast<uint8_t>(roundf(this->fahrenheit_ ? celsius_to_fahrenheit(temperature) : temperature));
   remote_state |= uint64_t{encoded_temperature} << 24;
@@ -154,7 +152,7 @@ bool HyundaiIrClimate::on_receive(remote_base::RemoteReceiveData data) {
   if (!data.expect_mark(BIT_MARK_US))
     return false;
   if ((remote_state & FRAME_HEADER_MASK) != FRAME_HEADER ||
-      static_cast<uint8_t>(remote_state) != checksum_(remote_state))
+      static_cast<uint8_t>(remote_state) != this->checksum_(remote_state))
     return false;
   if ((remote_state & COMMAND_MASK) == COMMAND_OFF) {
     this->mode = climate::CLIMATE_MODE_OFF;
@@ -177,16 +175,10 @@ bool HyundaiIrClimate::on_receive(remote_base::RemoteReceiveData data) {
 
     this->mode_before_ = remote_state & MODE_MASK;
 
-    uint64_t features = (remote_state & FEATURE_MASK) >> 36;
-
-    this->fahrenheit_ = features & 0x4;
-    this->preset = (features & 0x1) ? climate::CLIMATE_PRESET_SLEEP : climate::CLIMATE_PRESET_NONE;
-
-    if (features & 0x2) {
-      this->swing_mode = climate::CLIMATE_SWING_VERTICAL;
-    } else {
-      this->swing_mode = climate::CLIMATE_SWING_OFF;
-    }
+    this->fahrenheit_ = (remote_state & FEATURE_FAHRENHEIT) != 0;
+    this->preset = (remote_state & FEATURE_SLEEP) != 0 ? climate::CLIMATE_PRESET_SLEEP : climate::CLIMATE_PRESET_NONE;
+    this->swing_mode =
+        (remote_state & FEATURE_SWING) != 0 ? climate::CLIMATE_SWING_VERTICAL : climate::CLIMATE_SWING_OFF;
 
     if (this->mode == climate::CLIMATE_MODE_DRY) {
       this->fan_mode = climate::CLIMATE_FAN_LOW;
@@ -201,8 +193,8 @@ bool HyundaiIrClimate::on_receive(remote_base::RemoteReceiveData data) {
     }
 
     if (this->mode == climate::CLIMATE_MODE_COOL || this->mode == climate::CLIMATE_MODE_HEAT) {
-      this->target_temperature = this->fahrenheit_ ? esphome::fahrenheit_to_celsius((remote_state & TEMP_MASK) >> 24)
-                                                   : (remote_state & TEMP_MASK) >> 24;
+      const auto temperature = static_cast<uint8_t>((remote_state & TEMP_MASK) >> 24);
+      this->target_temperature = this->fahrenheit_ ? fahrenheit_to_celsius(temperature) : temperature;
     }
   }
   this->publish_state();
@@ -211,14 +203,13 @@ bool HyundaiIrClimate::on_receive(remote_base::RemoteReceiveData data) {
 }
 
 uint8_t HyundaiIrClimate::checksum_(uint64_t value) {
-  uint8_t sum = 0;
-  for (uint8_t i = 1; i < 7; i++)
-    sum += (value >> (i * 8)) & 0xFF;
-  return static_cast<uint8_t>(0x18 - sum);
+  const auto bytes = decode_value(value);
+  // The 56-bit frame occupies bytes 1-7; exclude byte 7, the checksum itself.
+  return static_cast<uint8_t>(0x18 - sum_bytes(bytes.data() + 1, bytes.size() - 2));
 }
 
 void HyundaiIrClimate::transmit_(uint64_t value) {
-  value = (value & ~uint64_t{0xFF}) | checksum_(value);
+  value = (value & ~uint64_t{0xFF}) | this->checksum_(value);
   auto transmit = this->transmitter_->transmit();
   auto *data = transmit.get_data();
 

@@ -1,6 +1,6 @@
 from esphome import automation, pins
 import esphome.codegen as cg
-from esphome.components import display
+from esphome.components import display, esp32
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_AUTO_CLEAR_ENABLED,
@@ -9,16 +9,15 @@ from esphome.const import (
     CONF_CLK_PIN,
     CONF_GAMMA_CORRECT,
     CONF_ID,
-    CONF_LAMBDA,
+    CONF_NUMBER,
     CONF_OE_PIN,
     CONF_ROTATION,
-    CONF_TRIGGER_ID,
     CONF_UPDATE_INTERVAL,
 )
 import esphome.final_validate as fv
 from esphome.types import ConfigType
 
-from . import HUB75Display, hub75_icn2053_ns as hub75_ns
+from .. import DOMAIN, HUB75Display, Hub75Pins, hub75_icn2053_ns as hub75_ns
 
 CONF_ON_BRIGHTNESS = "on_brightness"
 CONF_ON_READY = "on_ready"
@@ -61,7 +60,7 @@ CONF_LAT_PIN = "lat_pin"
 
 NEVER = 4294967295  # uint32_t max - value used when update_interval is "never"
 
-# Pin order matches the hub75_pins_t C++ struct.
+# Pins consumed by the DMA transport.
 PIN_KEYS = (
     CONF_R1_PIN,
     CONF_G1_PIN,
@@ -89,40 +88,40 @@ CONF_MIN_REFRESH_RATE = "min_refresh_rate"
 # Hardware and layout enums.
 Hub75ShiftDriver = hub75_ns.enum("Hub75ShiftDriver", is_class=True)
 SHIFT_DRIVERS = {
-    "ICN2053": Hub75ShiftDriver.ICN2053,
+    "ICN2053": Hub75ShiftDriver.HUB75_SHIFT_DRIVER_ICN2053,
 }
 
 Hub75PanelLayout = hub75_ns.enum("Hub75PanelLayout", is_class=True)
 PANEL_LAYOUTS = {
-    "HORIZONTAL": Hub75PanelLayout.HORIZONTAL,
-    "TOP_LEFT_DOWN": Hub75PanelLayout.TOP_LEFT_DOWN,
-    "TOP_RIGHT_DOWN": Hub75PanelLayout.TOP_RIGHT_DOWN,
-    "BOTTOM_LEFT_UP": Hub75PanelLayout.BOTTOM_LEFT_UP,
-    "BOTTOM_RIGHT_UP": Hub75PanelLayout.BOTTOM_RIGHT_UP,
-    "TOP_LEFT_DOWN_ZIGZAG": Hub75PanelLayout.TOP_LEFT_DOWN_ZIGZAG,
-    "TOP_RIGHT_DOWN_ZIGZAG": Hub75PanelLayout.TOP_RIGHT_DOWN_ZIGZAG,
-    "BOTTOM_LEFT_UP_ZIGZAG": Hub75PanelLayout.BOTTOM_LEFT_UP_ZIGZAG,
-    "BOTTOM_RIGHT_UP_ZIGZAG": Hub75PanelLayout.BOTTOM_RIGHT_UP_ZIGZAG,
+    "HORIZONTAL": Hub75PanelLayout.HUB75_PANEL_LAYOUT_HORIZONTAL,
+    "TOP_LEFT_DOWN": Hub75PanelLayout.HUB75_PANEL_LAYOUT_TOP_LEFT_DOWN,
+    "TOP_RIGHT_DOWN": Hub75PanelLayout.HUB75_PANEL_LAYOUT_TOP_RIGHT_DOWN,
+    "BOTTOM_LEFT_UP": Hub75PanelLayout.HUB75_PANEL_LAYOUT_BOTTOM_LEFT_UP,
+    "BOTTOM_RIGHT_UP": Hub75PanelLayout.HUB75_PANEL_LAYOUT_BOTTOM_RIGHT_UP,
+    "TOP_LEFT_DOWN_ZIGZAG": Hub75PanelLayout.HUB75_PANEL_LAYOUT_TOP_LEFT_DOWN_ZIGZAG,
+    "TOP_RIGHT_DOWN_ZIGZAG": Hub75PanelLayout.HUB75_PANEL_LAYOUT_TOP_RIGHT_DOWN_ZIGZAG,
+    "BOTTOM_LEFT_UP_ZIGZAG": Hub75PanelLayout.HUB75_PANEL_LAYOUT_BOTTOM_LEFT_UP_ZIGZAG,
+    "BOTTOM_RIGHT_UP_ZIGZAG": Hub75PanelLayout.HUB75_PANEL_LAYOUT_BOTTOM_RIGHT_UP_ZIGZAG,
 }
 
 Hub75ScanWiring = hub75_ns.enum("Hub75ScanWiring", is_class=True)
 SCAN_WIRINGS = {
-    "STANDARD_TWO_SCAN": Hub75ScanWiring.STANDARD_TWO_SCAN,
-    "SCAN_1_4_16PX_HIGH": Hub75ScanWiring.SCAN_1_4_16PX_HIGH,
-    "SCAN_1_8_32PX_HIGH": Hub75ScanWiring.SCAN_1_8_32PX_HIGH,
-    "SCAN_1_8_32PX_FULL": Hub75ScanWiring.SCAN_1_8_32PX_FULL,
-    "SCAN_1_8_40PX_HIGH": Hub75ScanWiring.SCAN_1_8_40PX_HIGH,
-    "SCAN_1_8_64PX_HIGH": Hub75ScanWiring.SCAN_1_8_64PX_HIGH,
+    "STANDARD_TWO_SCAN": Hub75ScanWiring.HUB75_SCAN_WIRING_STANDARD_TWO_SCAN,
+    "SCAN_1_4_16PX_HIGH": Hub75ScanWiring.HUB75_SCAN_WIRING_SCAN_1_4_16PX_HIGH,
+    "SCAN_1_8_32PX_HIGH": Hub75ScanWiring.HUB75_SCAN_WIRING_SCAN_1_8_32PX_HIGH,
+    "SCAN_1_8_32PX_FULL": Hub75ScanWiring.HUB75_SCAN_WIRING_SCAN_1_8_32PX_FULL,
+    "SCAN_1_8_40PX_HIGH": Hub75ScanWiring.HUB75_SCAN_WIRING_SCAN_1_8_40PX_HIGH,
+    "SCAN_1_8_64PX_HIGH": Hub75ScanWiring.HUB75_SCAN_WIRING_SCAN_1_8_64PX_HIGH,
 }
 
 Hub75ClockSpeed = hub75_ns.enum("Hub75ClockSpeed", is_class=True)
 CLOCK_SPEEDS = {
-    "1MHZ": Hub75ClockSpeed.HZ_1M,
-    "5MHZ": Hub75ClockSpeed.HZ_5M,
-    "8MHZ": Hub75ClockSpeed.HZ_8M,
-    "10MHZ": Hub75ClockSpeed.HZ_10M,
-    "16MHZ": Hub75ClockSpeed.HZ_16M,
-    "20MHZ": Hub75ClockSpeed.HZ_20M,
+    "1MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_1M,
+    "5MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_5M,
+    "8MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_8M,
+    "10MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_10M,
+    "16MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_16M,
+    "20MHZ": Hub75ClockSpeed.HUB75_CLOCK_SPEED_HZ_20M,
 }
 
 
@@ -253,18 +252,17 @@ def _final_validate(config: ConfigType) -> ConfigType:
     return config
 
 
-FINAL_VALIDATE_SCHEMA = cv.Schema(_final_validate)
+FINAL_VALIDATE_SCHEMA = cv.All(
+    _final_validate,
+    fv.unique_platform_key(
+        domain="display",
+        platform=DOMAIN,
+        message="Only one hub75_icn2053 display can use the I2S backend",
+    ),
+)
 
 
-def _validate_icn2053(config):
-    from esphome.components.esp32 import get_esp32_variant
-    from esphome.components.esp32.const import VARIANT_ESP32
-    from esphome.core import CORE
-
-    if CORE.target_framework != "esp-idf":
-        raise cv.Invalid("hub75_icn2053 requires framework type: esp-idf")
-    if get_esp32_variant() != VARIANT_ESP32:
-        raise cv.Invalid("The ICN2053 I2S backend supports the original ESP32 only")
+def _validate_icn2053(config: ConfigType) -> ConfigType:
     if config[CONF_PANEL_WIDTH] % 16:
         raise cv.Invalid(
             "panel_width must be a multiple of 16", path=[CONF_PANEL_WIDTH]
@@ -327,25 +325,21 @@ def _validate_icn2053(config):
     return config
 
 
-BrightnessTrigger = hub75_ns.class_(
-    "BrightnessTrigger", automation.Trigger.template(cg.int_)
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_BRIGHTNESS, "add_on_brightness_callback", [(cg.int_, "brightness")]
+    ),
+    automation.CallbackAutomation(CONF_ON_READY, "add_on_ready_callback"),
+    automation.CallbackAutomation(CONF_ON_ERROR, "add_on_error_callback"),
 )
-ReadyTrigger = hub75_ns.class_("ReadyTrigger", automation.Trigger.template())
-ErrorTrigger = hub75_ns.class_("ErrorTrigger", automation.Trigger.template())
 
 CONFIG_SCHEMA = cv.All(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(HUB75Display),
-            cv.Optional(CONF_ON_BRIGHTNESS): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(BrightnessTrigger)}
-            ),
-            cv.Optional(CONF_ON_READY): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ReadyTrigger)}
-            ),
-            cv.Optional(CONF_ON_ERROR): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ErrorTrigger)}
-            ),
+            cv.Optional(CONF_ON_BRIGHTNESS): automation.validate_automation({}),
+            cv.Optional(CONF_ON_READY): automation.validate_automation({}),
+            cv.Optional(CONF_ON_ERROR): automation.validate_automation({}),
             cv.Optional(CONF_ROTATION): display.validate_rotation,
             # Panel dimensions
             cv.Required(CONF_PANEL_WIDTH): cv.positive_int,
@@ -391,14 +385,14 @@ CONFIG_SCHEMA = cv.All(
         }
     ),
     _validate_config,
+    cv.only_with_framework("esp-idf"),
+    esp32.only_on_variant(supported=[esp32.VARIANT_ESP32]),
     _validate_icn2053,
 )
 
 
-async def to_code(config):
-    from esphome.components.esp32 import include_builtin_idf_component
-
-    include_builtin_idf_component("esp_driver_gpio")
+async def to_code(config: ConfigType) -> None:
+    esp32.include_builtin_idf_component("esp_driver_gpio")
     var = cg.new_Pvariable(config[CONF_ID])
     cg.add(
         var.set_geometry(
@@ -409,18 +403,26 @@ async def to_code(config):
             config.get(CONF_LAYOUT, PANEL_LAYOUTS["HORIZONTAL"]),
         )
     )
-    pin_numbers = []
-    for key in PIN_KEYS:
-        if key in config:
-            pin = await cg.gpio_pin_expression(config[key])
-            pin_numbers.append(
-                cg.RawExpression(f"static_cast<int8_t>({pin.get_pin()})")
-            )
-        else:
-            pin_numbers.append(-1)
+    # The DMA transport configures the GPIOs directly; it only needs pin numbers.
     cg.add(
         var.set_pins(
-            cg.RawExpression("{" + ", ".join(str(n) for n in pin_numbers) + "}")
+            cg.StructInitializer(
+                Hub75Pins,
+                ("r1", config[CONF_R1_PIN][CONF_NUMBER]),
+                ("g1", config[CONF_G1_PIN][CONF_NUMBER]),
+                ("b1", config[CONF_B1_PIN][CONF_NUMBER]),
+                ("r2", config[CONF_R2_PIN][CONF_NUMBER]),
+                ("g2", config[CONF_G2_PIN][CONF_NUMBER]),
+                ("b2", config[CONF_B2_PIN][CONF_NUMBER]),
+                ("a", config[CONF_A_PIN][CONF_NUMBER]),
+                ("b", config[CONF_B_PIN][CONF_NUMBER]),
+                ("c", config[CONF_C_PIN][CONF_NUMBER]),
+                ("d", config[CONF_D_PIN][CONF_NUMBER] if CONF_D_PIN in config else -1),
+                ("e", config[CONF_E_PIN][CONF_NUMBER] if CONF_E_PIN in config else -1),
+                ("lat", config[CONF_LAT_PIN][CONF_NUMBER]),
+                ("oe", config[CONF_OE_PIN][CONF_NUMBER]),
+                ("clk", config[CONF_CLK_PIN][CONF_NUMBER]),
+            )
         )
     )
     cg.add(
@@ -430,20 +432,7 @@ async def to_code(config):
         )
     )
     cg.add(var.set_brightness(config.get(CONF_BRIGHTNESS, 128)))
-    if CONF_GAMMA_CORRECT in config:
-        cg.add(var.set_gamma(config[CONF_GAMMA_CORRECT]))
+    cg.add_optional(var.set_gamma, config.get(CONF_GAMMA_CORRECT))
     await display.register_display(var, config)
-    if CONF_LAMBDA in config:
-        writer = await cg.process_lambda(
-            config[CONF_LAMBDA], [(display.DisplayRef, "it")], return_type=cg.void
-        )
-        cg.add(var.set_writer(writer))
-
-    for key, args in (
-        (CONF_ON_BRIGHTNESS, [(cg.int_, "brightness")]),
-        (CONF_ON_READY, []),
-        (CONF_ON_ERROR, []),
-    ):
-        for conf in config.get(key, []):
-            trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-            await automation.build_automation(trigger, args, conf)
+    await display.add_writer(var, config)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)

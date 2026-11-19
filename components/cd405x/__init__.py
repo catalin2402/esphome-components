@@ -1,28 +1,15 @@
 from esphome import automation, pins
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import CONF_CHANNEL, CONF_ID, CONF_TRIGGER_ID
+from esphome.const import CONF_CHANNEL, CONF_ID
+from esphome.types import ConfigType
 
 CODEOWNERS = ["@catalin2402"]
+DOMAIN = "cd405x"
 MULTI_CONF = True
 
-cd405x_ns = cg.esphome_ns.namespace("cd405x")
+cd405x_ns = cg.esphome_ns.namespace(DOMAIN)
 CD405xComponent = cd405x_ns.class_("CD405x", cg.Component)
-SelectChannelAction = cd405x_ns.class_("SelectChannelAction", automation.Action)
-InhibitAction = cd405x_ns.class_("InhibitAction", automation.Action)
-ToggleInhibitAction = cd405x_ns.class_("ToggleInhibitAction", automation.Action)
-SelectedChannelCondition = cd405x_ns.class_(
-    "SelectedChannelCondition", automation.Condition
-)
-IsInhibitedCondition = cd405x_ns.class_("IsInhibitedCondition", automation.Condition)
-IsEnabledCondition = cd405x_ns.class_("IsEnabledCondition", automation.Condition)
-ChannelTrigger = cd405x_ns.class_(
-    "ChannelTrigger", automation.Trigger.template(cg.int_)
-)
-InhibitTrigger = cd405x_ns.class_(
-    "InhibitTrigger", automation.Trigger.template(cg.bool_)
-)
-
 CONF_PIN_A = "pin_a"
 CONF_PIN_B = "pin_b"
 CONF_PIN_C = "pin_c"
@@ -32,7 +19,7 @@ CONF_ON_CHANNEL = "on_channel"
 CONF_ON_INHIBIT = "on_inhibit"
 
 
-def validate_config(config):
+def validate_config(config: ConfigType) -> ConfigType:
     if CONF_PIN_C not in config and config[CONF_CHANNEL] > 3:
         raise cv.Invalid("Channels 4-7 require pin_c", path=[CONF_CHANNEL])
     if CONF_PIN_INHIBIT not in config:
@@ -53,16 +40,8 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_PIN_INHIBIT): pins.gpio_output_pin_schema,
             cv.Optional(CONF_CHANNEL, default=0): cv.int_range(min=0, max=7),
             cv.Optional(CONF_INHIBIT, default=False): cv.boolean,
-            cv.Optional(CONF_ON_CHANNEL): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ChannelTrigger),
-                }
-            ),
-            cv.Optional(CONF_ON_INHIBIT): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(InhibitTrigger),
-                }
-            ),
+            cv.Optional(CONF_ON_CHANNEL): automation.validate_automation({}),
+            cv.Optional(CONF_ON_INHIBIT): automation.validate_automation({}),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     validate_config,
@@ -81,108 +60,72 @@ INHIBIT_SCHEMA = OPERATION_BASE_SCHEMA.extend(
 )
 
 
-async def to_code(config):
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_CHANNEL, "add_on_channel_callback", [(cg.int_, "channel")]
+    ),
+    automation.CallbackAutomation(
+        CONF_ON_INHIBIT, "add_on_inhibit_callback", [(cg.bool_, "inhibited")]
+    ),
+)
+
+
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    for key in (CONF_PIN_A, CONF_PIN_B, CONF_PIN_C, CONF_PIN_INHIBIT):
-        if key in config:
-            pin = await cg.gpio_pin_expression(config[key])
-            cg.add(getattr(var, f"set_{key}")(pin))
+    await cg.add_pin(var.set_pin_a, config[CONF_PIN_A])
+    await cg.add_pin(var.set_pin_b, config[CONF_PIN_B])
+    await cg.add_pin(var.set_pin_c, config.get(CONF_PIN_C))
+    await cg.add_pin(var.set_pin_inhibit, config.get(CONF_PIN_INHIBIT))
     cg.add(var.select_channel(config[CONF_CHANNEL]))
     cg.add(var.inhibit(config[CONF_INHIBIT]))
-    for conf in config.get(CONF_ON_CHANNEL, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [(cg.int_, "channel")], conf)
-    for conf in config.get(CONF_ON_INHIBIT, []):
-        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-        await automation.build_automation(trigger, [(cg.bool_, "inhibited")], conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 
 
-@automation.register_action(
-    "cd405x.select_channel", SelectChannelAction, CHANNEL_SCHEMA, synchronous=True
+automation.register_apply_action(
+    "cd405x.select_channel",
+    CHANNEL_SCHEMA,
+    automation.ApplyField(CONF_CHANNEL, "select_channel", cg.int_),
 )
-async def select_channel_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    var = cg.new_Pvariable(action_id, template_arg, parent)
-    value = await cg.templatable(config[CONF_CHANNEL], args, cg.int_)
-    cg.add(var.set_channel(value))
-    return var
 
-
-@automation.register_action(
-    "cd405x.inhibit", InhibitAction, INHIBIT_SCHEMA, synchronous=True
+automation.register_apply_action(
+    "cd405x.inhibit",
+    INHIBIT_SCHEMA,
+    automation.ApplyField(CONF_INHIBIT, "inhibit", cg.bool_),
 )
-async def inhibit_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    var = cg.new_Pvariable(action_id, template_arg, parent)
-    value = await cg.templatable(config[CONF_INHIBIT], args, cg.bool_)
-    cg.add(var.set_inhibit(value))
-    return var
 
-
-@automation.register_action(
+automation.register_apply_action(
     "cd405x.disable",
-    InhibitAction,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
-    synchronous=True,
+    automation.ApplyCall("inhibit(true)"),
 )
-async def disable_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    var = cg.new_Pvariable(action_id, template_arg, parent)
-    cg.add(var.set_inhibit(True))
-    return var
 
-
-@automation.register_action(
+automation.register_apply_action(
     "cd405x.enable",
-    InhibitAction,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
-    synchronous=True,
+    automation.ApplyCall("inhibit(false)"),
 )
-async def enable_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    var = cg.new_Pvariable(action_id, template_arg, parent)
-    cg.add(var.set_inhibit(False))
-    return var
 
-
-@automation.register_action(
+automation.register_apply_action(
     "cd405x.toggle_inhibit",
-    ToggleInhibitAction,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
-    synchronous=True,
+    automation.ApplyCall("toggle_inhibit()"),
 )
-async def toggle_inhibit_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(action_id, template_arg, parent)
 
-
-@automation.register_condition(
-    "cd405x.selected_channel", SelectedChannelCondition, CHANNEL_SCHEMA
+automation.register_apply_condition(
+    "cd405x.selected_channel",
+    CHANNEL_SCHEMA,
+    automation.ApplyCall("get_channel() == {}", ((CONF_CHANNEL, cg.int_),)),
 )
-async def selected_channel_to_code(config, condition_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    var = cg.new_Pvariable(condition_id, template_arg, parent)
-    value = await cg.templatable(config[CONF_CHANNEL], args, cg.int_)
-    cg.add(var.set_channel(value))
-    return var
 
-
-@automation.register_condition(
+automation.register_apply_condition(
     "cd405x.is_inhibited",
-    IsInhibitedCondition,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
+    "is_inhibited()",
 )
-async def is_inhibited_to_code(config, condition_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(condition_id, template_arg, parent)
 
-
-@automation.register_condition(
+automation.register_apply_condition(
     "cd405x.is_enabled",
-    IsEnabledCondition,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
+    "is_inhibited() == false",
 )
-async def is_enabled_to_code(config, condition_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(condition_id, template_arg, parent)

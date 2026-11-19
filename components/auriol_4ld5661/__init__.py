@@ -1,6 +1,7 @@
 import esphome.codegen as cg
 from esphome.components import remote_base
 import esphome.config_validation as cv
+from esphome.types import ConfigType
 
 DOMAIN = "auriol_4ld5661"
 CODEOWNERS = ["@catalin2402"]
@@ -17,20 +18,19 @@ AuriolDumper = auriol_4ld5661_ns.class_(
 )
 
 
-async def register_auriol(var, config):
+async def register_auriol(var: cg.MockObj, config: ConfigType) -> None:
     await cg.register_component(var, config)
     await remote_base.register_listener(var, config)
-    if CONF_AURIOL_ID in config:
-        cg.add(var.set_auriol_id(config[CONF_AURIOL_ID]))
+    cg.add_optional(var.set_auriol_id, config.get(CONF_AURIOL_ID))
 
 
 @remote_base.register_dumper(DOMAIN, AuriolDumper)
-def auriol_dumper(var, config):
+def auriol_dumper(var: cg.MockObj, config: ConfigType) -> None:
     pass
 
 
 CONFIG_SCHEMA = cv.Schema({})
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     pass

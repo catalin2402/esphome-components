@@ -5,7 +5,7 @@
 
 namespace esphome::auriol_4ld5661 {
 
-class AuriolBatterySensor : public Auriol4LD5661Base, public binary_sensor::BinarySensor {
+class AuriolBatterySensor final : public Auriol4LD5661Base, public binary_sensor::BinarySensor {
  public:
   bool on_receive(remote_base::RemoteReceiveData data) override;
   void dump_config() override;

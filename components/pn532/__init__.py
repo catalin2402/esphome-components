@@ -1,7 +1,7 @@
-import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome import automation
+import esphome.codegen as cg
 from esphome.components import mifare_classic, nfc
+import esphome.config_validation as cv
 from esphome.const import (
     CONF_ON_FINISHED_WRITE,
     CONF_ON_TAG,
@@ -12,13 +12,16 @@ from esphome.cpp_generator import MockObj
 from esphome.types import ConfigType
 
 CODEOWNERS = ["@OttoWinter", "@jesserockz"]
-AUTO_LOAD = ["binary_sensor", "nfc", "mifare_classic"]
+AUTO_LOAD = ["binary_sensor", "mifare_classic", "nfc"]
+DOMAIN = "pn532"
 MULTI_CONF = True
 
 CONF_PN532_ID = "pn532_id"
 
 pn532_ns = cg.esphome_ns.namespace("pn532")
-PN532 = pn532_ns.class_("PN532", cg.PollingComponent, mifare_classic.MifareClassicReader)
+PN532 = pn532_ns.class_(
+    "PN532", cg.PollingComponent, mifare_classic.MifareClassicReader
+)
 
 PN532_SCHEMA = cv.Schema(
     {
@@ -46,9 +49,12 @@ def CONFIG_SCHEMA(conf: ConfigType) -> None:
         )
 
 
-_request_ontag_trigger_slot = cg.slot_counter("PN532_ON_TAG_TRIGGER_COUNT")
-_request_ontagremoved_trigger_slot = cg.slot_counter(
-    "PN532_ON_TAG_REMOVED_TRIGGER_COUNT"
+register_tag = cg.slot_list("PN532_BINARY_SENSOR_COUNT", "register_tag", DOMAIN)
+_register_ontag_trigger = cg.slot_list(
+    "PN532_ON_TAG_TRIGGER_COUNT", "register_ontag_trigger", DOMAIN
+)
+_register_ontagremoved_trigger = cg.slot_list(
+    "PN532_ON_TAG_REMOVED_TRIGGER_COUNT", "register_ontagremoved_trigger", DOMAIN
 )
 
 _CALLBACK_AUTOMATIONS = (
@@ -63,16 +69,14 @@ async def setup_pn532(var: MockObj, config: ConfigType) -> None:
 
     for conf in config.get(CONF_ON_TAG, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID])
-        _request_ontag_trigger_slot(str(var))
-        cg.add(var.register_ontag_trigger(trigger))
+        cg.add(_register_ontag_trigger(var, trigger))
         await automation.build_automation(
             trigger, [(cg.std_string, "x"), (nfc.NfcTagConstRef, "tag")], conf
         )
 
     for conf in config.get(CONF_ON_TAG_REMOVED, []):
         trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID])
-        _request_ontagremoved_trigger_slot(str(var))
-        cg.add(var.register_ontagremoved_trigger(trigger))
+        cg.add(_register_ontagremoved_trigger(var, trigger))
         await automation.build_automation(
             trigger, [(cg.std_string, "x"), (nfc.NfcTagConstRef, "tag")], conf
         )

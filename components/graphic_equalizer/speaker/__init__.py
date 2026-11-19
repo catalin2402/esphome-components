@@ -12,10 +12,10 @@ from esphome.const import (
     CONF_OUTPUT_SPEAKER,
     CONF_PRESET,
     CONF_SAMPLE_RATE,
-    CONF_TRIGGER_ID,
 )
 import esphome.final_validate as fv
 from esphome.helpers import fnv1_hash
+from esphome.types import ConfigType
 
 from .. import (
     BAND_GAIN,
@@ -29,16 +29,13 @@ from .. import (
     CONF_PREAMP,
     PREAMP_GAIN,
     PRESETS,
-    EnabledTrigger,
-    GainTrigger,
     GraphicEqualizerSpeaker,
-    PresetTrigger,
 )
 
 DEPENDENCIES = ["esp32"]
 
 
-def set_stream_limits(config):
+def set_stream_limits(config: ConfigType) -> ConfigType:
     audio.set_stream_limits(
         min_bits_per_sample=16,
         max_bits_per_sample=16,
@@ -68,30 +65,23 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BANDS): cv.Schema(
                 {cv.Optional(band): BAND_GAIN for band in BANDS}
             ),
-            cv.Optional(CONF_ON_GAIN): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(GainTrigger)}
-            ),
-            cv.Optional(CONF_ON_PRESET): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(PresetTrigger)}
-            ),
-            cv.Optional(CONF_ON_ENABLED): automation.validate_automation(
-                {cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(EnabledTrigger)}
-            ),
+            cv.Optional(CONF_ON_GAIN): automation.validate_automation({}),
+            cv.Optional(CONF_ON_PRESET): automation.validate_automation({}),
+            cv.Optional(CONF_ON_ENABLED): automation.validate_automation({}),
         }
     ).extend(cv.COMPONENT_SCHEMA),
     set_stream_limits,
 )
 
 
-def final_validate(config):
-    full = fv.full_config.get()
+def final_validate(config: ConfigType) -> ConfigType:
     seen = {str(config[CONF_ID])}
     target = config[CONF_OUTPUT_SPEAKER]
     while True:
         if str(target) in seen:
             raise cv.Invalid("graphic_equalizer output_speaker chain contains a cycle")
         seen.add(str(target))
-        target_config = full.get_config_for_path(full.get_path_for_id(target)[:-1])
+        target_config = fv.get_declaring_config(target)
         if CONF_OUTPUT_SPEAKER not in target_config:
             break
         target = target_config[CONF_OUTPUT_SPEAKER]
@@ -132,11 +122,24 @@ def final_validate(config):
 FINAL_VALIDATE_SCHEMA = final_validate
 
 
-async def to_code(config):
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_GAIN, "add_gain_callback", [(cg.uint8, "band"), (cg.float_, "gain")]
+    ),
+    automation.CallbackAutomation(
+        CONF_ON_PRESET, "add_preset_callback", [(cg.uint8, "preset")]
+    ),
+    automation.CallbackAutomation(
+        CONF_ON_ENABLED, "add_enabled_callback", [(cg.bool_, "enabled")]
+    ),
+)
+
+
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await speaker.register_speaker(var, config)
-    cg.add(var.set_output_speaker(await cg.get_variable(config[CONF_OUTPUT_SPEAKER])))
+    await cg.add_variable(var.set_output_speaker, config[CONF_OUTPUT_SPEAKER])
     cg.add(
         var.set_preference_key(
             fnv1_hash(f"graphic_equalizer.{config[CONF_ID].id}.presets.v1")
@@ -144,16 +147,8 @@ async def to_code(config):
     )
     cg.add(var.set_auto_headroom(config[CONF_AUTO_HEADROOM]))
     cg.add(var.select_preset(config[CONF_PRESET]))
-    if CONF_PREAMP in config:
-        cg.add(var.set_preamp(config[CONF_PREAMP]))
+    cg.add_optional(var.set_preamp, config.get(CONF_PREAMP))
     for band, gain in config.get(CONF_BANDS, {}).items():
         cg.add(var.set_band_gain(BANDS[band], gain))
     cg.add(var.set_enabled(config[CONF_ENABLED]))
-    for key, args in (
-        (CONF_ON_GAIN, [(cg.uint8, "band"), (cg.float_, "gain")]),
-        (CONF_ON_PRESET, [(cg.uint8, "preset")]),
-        (CONF_ON_ENABLED, [(cg.bool_, "enabled")]),
-    ):
-        for conf in config.get(key, []):
-            trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-            await automation.build_automation(trigger, args, conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)

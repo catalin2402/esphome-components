@@ -2,7 +2,6 @@
 
 #include "esphome/components/remote_base/remote_base.h"
 #include "esphome/core/defines.h"
-#include "esphome/core/version.h"
 
 namespace esphome::unitec {
 
@@ -16,17 +15,11 @@ struct UnitecData {
   }
 };
 
-class UnitecProtocol : public remote_base::RemoteProtocol<UnitecData> {
+class UnitecProtocol final : public remote_base::RemoteProtocol<UnitecData> {
  public:
-#if ESPHOME_VERSION_CODE < VERSION_CODE(2026, 10, 0)
-  void encode(remote_base::RemoteTransmitData *dst, const UnitecData &data) override;
-  optional<UnitecData> decode(remote_base::RemoteReceiveData src) override;
-  void dump(const UnitecData &data) override;
-#else
   void encode(remote_base::RemoteTransmitData *dst, const UnitecData &data);
   optional<UnitecData> decode(remote_base::RemoteReceiveData src);
   void dump(const UnitecData &data);
-#endif
 };
 
 #ifdef USE_BINARY_SENSOR
@@ -35,3 +28,8 @@ using UnitecBinarySensor = remote_base::RemoteReceiverBinarySensor<UnitecProtoco
 using UnitecDumper = remote_base::RemoteReceiverDumper<UnitecProtocol>;
 
 }  // namespace esphome::unitec
+
+// Shared remote action codegen resolves protocol types in remote_base.
+namespace esphome::remote_base {
+using UnitecProtocol = unitec::UnitecProtocol;
+}  // namespace esphome::remote_base

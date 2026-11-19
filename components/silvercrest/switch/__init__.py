@@ -2,6 +2,7 @@ import esphome.codegen as cg
 from esphome.components import switch
 import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL
+from esphome.types import ConfigType
 
 from .. import CHANNELS, CONF_SILVERCREST_ID, Silvercrest, silvercrest_ns
 
@@ -24,10 +25,10 @@ CONFIG_SCHEMA = (
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await switch.new_switch(config)
     await cg.register_component(var, config)
 
     parent = await cg.get_variable(config[CONF_SILVERCREST_ID])
-    cg.add(var.set_parent(parent))
+    await cg.register_parented(var, parent)
     cg.add(var.set_channel(config[CONF_CHANNEL]))

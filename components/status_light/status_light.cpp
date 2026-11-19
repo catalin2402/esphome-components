@@ -1,7 +1,6 @@
 #include "status_light.h"
 
 #include "esphome/core/application.h"
-#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #ifdef USE_NETWORK
 #include "esphome/components/network/util.h"
@@ -12,7 +11,7 @@
 
 namespace esphome::status_light {
 
-static const char *const TAG = "status_light";
+ESPHOME_LOG_TAG(TAG, "status_light");
 
 static constexpr uint32_t ERROR_PERIOD_MS = 250;
 static constexpr uint32_t ERROR_ON_MS = 150;
@@ -33,28 +32,29 @@ void StatusLight::setup() {
 StatusLight::Status StatusLight::get_status_() const {
   const uint8_t app_state = App.get_app_state();
   if ((app_state & STATUS_LED_ERROR) != 0u)
-    return Status::ERROR;
+    return Status::STATUS_ERROR;
 #ifdef USE_NETWORK
   // Connection states precede the warnings raised by disconnected services.
   if (!network::is_disabled() && !network::is_connected())
-    return Status::NETWORK;
+    return Status::STATUS_NETWORK;
 #endif
 #ifdef USE_API
   if (api::global_api_server != nullptr && !api::global_api_server->is_connected())
-    return Status::API;
+    return Status::STATUS_API;
 #endif
   if ((app_state & STATUS_LED_WARNING) != 0u)
-    return Status::WARNING;
-  return Status::OK;
+    return Status::STATUS_WARNING;
+  return Status::STATUS_OK;
 }
 
 void StatusLight::loop() {
   const Status status = this->get_status_();
-  const uint32_t now = millis();
-  const bool on = status == Status::ERROR ? now % ERROR_PERIOD_MS < ERROR_ON_MS
-                                          : status != Status::OK && now % WARNING_PERIOD_MS < WARNING_ON_MS;
+  const uint32_t now = App.get_loop_component_start_time();
+  const bool on = status == Status::STATUS_ERROR
+                      ? now % ERROR_PERIOD_MS < ERROR_ON_MS
+                      : status != Status::STATUS_OK && now % WARNING_PERIOD_MS < WARNING_ON_MS;
   if (!this->initialized_ || status != this->last_status_ || on != this->last_on_) {
-    if (status == Status::OK) {
+    if (status == Status::STATUS_OK) {
       this->write_idle_();
     } else {
       this->write_light_(status, on);
@@ -65,7 +65,7 @@ void StatusLight::loop() {
   }
 }
 
-void StatusLight::write_idle_() { this->write_light_(Status::OK, false); }
+void StatusLight::write_idle_() { this->write_light_(Status::STATUS_OK, false); }
 
 void StatusLight::write_light_(Status status, bool on) {
   auto call = this->light_->make_call();
@@ -78,19 +78,19 @@ void StatusLight::write_light_(Status status, bool on) {
     call.set_color_brightness_if_supported(1.0f);
     RGBColor color{0.0f, 0.0f, 0.0f};
     switch (status) {
-      case Status::ERROR:
+      case Status::STATUS_ERROR:
         color = this->error_color_;
         break;
-      case Status::WARNING:
+      case Status::STATUS_WARNING:
         color = this->warning_color_;
         break;
-      case Status::NETWORK:
+      case Status::STATUS_NETWORK:
         color = this->network_color_;
         break;
-      case Status::API:
+      case Status::STATUS_API:
         color = this->api_color_;
         break;
-      case Status::OK:
+      case Status::STATUS_OK:
         break;
     }
     call.set_rgb(color.red, color.green, color.blue);
@@ -105,7 +105,7 @@ void StatusLight::write_light_(Status status, bool on) {
 
 void StatusLight::dump_config() {
   ESP_LOGCONFIG(TAG, "Status Light:");
-  ESP_LOGCONFIG(TAG, "  Light: %s", this->light_->get_name().c_str());
+  ESP_LOGCONFIG(TAG, "  Light: %s", LOG_STR_ARG(this->light_->get_log_name()));
   ESP_LOGCONFIG(TAG, "  RGB: %s", YESNO(this->color_mode_ != light::ColorMode::UNKNOWN));
 }
 

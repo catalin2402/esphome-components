@@ -18,7 +18,7 @@ class StatusLight : public Component {
   float get_setup_priority() const override { return setup_priority::PROCESSOR; }
 
  protected:
-  enum class Status : uint8_t { OK, ERROR, NETWORK, API, WARNING };
+  enum class Status : uint8_t { STATUS_OK, STATUS_ERROR, STATUS_NETWORK, STATUS_API, STATUS_WARNING };
   struct RGBColor {
     float red;
     float green;
@@ -35,7 +35,7 @@ class StatusLight : public Component {
   RGBColor network_color_{0.0f, 0.0f, 1.0f};
   RGBColor api_color_{0.0f, 1.0f, 0.0f};
   light::ColorMode color_mode_{light::ColorMode::UNKNOWN};
-  Status last_status_{Status::OK};
+  Status last_status_{Status::STATUS_OK};
   bool last_on_{false};
   bool initialized_{false};
 };

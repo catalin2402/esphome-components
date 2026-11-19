@@ -392,6 +392,16 @@ static constexpr ColorName COLOR_NAMES[] = {
     {"U04-P0", "Rose Beige/Flesh"},
 };
 
+size_t max_color_name_length() {
+  static constexpr size_t MAX_LENGTH = [] {
+    size_t length = 8;  // RGBA fallback
+    for (const auto &entry : COLOR_NAMES)
+      length = std::max(length, std::char_traits<char>::length(entry.name));
+    return length;
+  }();
+  return MAX_LENGTH;
+}
+
 const char *get_color_name(const std::string &material_id, const std::string &variant_id) {
   // A00-W1 belongs to GFA00; do not label mismatched material/variant pairs.
   if (material_id.size() != 5 || material_id.compare(0, 2, "GF") != 0 || variant_id.size() < 5 ||

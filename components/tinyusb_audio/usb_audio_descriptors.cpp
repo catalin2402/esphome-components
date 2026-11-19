@@ -302,7 +302,9 @@ extern "C" bool tud_audio_rx_done_isr(uint8_t, uint16_t received, uint8_t functi
   // Smooth queue occupancy before adjusting the host's send rate. The receive
   // queue tracks the speaker clock and absorbs jitter from the firmware loop.
   const int32_t buffered = global_tinyusb_audio->playback_buffered_frames();
-  constexpr int32_t TARGET_FRAMES = TINYUSB_AUDIO_PLAYBACK_RATE * 20 / 1000;
+  constexpr int32_t TARGET_FRAMES =
+      std::min<size_t>(TINYUSB_AUDIO_PLAYBACK_RATE * 20 / 1000,
+                       TINYUSB_AUDIO_PLAYBACK_PACKET * PLAYBACK_FIFO_PACKETS / PLAYBACK_FRAME_BYTES / 2);
   constexpr int32_t MAX_CORRECTION = 8192;  // 1/8 frame per USB millisecond.
   filtered_fill_error += buffered - TARGET_FRAMES - filtered_fill_error / 128;
   const int32_t correction = std::clamp(filtered_fill_error / 8, -MAX_CORRECTION, MAX_CORRECTION);

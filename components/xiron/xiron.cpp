@@ -4,7 +4,7 @@
 
 namespace esphome::xiron {
 
-static const char *const TAG = "xiron";
+ESPHOME_LOG_TAG(TAG, "xiron");
 
 void XironBase::dump_config() {
   ESP_LOGCONFIG(TAG, "Xiron:");

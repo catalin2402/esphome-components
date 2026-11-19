@@ -6,7 +6,7 @@
 
 namespace esphome::unitec {
 
-class UnitecSwitch : public switch_::Switch, public Component, public remote_base::RemoteTransmittable {
+class UnitecSwitch final : public switch_::Switch, public Component, public remote_base::RemoteTransmittable {
  public:
   void dump_config() override;
   void set_address(uint16_t address) { this->address_ = address; }

@@ -7,6 +7,9 @@
 namespace esphome::bambu_lab_tags {
 
 struct Spool {
+  // Reserve the bounded tag fields once before reading tags.
+  void reserve();
+
   std::string uid;
   std::string material_id;
   std::string variant_id;

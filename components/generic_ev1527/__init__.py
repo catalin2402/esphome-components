@@ -2,6 +2,7 @@ import esphome.codegen as cg
 from esphome.components import remote_base
 import esphome.config_validation as cv
 from esphome.const import CONF_DATA, CONF_ID
+from esphome.types import ConfigType
 
 DOMAIN = "generic_ev1527"
 CODEOWNERS = ["@catalin2402"]
@@ -25,7 +26,7 @@ PROTOCOL_SCHEMA = cv.Schema(
 
 
 @remote_base.register_binary_sensor(DOMAIN, GenericEV1527BinarySensor, PROTOCOL_SCHEMA)
-def generic_ev1527_binary_sensor(var, config):
+def generic_ev1527_binary_sensor(var: cg.MockObj, config: ConfigType) -> None:
     cg.add(
         var.set_data(
             cg.StructInitializer(
@@ -38,7 +39,7 @@ def generic_ev1527_binary_sensor(var, config):
 
 
 @remote_base.register_dumper(DOMAIN, GenericEV1527Dumper)
-def generic_ev1527_dumper(var, config):
+def generic_ev1527_dumper(var: cg.MockObj, config: ConfigType) -> None:
     pass
 
 
@@ -46,5 +47,5 @@ def generic_ev1527_dumper(var, config):
 CONFIG_SCHEMA = cv.Schema({})
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     pass

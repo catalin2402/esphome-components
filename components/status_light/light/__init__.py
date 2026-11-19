@@ -2,10 +2,12 @@ import esphome.codegen as cg
 from esphome.components import light
 import esphome.config_validation as cv
 from esphome.const import CONF_OUTPUT_ID
+from esphome.types import ConfigType
 
 from .. import STATUS_LIGHT_SCHEMA, StatusLight, setup_status_light, status_light_ns
 
 AUTO_LOAD = ["status_light"]
+CODEOWNERS = ["@catalin2402"]
 
 StatusLightLightOutput = status_light_ns.class_(
     "StatusLightLightOutput", light.LightOutput, StatusLight
@@ -22,7 +24,7 @@ CONFIG_SCHEMA = (
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_OUTPUT_ID])
     await setup_status_light(var, config)
     await cg.register_component(var, config)

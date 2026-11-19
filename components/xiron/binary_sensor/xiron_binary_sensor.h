@@ -5,7 +5,7 @@
 
 namespace esphome::xiron {
 
-class XironBatterySensor : public XironBase, public binary_sensor::BinarySensor {
+class XironBatterySensor final : public XironBase, public binary_sensor::BinarySensor {
  public:
   bool on_receive(remote_base::RemoteReceiveData data) override;
   void dump_config() override;

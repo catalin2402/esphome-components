@@ -1,10 +1,12 @@
 #include "silvercrest_protocol.h"
 
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#include "esphome/core/progmem.h"
 
 namespace esphome::silvercrest {
 
-static const char *const TAG = "remote.silvercrest";
+ESPHOME_LOG_TAG(TAG, "remote.silvercrest");
 static constexpr uint8_t NBITS = 24;
 static constexpr uint32_t HEADER_MARK_US = 288;
 static constexpr uint32_t HEADER_SPACE_US = 2232;
@@ -15,14 +17,22 @@ static constexpr uint32_t BIT_ZERO_SPACE_US = 468;
 static constexpr uint32_t FOOTER_MARK_US = 2952;
 
 // Rows are A, B, C, D, master; columns are off, on.
-static constexpr uint32_t CODES[5][2] = {
+static constexpr uint32_t CODES[5][2] PROGMEM = {
     {0xE759DF, 0xE976CF}, {0xE759DB, 0xE976CB}, {0xE21CE3, 0xEADD43}, {0xE5AE8D, 0xEDE15D}, {0xE976C5, 0xE1F865},
 };
+
+PROGMEM_STRING_TABLE(ChannelNames, "A", "B", "C", "D", "master", "unknown");
+
+static uint32_t channel_code(Channel channel, bool state) {
+  uint32_t code;
+  progmem_memcpy(&code, &CODES[channel][state], sizeof(code));
+  return code;
+}
 
 void SilvercrestProtocol::encode(remote_base::RemoteTransmitData *dst, const SilvercrestData &data) {
   if (data.channel > MASTER || data.repeat_times == 0)
     return;
-  const uint32_t code = CODES[data.channel][data.state];
+  const uint32_t code = channel_code(data.channel, data.state);
   dst->set_carrier_frequency(0);
   dst->reserve(data.repeat_times * (2 + NBITS * 2) + 1);
   for (uint8_t repeat = 0; repeat < data.repeat_times; repeat++) {
@@ -53,7 +63,7 @@ optional<SilvercrestData> SilvercrestProtocol::decode(remote_base::RemoteReceive
   // A capture may end after one packet, contain more repetitions, or include the final mark.
   for (uint8_t channel = A; channel <= MASTER; channel++) {
     for (uint8_t state = 0; state < 2; state++) {
-      if (code == CODES[channel][state])
+      if (code == channel_code(static_cast<Channel>(channel), state != 0))
         return SilvercrestData{static_cast<Channel>(channel), state != 0};
     }
   }
@@ -62,12 +72,7 @@ optional<SilvercrestData> SilvercrestProtocol::decode(remote_base::RemoteReceive
 
 void SilvercrestProtocol::dump(const SilvercrestData &data) {
   ESP_LOGI(TAG, "Received Silvercrest: channel=%s, state=%s",
-           data.channel == MASTER ? "master"
-                                  : (data.channel == A   ? "A"
-                                     : data.channel == B ? "B"
-                                     : data.channel == C ? "C"
-                                                         : "D"),
-           ONOFF(data.state));
+           LOG_STR_ARG(ChannelNames::get_log_str(data.channel, ChannelNames::LAST_INDEX)), ONOFF(data.state));
 }
 
 }  // namespace esphome::silvercrest

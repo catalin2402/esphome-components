@@ -12,16 +12,17 @@ from esphome.const import (
     CONF_OUTPUT,
     CONF_PULLDOWN,
     CONF_PULLUP,
-    CONF_TRIGGER_ID,
     CONF_TYPE,
     CONF_VARIANT,
 )
+from esphome.types import ConfigType
 
 CODEOWNERS = ["@catalin2402"]
 AUTO_LOAD = ["gpio_expander"]
 DEPENDENCIES = ["esp32_hosted"]
+DOMAIN = "esp32_hosted_gpio"
 
-esp32_hosted_gpio_ns = cg.esphome_ns.namespace("esp32_hosted_gpio")
+esp32_hosted_gpio_ns = cg.esphome_ns.namespace(DOMAIN)
 
 ESP32HostedGPIOComponent = esp32_hosted_gpio_ns.class_(
     "ESP32HostedGPIOComponent", cg.Component
@@ -35,16 +36,23 @@ CONF_BUS_WIDTH = "bus_width"
 CONF_ON_READY = "on_ready"
 CONF_ON_NOT_READY = "on_not_ready"
 
-ReconfigureAction = esp32_hosted_gpio_ns.class_("ReconfigureAction", automation.Action)
-IsReadyCondition = esp32_hosted_gpio_ns.class_("IsReadyCondition", automation.Condition)
-HasPendingCondition = esp32_hosted_gpio_ns.class_(
-    "HasPendingCondition", automation.Condition
-)
-ReadyTrigger = esp32_hosted_gpio_ns.class_(
-    "ReadyTrigger", automation.Trigger.template()
-)
-NotReadyTrigger = esp32_hosted_gpio_ns.class_(
-    "NotReadyTrigger", automation.Trigger.template()
+_CALLBACK_AUTOMATIONS = (
+    automation.CallbackAutomation(
+        CONF_ON_READY,
+        "add_on_ready_callback",
+        forwarder=automation.TriggerOnTrueForwarder,
+        params=[(cg.bool_, "ready")],
+        forward=[],
+        when="ready",
+    ),
+    automation.CallbackAutomation(
+        CONF_ON_NOT_READY,
+        "add_on_ready_callback",
+        forwarder=automation.TriggerOnFalseForwarder,
+        params=[(cg.bool_, "ready")],
+        forward=[],
+        when="!ready",
+    ),
 )
 
 # Slave-side pins used by ESPHome's stock ESP-Hosted slave firmware.
@@ -94,34 +102,23 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_RESERVED_PINS, default=[]): cv.ensure_list(
                 cv.int_range(min=0, max=63)
             ),
-            cv.Optional(CONF_ON_READY): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ReadyTrigger),
-                }
-            ),
-            cv.Optional(CONF_ON_NOT_READY): automation.validate_automation(
-                {
-                    cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(NotReadyTrigger),
-                }
-            ),
+            cv.Optional(CONF_ON_READY): automation.validate_automation({}),
+            cv.Optional(CONF_ON_NOT_READY): automation.validate_automation({}),
         }
     ).extend(cv.COMPONENT_SCHEMA),
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 
     cg.add_define("USE_ESP32_HOSTED_GPIO")
     esp32.add_idf_sdkconfig_option("CONFIG_ESP_HOSTED_ENABLE_GPIO_EXPANDER", True)
-    for key in (CONF_ON_READY, CONF_ON_NOT_READY):
-        for conf in config.get(key, []):
-            trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
-            await automation.build_automation(trigger, [], conf)
+    await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 
 
-def validate_mode(value):
+def validate_mode(value: ConfigType) -> ConfigType:
     if not (value[CONF_INPUT] or value[CONF_OUTPUT]):
         raise cv.Invalid("Mode must include input or output")
     if value[CONF_OPEN_DRAIN] and not value[CONF_OUTPUT]:
@@ -139,7 +136,7 @@ def _as_list(value):
     return [value]
 
 
-def _slave_transport_pin_map(config):
+def _slave_transport_pin_map(config: ConfigType) -> dict[int, str]:
     pin_map = {}
     transport_type = config.get(CONF_TYPE, "sdio")
     variant = config.get(CONF_VARIANT)
@@ -159,13 +156,13 @@ def _slave_transport_pin_map(config):
     return pin_map
 
 
-def _primary_esp32_hosted_config():
+def _primary_esp32_hosted_config() -> ConfigType:
     full_config = fv.full_config.get()
     hosted_configs = _as_list(full_config.get("esp32_hosted"))
     return hosted_configs[0] if hosted_configs else {}
 
 
-def _final_validate(config):
+def _final_validate(config: ConfigType) -> ConfigType:
     hosted_config = _primary_esp32_hosted_config()
     if hosted_config.get(CONF_TYPE) == "spi" and not config.get(CONF_RESERVED_PINS):
         raise cv.Invalid(
@@ -230,9 +227,6 @@ ESP32_HOSTED_GPIO_PIN_SCHEMA = pins.gpio_base_schema(
         CONF_OUTPUT,
         CONF_OPEN_DRAIN,
         CONF_PULLUP,
-        CONF_TRIGGER_ID,
-        CONF_TYPE,
-        CONF_VARIANT,
         CONF_PULLDOWN,
     ],
     mode_validator=validate_mode,
@@ -248,11 +242,9 @@ ESP32_HOSTED_GPIO_PIN_SCHEMA = pins.gpio_base_schema(
     CONF_ESP32_HOSTED_GPIO,
     ESP32_HOSTED_GPIO_PIN_SCHEMA,
 )
-async def esp32_hosted_gpio_pin_to_code(config):
+async def esp32_hosted_gpio_pin_to_code(config: ConfigType) -> cg.MockObj:
     var = cg.new_Pvariable(config[CONF_ID])
-    parent = await cg.get_variable(config[CONF_ESP32_HOSTED_GPIO])
-
-    cg.add(var.set_parent(parent))
+    await cg.register_parented(var, config[CONF_ESP32_HOSTED_GPIO])
     cg.add(var.set_pin(config[CONF_NUMBER]))
     cg.add(var.set_inverted(config[CONF_INVERTED]))
     cg.add(var.set_flags(pins.gpio_flags_expr(config[CONF_MODE])))
@@ -264,32 +256,20 @@ OPERATION_BASE_SCHEMA = cv.Schema(
 )
 
 
-@automation.register_action(
+automation.register_apply_action(
     "esp32_hosted_gpio.reconfigure",
-    ReconfigureAction,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
-    synchronous=True,
+    automation.ApplyCall("reconfigure()"),
 )
-async def reconfigure_to_code(config, action_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(action_id, template_arg, parent)
 
-
-@automation.register_condition(
+automation.register_apply_condition(
     "esp32_hosted_gpio.is_ready",
-    IsReadyCondition,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
+    "is_gpio_ready()",
 )
-async def is_ready_to_code(config, condition_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(condition_id, template_arg, parent)
 
-
-@automation.register_condition(
+automation.register_apply_condition(
     "esp32_hosted_gpio.has_pending",
-    HasPendingCondition,
     automation.maybe_simple_id(OPERATION_BASE_SCHEMA),
+    "has_pending()",
 )
-async def has_pending_to_code(config, condition_id, template_arg, args):
-    parent = await cg.get_variable(config[CONF_ID])
-    return cg.new_Pvariable(condition_id, template_arg, parent)

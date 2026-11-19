@@ -1,9 +1,11 @@
 from esphome.components import binary_sensor, remote_base
 import esphome.config_validation as cv
 from esphome.const import CONF_TYPE, DEVICE_CLASS_BATTERY
+from esphome.types import ConfigType
 
 from .. import CONF_AURIOL_ID, Auriol4LD5661Base, auriol_4ld5661_ns, register_auriol
 
+CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 AuriolBatterySensor = auriol_4ld5661_ns.class_(
     "AuriolBatterySensor", Auriol4LD5661Base, binary_sensor.BinarySensor
@@ -24,6 +26,6 @@ CONFIG_SCHEMA = (
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await binary_sensor.new_binary_sensor(config)
     await register_auriol(var, config)

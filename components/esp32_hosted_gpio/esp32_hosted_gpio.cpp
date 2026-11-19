@@ -6,7 +6,7 @@
 
 namespace esphome::esp32_hosted_gpio {
 
-static const char *const TAG = "esp32_hosted_gpio";
+ESPHOME_LOG_TAG(TAG, "esp32_hosted_gpio");
 static constexpr uint8_t GPIO_COUNT = 64;
 static constexpr uint32_t LINK_RETRY_INTERVAL_MS = 1000;
 static constexpr uint32_t APPLY_RETRY_INTERVAL_MS = 250;
@@ -163,8 +163,8 @@ esp_err_t ESP32HostedGPIOComponent::configure_pin_(uint8_t pin, gpio::Flags flag
   esp_hosted_cp_gpio_config_t config{};
   config.pin_bit_mask = 1ULL << pin;
   config.mode = mode;
-  config.pull_up_en = static_cast<uint32_t>(bool(flags & gpio::FLAG_PULLUP));
-  config.pull_down_en = static_cast<uint32_t>(bool(flags & gpio::FLAG_PULLDOWN));
+  config.pull_up_en = static_cast<uint32_t>((flags & gpio::FLAG_PULLUP) != 0);
+  config.pull_down_en = static_cast<uint32_t>((flags & gpio::FLAG_PULLDOWN) != 0);
   config.intr_type = 0;
 
   esp_err_t err = esp_hosted_cp_gpio_config(&config);

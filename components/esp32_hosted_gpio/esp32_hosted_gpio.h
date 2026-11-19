@@ -26,7 +26,9 @@ class ESP32HostedGPIOComponent final : public Component, public gpio_expander::C
   void reconfigure();
   bool is_gpio_ready() const { return this->ready_; }
   bool has_pending() const { return this->has_pending_(); }
-  void add_on_ready_callback(std::function<void(bool)> &&callback) { this->ready_callback_.add(std::move(callback)); }
+  template<typename F> void add_on_ready_callback(F &&callback) {
+    this->ready_callback_.add(std::forward<F>(callback));
+  }
   void pin_mode(ESP32HostedGPIOPin *pin, gpio::Flags flags);
 
  protected:

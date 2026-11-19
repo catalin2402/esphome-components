@@ -20,6 +20,8 @@ namespace esphome::tinyusb_audio {
 
 extern const uint8_t CONFIGURATION_DESCRIPTOR[];
 inline constexpr size_t PLAYBACK_FRAME_BYTES = TINYUSB_AUDIO_PLAYBACK_FRAME_BYTES;
+// TinyUSB limits a byte FIFO to 32 KiB. Keep both FIFO depths packet- and frame-aligned.
+inline constexpr size_t PLAYBACK_FIFO_PACKETS = std::min<size_t>(40, 0x8000 / TINYUSB_AUDIO_PLAYBACK_PACKET);
 inline constexpr uint8_t PLAYBACK_INTERFACE = 1;
 inline constexpr uint8_t CAPTURE_INTERFACE = 3;
 inline constexpr int16_t PLAYBACK_VOLUME_MIN = -50 * 256;  // USB Audio volumes are in 1/256 dB.
@@ -66,7 +68,7 @@ class TinyUSBAudio final : public Component {
   bool playback_open_{false};
   bool playback_keep_alive_{false};
   bool suspended_{false};
-  std::array<uint8_t, TINYUSB_AUDIO_PLAYBACK_PACKET * 40> playback_storage_{};
+  std::array<uint8_t, TINYUSB_AUDIO_PLAYBACK_PACKET * PLAYBACK_FIFO_PACKETS> playback_storage_{};
   tu_fifo_t playback_fifo_{};
   std::atomic<bool> playback_active_{false};
   std::atomic<uint32_t> playback_generation_{0};

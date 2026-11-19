@@ -4,7 +4,7 @@
 
 namespace esphome::unitec {
 
-static const char *const TAG = "unitec.button";
+ESPHOME_LOG_TAG(TAG, "unitec.button");
 
 void UnitecButton::dump_config() {
   LOG_BUTTON("", "Unitec Button", this);
@@ -12,8 +12,6 @@ void UnitecButton::dump_config() {
                 static_cast<unsigned>(this->channel_));
 }
 
-void UnitecButton::press_action() {
-  this->transmit_<UnitecProtocol>({this->address_, this->channel_, this->state_});
-}
+void UnitecButton::press_action() { this->transmit_<UnitecProtocol>({this->address_, this->channel_, this->state_}); }
 
 }  // namespace esphome::unitec

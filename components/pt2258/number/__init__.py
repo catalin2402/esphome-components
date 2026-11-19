@@ -1,25 +1,17 @@
+from esphome import automation
 import esphome.codegen as cg
 from esphome.components import number
 import esphome.config_validation as cv
-from esphome.const import CONF_ID, CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_TYPE
+from esphome.const import CONF_MAX_VALUE, CONF_MIN_VALUE, CONF_TYPE
+from esphome.types import ConfigType
 
-from .. import CONF_PT2258_ID, PT2258, pt2258_ns
+from .. import CONF_PT2258_ID, DUMP_PUBLISHER, PT2258, STATE_PUBLISHER
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["pt2258"]
 
-PT2258Number = pt2258_ns.class_("PT2258Number", number.Number, cg.Component)
-NumberType = pt2258_ns.enum("NumberType")
-
-CONF_NUMBER_TYPE = "number_type"
 CONF_CHANNEL_A = "channel_a"
 CONF_CHANNEL_B = "channel_b"
-
-NUMBER_TYPE = {
-    "MASTER": NumberType.MASTER,
-    "VOLUME": NumberType.VOLUME,
-    "OFFSET": NumberType.OFFSET,
-}
 
 
 def validate_channels(value):
@@ -41,36 +33,59 @@ def validate_channels(value):
 
 
 CONFIG_SCHEMA = cv.All(
-    number.number_schema(PT2258Number)
-    .extend(
+    number.number_schema(number.ApplyNumber).extend(
         {
             cv.GenerateID(CONF_PT2258_ID): cv.use_id(PT2258),
-            cv.Optional(CONF_TYPE, default="master"): cv.enum(NUMBER_TYPE, upper=True),
+            cv.Optional(CONF_TYPE, default="master"): cv.one_of(
+                "MASTER", "VOLUME", "OFFSET", upper=True
+            ),
             cv.Optional(CONF_CHANNEL_A): cv.int_range(min=1, max=6),
             cv.Optional(CONF_CHANNEL_B): cv.int_range(min=1, max=6),
             cv.Optional(CONF_MIN_VALUE, default=0): cv.int_range(min=-79, max=79),
             cv.Optional(CONF_MAX_VALUE, default=79): cv.int_range(min=-79, max=79),
         }
-    )
-    .extend(cv.COMPONENT_SCHEMA),
+    ),
     validate_channels,
 )
 
 
-async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
-    await number.register_number(
-        var,
+async def to_code(config: ConfigType) -> None:
+    hub = await cg.get_variable(config[CONF_PT2258_ID])
+    channel_a = config.get(CONF_CHANNEL_A, 0)
+    channel_b = config.get(CONF_CHANNEL_B, 0)
+    offset = config[CONF_TYPE] == "OFFSET"
+    numbers = number.sub_numbers(config, parent=hub)
+    var = await numbers.create(
         config,
+        None,
         min_value=config[CONF_MIN_VALUE],
         max_value=config[CONF_MAX_VALUE],
         step=1,
+        apply=f"control_number(entity, value, {channel_a}, {channel_b}, {str(offset).lower()})",
     )
-    paren = await cg.get_variable(config[CONF_PT2258_ID])
-    cg.add(var.set_parent(paren))
-    cg.add(var.set_type(config[CONF_TYPE]))
-    if CONF_CHANNEL_A in config:
-        cg.add(var.set_channel_a(config[CONF_CHANNEL_A]))
-    if CONF_CHANNEL_B in config:
-        cg.add(var.set_channel_b(config[CONF_CHANNEL_B]))
+    parent = automation.parent_ref(hub)
+    entity = automation.parent_ref(var)
+    channel = channel_a or channel_b
+    state = parent.get_channel_volume(channel)
+    if offset:
+        state = parent.get_channel_volume(channel, True) - parent.get_channel_volume(
+            0, True
+        )
+    STATE_PUBLISHER.add(
+        hub,
+        cg.RawStatement(
+            f"{{ const float value = {state}; if (!{entity}->has_state() || {entity}->state != value) {entity}->publish_state(value); }}"
+        ),
+    )
+    DUMP_PUBLISHER.add(
+        hub, cg.RawStatement(f'LOG_NUMBER("", "PT2258 Number", {entity});')
+    )
+    DUMP_PUBLISHER.add(
+        hub, cg.RawStatement(f'ESP_LOGCONFIG(TAG, "  Type: {config[CONF_TYPE]}");')
+    )
+    DUMP_PUBLISHER.add(
+        hub,
+        cg.RawStatement(
+            f'ESP_LOGCONFIG(TAG, "  Channel A: {channel_a}, Channel B: {channel_b}");'
+        ),
+    )

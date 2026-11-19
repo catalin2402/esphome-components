@@ -4,12 +4,13 @@ from esphome import automation
 import esphome.codegen as cg
 from esphome.components import speaker
 import esphome.config_validation as cv
-from esphome.const import CONF_GAIN, CONF_PRESET
+from esphome.const import CONF_GAIN, CONF_PRESET, CONF_TYPE
 import esphome.final_validate as fv
 
 AUTO_LOAD = ["audio", "speaker"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["esp32"]
+DOMAIN = "graphic_equalizer"
 
 CONF_GRAPHIC_EQUALIZER_ID = "graphic_equalizer_id"
 CONF_BAND = "band"
@@ -22,7 +23,7 @@ CONF_ON_GAIN = "on_gain"
 CONF_ON_PRESET = "on_preset"
 CONF_ON_ENABLED = "on_enabled"
 
-graphic_equalizer_ns = cg.esphome_ns.namespace("graphic_equalizer")
+graphic_equalizer_ns = cg.esphome_ns.namespace(DOMAIN)
 GraphicEqualizerSpeaker = graphic_equalizer_ns.class_(
     "GraphicEqualizerSpeaker", cg.Component, speaker.Speaker
 )
@@ -40,51 +41,70 @@ PRESETS = {
 BANDS = {"63hz": 0, "250hz": 1, "1khz": 2, "4khz": 3, "16khz": 4}
 BAND_GAIN = cv.All(cv.decibel, cv.float_range(min=-12, max=12))
 PREAMP_GAIN = cv.All(cv.decibel, cv.float_range(min=-36, max=0))
-GainTrigger = graphic_equalizer_ns.class_(
-    "GainTrigger", automation.Trigger.template(cg.uint8, cg.float_)
+Curve = graphic_equalizer_ns.struct("Curve")
+STATE_PUBLISHER = cg.HubFunction(
+    "state",
+    cg.void,
+    [(Curve.const_ref(), "curve"), (cg.uint8, "preset"), (cg.bool_, "enabled")],
+    define="USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER",
 )
-PresetTrigger = graphic_equalizer_ns.class_(
-    "PresetTrigger", automation.Trigger.template(cg.uint8)
-)
-EnabledTrigger = graphic_equalizer_ns.class_(
-    "EnabledTrigger", automation.Trigger.template(cg.bool_)
-)
+CURVE = STATE_PUBLISHER.param("curve")
+PRESET = STATE_PUBLISHER.param("preset")
+ENABLED = STATE_PUBLISHER.param("enabled")
+RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
+DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 CONFIG_SCHEMA = cv.Schema({})
 ACTION_SCHEMA = automation.maybe_simple_id(
     {cv.GenerateID(): cv.use_id(GraphicEqualizerSpeaker)}
 )
 
-for name, call in (
-    ("enable", "set_enabled(true)"),
-    ("disable", "set_enabled(false)"),
-    ("reset", "reset()"),
-):
-    automation.register_apply_action(
-        f"graphic_equalizer.{name}", ACTION_SCHEMA, automation.ApplyCall(call)
-    )
+automation.register_apply_action(
+    "graphic_equalizer.enable", ACTION_SCHEMA, automation.ApplyCall("set_enabled(true)")
+)
 
-for name, key, validator, method, value_type in (
-    (
-        "select_preset",
-        CONF_PRESET,
-        cv.enum(PRESETS, lower=True),
-        "select_preset",
-        cg.uint8,
+automation.register_apply_action(
+    "graphic_equalizer.disable",
+    ACTION_SCHEMA,
+    automation.ApplyCall("set_enabled(false)"),
+)
+
+automation.register_apply_action(
+    "graphic_equalizer.reset", ACTION_SCHEMA, automation.ApplyCall("reset()")
+)
+
+automation.register_apply_action(
+    "graphic_equalizer.select_preset",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(GraphicEqualizerSpeaker),
+            cv.Required(CONF_PRESET): cv.templatable(cv.enum(PRESETS, lower=True)),
+        }
     ),
-    ("set_preamp", CONF_PREAMP, PREAMP_GAIN, "set_preamp", cg.float_),
-    ("save_preset", CONF_SLOT, cv.int_range(min=1, max=3), "save_preset", cg.uint8),
-):
-    automation.register_apply_action(
-        f"graphic_equalizer.{name}",
-        cv.Schema(
-            {
-                cv.GenerateID(): cv.use_id(GraphicEqualizerSpeaker),
-                cv.Required(key): cv.templatable(validator),
-            }
-        ),
-        automation.ApplyField(key, method, value_type),
-    )
+    automation.ApplyField(CONF_PRESET, "select_preset", cg.uint8),
+)
+
+automation.register_apply_action(
+    "graphic_equalizer.set_preamp",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(GraphicEqualizerSpeaker),
+            cv.Required(CONF_PREAMP): cv.templatable(PREAMP_GAIN),
+        }
+    ),
+    automation.ApplyField(CONF_PREAMP, "set_preamp", cg.float_),
+)
+
+automation.register_apply_action(
+    "graphic_equalizer.save_preset",
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(GraphicEqualizerSpeaker),
+            cv.Required(CONF_SLOT): cv.templatable(cv.int_range(min=1, max=3)),
+        }
+    ),
+    automation.ApplyField(CONF_SLOT, "save_preset", cg.uint8),
+)
 
 automation.register_apply_action(
     "graphic_equalizer.set_band_gain",
@@ -114,19 +134,12 @@ automation.register_apply_condition(
 )
 
 
-def unique_control(domain):
-    def validate(config):
-        matching = [
-            item
-            for item in fv.full_config.get().get(domain, [])
-            if item.get("platform") == "graphic_equalizer"
-            and item[CONF_GRAPHIC_EQUALIZER_ID] == config[CONF_GRAPHIC_EQUALIZER_ID]
-            and item.get("type") == config.get("type")
-        ]
-        if len(matching) > 1:
-            raise cv.Invalid(
-                f"Only one graphic_equalizer {domain} of each type may control a speaker"
-            )
-        return config
-
-    return validate
+def unique_control(domain: str):
+    return fv.unique_platform_key(
+        domain=domain,
+        platform=DOMAIN,
+        keys=(CONF_GRAPHIC_EQUALIZER_ID, CONF_TYPE)
+        if domain == "number"
+        else (CONF_GRAPHIC_EQUALIZER_ID,),
+        message=f"Only one graphic_equalizer {domain} of each type may control a speaker",
+    )

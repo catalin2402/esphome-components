@@ -7,7 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include <atomic>
-#include <string>
+#include <array>
 
 namespace esphome::sound_reactive_lights {
 enum ReactiveMode : uint8_t {
@@ -17,8 +17,15 @@ enum ReactiveMode : uint8_t {
   MODE_RAINBOW_PULSE = 3,
 };
 
-class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, public light::LightRemoteValuesListener {
+class SoundReactiveLightsSpeaker final : public Component,
+                                         public speaker::Speaker,
+                                         public light::LightRemoteValuesListener {
  public:
+#ifdef USE_SOUND_REACTIVE_LIGHTS_STATE_PUBLISHER
+  HUB_PUBLISHER(state, uint8_t, bool, float, float)
+  HUB_PUBLISHER(restore)
+  HUB_PUBLISHER(dump, const char *)
+#endif
   void set_output_speaker(speaker::Speaker *value) { this->output_ = value; }
   void set_light(light::LightState *value) { this->light_ = value; }
   void set_preference_key(uint32_t key) { this->preference_key_ = key; }
@@ -30,8 +37,9 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
     if (this->ready_)
       this->mode_preference_.save(&value);
     this->mode_callback_.call(value);
+    this->publish_state_();
   }
-  void add_mode_callback(std::function<void(uint8_t)> callback) { this->mode_callback_.add(std::move(callback)); }
+  template<typename F> void add_mode_callback(F &&callback) { this->mode_callback_.add(std::forward<F>(callback)); }
   void set_sensitivity(float value);
   float get_sensitivity() const { return this->sensitivity_; }
   void set_max_brightness(float value);
@@ -72,6 +80,7 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
   bool get_mute_state() override { return this->output_->get_mute_state(); }
 
  protected:
+  void publish_state_();
   struct Block {
     int16_t samples[256 * 2];
     uint32_t timestamp, rate;
@@ -84,9 +93,19 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
   void set_enabled_(bool value, bool restore_light);
   speaker::Speaker *output_{nullptr};
   light::LightState *light_{nullptr};
+  static constexpr size_t QUEUE_LENGTH = 4;
+  StaticQueue_t queue_control_{};
+  std::array<uint8_t, QUEUE_LENGTH * sizeof(Block)> queue_storage_{};
   QueueHandle_t queue_{nullptr};
   // Audio-producer scratch; the queue copies each block before this is reused.
   Block producer_block_{};
+  std::array<uint8_t, 4> partial_frame_{};
+  size_t partial_frame_size_{0};
+  size_t frame_phase_{0};
+  uint32_t producer_stream_generation_{0}, producer_analysis_generation_{0}, producer_rate_{0};
+  uint8_t producer_channels_{0};
+  // Only the producer touches partial frames. Main-loop transitions invalidate them by generation.
+  std::atomic<uint32_t> stream_generation_{0}, analysis_generation_{0};
   std::atomic<bool> enabled_{true};
   std::atomic<bool> shutting_down_{false};
   std::atomic<float> analysis_gain_{1.0f};
@@ -102,6 +121,6 @@ class SoundReactiveLightsSpeaker : public Component, public speaker::Speaker, pu
   float low_[2]{}, mid_low_[2]{}, level_{0}, bass_{0}, mid_{0}, treble_{0};
   bool ready_{false}, own_light_call_{false};
   light::LightColorValues saved_values_;
-  std::string saved_effect_{"None"};
+  uint32_t saved_effect_{0};
 };
 }  // namespace esphome::sound_reactive_lights

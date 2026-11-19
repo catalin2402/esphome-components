@@ -4,7 +4,7 @@
 
 namespace esphome::auriol_4ld5661 {
 
-static const char *const TAG = "auriol_4ld5661";
+ESPHOME_LOG_TAG(TAG, "auriol_4ld5661");
 
 void Auriol4LD5661Base::dump_config() {
   ESP_LOGCONFIG(TAG, "Auriol 4LD5661:");
@@ -26,7 +26,7 @@ optional<AuriolData> Auriol4LD5661Base::decode_packet_(remote_base::RemoteReceiv
 void AuriolSensor::dump_config() {
   Auriol4LD5661Base::dump_config();
   LOG_SENSOR("  ", "Sensor", this);
-  if (this->type_ == AuriolSensorType::RAIN)
+  if (this->type_ == AuriolSensorType::AURIOL_SENSOR_TYPE_RAIN)
     ESP_LOGCONFIG(TAG, "  Rain calibration: %.3f mm/tip", this->mm_per_tip_);
 }
 
@@ -35,13 +35,13 @@ bool AuriolSensor::on_receive(remote_base::RemoteReceiveData data) {
   if (!decoded.has_value())
     return false;
   switch (this->type_) {
-    case AuriolSensorType::TEMPERATURE:
+    case AuriolSensorType::AURIOL_SENSOR_TYPE_TEMPERATURE:
       this->publish_state(decoded->temperature_c);
       break;
-    case AuriolSensorType::RAIN:
+    case AuriolSensorType::AURIOL_SENSOR_TYPE_RAIN:
       this->publish_state(decoded->rain_mm(this->mm_per_tip_));
       break;
-    case AuriolSensorType::RAIN_TIPS:
+    case AuriolSensorType::AURIOL_SENSOR_TYPE_RAIN_TIPS:
       this->publish_state(decoded->rain);
       break;
   }

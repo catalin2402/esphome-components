@@ -4,7 +4,7 @@
 
 namespace esphome::cd405x {
 
-static const char *const TAG = "cd405x";
+ESPHOME_LOG_TAG(TAG, "cd405x");
 
 void CD405x::setup() {
   // Disconnect the signal path while initializing the address pins, when possible.

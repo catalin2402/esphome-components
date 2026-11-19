@@ -7,7 +7,7 @@
 
 namespace esphome::tinyusb_audio {
 
-static const char *const TAG = "tinyusb_audio";
+ESPHOME_LOG_TAG(TAG, "tinyusb_audio");
 static constexpr int32_t AUDIBLE_THRESHOLD = 64 << 16;
 static constexpr uint32_t SILENCE_TIMEOUT_MS = 750;
 TinyUSBAudio *global_tinyusb_audio = nullptr;
@@ -161,15 +161,15 @@ void TinyUSBAudio::fill_capture_packet() {
   portENTER_CRITICAL(&this->fifo_lock_);
   const size_t buffered = tu_fifo_count(&this->capture_fifo_);
   portEXIT_CRITICAL(&this->fifo_lock_);
-  if (buffered >= PACKET_BYTES * 20)
+  if (buffered >= PACKET_BYTES * std::min<size_t>(20, CAPTURE_FIFO_PACKETS / 2))
     this->capture_primed_ = true;
 
   // Use fractional frames per USB millisecond and trim the rate by a few
   // samples/sec when the microphone and USB clocks drift apart.
   uint32_t rate = TINYUSB_AUDIO_CAPTURE_RATE;
-  if (buffered > PACKET_BYTES * 32)
+  if (buffered > PACKET_BYTES * std::min<size_t>(32, CAPTURE_FIFO_PACKETS * 2 / 3))
     rate += 5;
-  else if (buffered < PACKET_BYTES * 10 && rate > 1000)
+  else if (buffered < PACKET_BYTES * std::min<size_t>(10, CAPTURE_FIFO_PACKETS / 4) && rate > 1000)
     rate -= 5;
   if constexpr (TINYUSB_AUDIO_CAPTURE_RATE % 1000 != 0) {
     constexpr uint32_t FLOOR_RATE = TINYUSB_AUDIO_CAPTURE_RATE / 1000 * 1000;

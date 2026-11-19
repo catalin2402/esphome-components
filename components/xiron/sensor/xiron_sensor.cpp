@@ -4,7 +4,7 @@
 
 namespace esphome::xiron {
 
-static const char *const TAG = "xiron.sensor";
+ESPHOME_LOG_TAG(TAG, "xiron.sensor");
 
 void XironSensor::dump_config() {
   XironBase::dump_config();
@@ -16,10 +16,10 @@ bool XironSensor::on_receive(remote_base::RemoteReceiveData data) {
   if (!decoded.has_value())
     return false;
   switch (this->type_) {
-    case XironSensorType::TEMPERATURE:
+    case XironSensorType::XIRON_SENSOR_TYPE_TEMPERATURE:
       this->publish_state(decoded->temperature_c);
       break;
-    case XironSensorType::HUMIDITY:
+    case XironSensorType::XIRON_SENSOR_TYPE_HUMIDITY:
       this->publish_state(decoded->humidity);
       break;
   }

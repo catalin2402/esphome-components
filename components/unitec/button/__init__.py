@@ -1,7 +1,8 @@
 import esphome.codegen as cg
-import esphome.config_validation as cv
 from esphome.components import button, remote_base
+import esphome.config_validation as cv
 from esphome.const import CONF_ADDRESS, CONF_CHANNEL, CONF_STATE
+from esphome.types import ConfigType
 
 from .. import PROTOCOL_SCHEMA, unitec_ns
 
@@ -20,9 +21,10 @@ CONFIG_SCHEMA = (
 )
 
 
-async def to_code(config):
+async def to_code(config: ConfigType) -> None:
     var = await button.new_button(config)
     await cg.register_component(var, config)
     await remote_base.register_transmittable(var, config)
-    for key in (CONF_ADDRESS, CONF_CHANNEL, CONF_STATE):
-        cg.add(getattr(var, f"set_{key}")(config[key]))
+    cg.add(var.set_address(config[CONF_ADDRESS]))
+    cg.add(var.set_channel(config[CONF_CHANNEL]))
+    cg.add(var.set_state(config[CONF_STATE]))

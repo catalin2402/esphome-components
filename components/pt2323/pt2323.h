@@ -6,21 +6,33 @@
 
 namespace esphome::pt2323 {
 
-class PT2323 : public Component, public i2c::I2CDevice {
+class PT2323 final : public Component, public i2c::I2CDevice {
  public:
+#ifdef USE_PT2323_STATE_PUBLISHER
+  HUB_PUBLISHER(state)
+  HUB_PUBLISHER(restore)
+  HUB_PUBLISHER(dump, const char *)
+#endif
   void dump_config() override;
   void setup() override;
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
-  void add_on_state_callback(std::function<void()> &&callback) { this->state_callback_.add(std::move(callback)); }
-  void set_defaults();
-  void add_on_input_callback(std::function<void(int)> &&callback) { this->input_callback_.add(std::move(callback)); }
-  void add_on_enhance_callback(std::function<void(bool)> &&callback) {
-    this->enhance_callback_.add(std::move(callback));
+  template<typename F> void add_on_state_callback(F &&callback) {
+    this->state_callback_.add(std::forward<F>(callback));
   }
-  void add_on_boost_callback(std::function<void(bool)> &&callback) { this->boost_callback_.add(std::move(callback)); }
-  void add_on_mute_callback(std::function<void(bool)> &&callback) { this->mute_callback_.add(std::move(callback)); }
-  void add_on_channel_mute_callback(std::function<void(int, bool)> &&callback) {
-    this->channel_mute_callback_.add(std::move(callback));
+  template<typename F> void add_on_dump_callback(F &&callback) { this->dump_callback_.add(std::forward<F>(callback)); }
+  void set_defaults();
+  template<typename F> void add_on_input_callback(F &&callback) {
+    this->input_callback_.add(std::forward<F>(callback));
+  }
+  template<typename F> void add_on_enhance_callback(F &&callback) {
+    this->enhance_callback_.add(std::forward<F>(callback));
+  }
+  template<typename F> void add_on_boost_callback(F &&callback) {
+    this->boost_callback_.add(std::forward<F>(callback));
+  }
+  template<typename F> void add_on_mute_callback(F &&callback) { this->mute_callback_.add(std::forward<F>(callback)); }
+  template<typename F> void add_on_channel_mute_callback(F &&callback) {
+    this->channel_mute_callback_.add(std::forward<F>(callback));
   }
   void set_input(int input);
   void set_enhance(bool enhance);
@@ -36,19 +48,24 @@ class PT2323 : public Component, public i2c::I2CDevice {
   bool get_channel_mute(uint8_t channel) const {
     return channel >= 1 && channel <= 6 && this->channels_muted_[channel - 1];
   }
+  bool is_channel_muted(int channel) const {
+    return channel >= 1 && channel <= 6 && (this->mute_ || this->get_channel_mute(channel));
+  }
 
  protected:
+  void publish_state_();
   uint8_t input_{0};
   bool enhance_{false};
   bool boost_{false};
   bool mute_{false};
   void send_data_();
-  CallbackManager<void()> state_callback_;
-  CallbackManager<void(int)> input_callback_;
-  CallbackManager<void(bool)> enhance_callback_;
-  CallbackManager<void(bool)> boost_callback_;
-  CallbackManager<void(bool)> mute_callback_;
-  CallbackManager<void(int, bool)> channel_mute_callback_;
+  LazyCallbackManager<void()> state_callback_;
+  LazyCallbackManager<void(int)> input_callback_;
+  LazyCallbackManager<void(bool)> enhance_callback_;
+  LazyCallbackManager<void(bool)> boost_callback_;
+  LazyCallbackManager<void(bool)> mute_callback_;
+  LazyCallbackManager<void(int, bool)> channel_mute_callback_;
+  LazyCallbackManager<void(const char *)> dump_callback_;
   bool initialized_{false};
   bool channels_muted_[6]{false, false, false, false, false, false};
 };
