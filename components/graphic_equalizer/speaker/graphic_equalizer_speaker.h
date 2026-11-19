@@ -32,9 +32,11 @@ struct Curve {
 class GraphicEqualizerSpeaker final : public Component, public speaker::Speaker {
  public:
 #ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
-  HUB_PUBLISHER(state, const Curve &, uint8_t, bool)
-  HUB_PUBLISHER(restore)
-  HUB_PUBLISHER(dump, const char *)
+  void set_state_publisher(void (*publisher)(const Curve &, uint8_t, bool)) { this->state_publisher_ = publisher; }
+
+  void set_restore_publisher(void (*publisher)()) { this->restore_publisher_ = publisher; }
+
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
   void set_output_speaker(speaker::Speaker *output) { this->output_ = output; }
   void set_preference_key(uint32_t key) { this->preference_key_ = key; }
@@ -73,6 +75,11 @@ class GraphicEqualizerSpeaker final : public Component, public speaker::Speaker 
   bool get_mute_state() override { return this->output_->get_mute_state(); }
 
  protected:
+#ifdef USE_GRAPHIC_EQUALIZER_STATE_PUBLISHER
+  void (*state_publisher_)(const Curve &, uint8_t, bool){nullptr};
+  void (*restore_publisher_)(){nullptr};
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   void publish_state_();
   struct Settings {
     Curve curve{};

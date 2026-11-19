@@ -5,6 +5,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_ON_TAG, Framework
 from esphome.types import ConfigType
 
+from ._publisher import Publisher
+
 AUTO_LOAD = ["mifare_classic"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["esp32"]
@@ -20,11 +22,11 @@ BambuLabTags = bambu_lab_tags_ns.class_(
 )
 Spool = bambu_lab_tags_ns.struct("Spool")
 SpoolRef = Spool.operator("ref").operator("const")
-TAG_PUBLISHER = cg.HubFunction(
+TAG_PUBLISHER = Publisher(
     "tag", cg.void, [(SpoolRef, "spool")], define="USE_BAMBU_LAB_TAGS_TAG_PUBLISHER"
 )
 SPOOL = TAG_PUBLISHER.param("spool")
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 _CALLBACK_AUTOMATIONS = (
     automation.CallbackAutomation(

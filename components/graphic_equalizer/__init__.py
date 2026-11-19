@@ -7,6 +7,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_GAIN, CONF_PRESET, CONF_TYPE
 import esphome.final_validate as fv
 
+from ._publisher import Publisher
+
 AUTO_LOAD = ["audio", "speaker"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["esp32"]
@@ -42,7 +44,7 @@ BANDS = {"63hz": 0, "250hz": 1, "1khz": 2, "4khz": 3, "16khz": 4}
 BAND_GAIN = cv.All(cv.decibel, cv.float_range(min=-12, max=12))
 PREAMP_GAIN = cv.All(cv.decibel, cv.float_range(min=-36, max=0))
 Curve = graphic_equalizer_ns.struct("Curve")
-STATE_PUBLISHER = cg.HubFunction(
+STATE_PUBLISHER = Publisher(
     "state",
     cg.void,
     [(Curve.const_ref(), "curve"), (cg.uint8, "preset"), (cg.bool_, "enabled")],
@@ -51,8 +53,8 @@ STATE_PUBLISHER = cg.HubFunction(
 CURVE = STATE_PUBLISHER.param("curve")
 PRESET = STATE_PUBLISHER.param("preset")
 ENABLED = STATE_PUBLISHER.param("enabled")
-RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+RESTORE_PUBLISHER = Publisher("restore", cg.void, [])
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 CONFIG_SCHEMA = cv.Schema({})
 ACTION_SCHEMA = automation.maybe_simple_id(

@@ -5,6 +5,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_INPUT
 from esphome.types import ConfigType
 
+from ._publisher import Publisher
+
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 DOMAIN = "pt2323"
@@ -23,11 +25,9 @@ CONF_PT2323_ID = "pt2323_id"
 pt2323_ns = cg.esphome_ns.namespace(DOMAIN)
 PT2323 = pt2323_ns.class_("PT2323", cg.Component, i2c.I2CDevice)
 
-STATE_PUBLISHER = cg.HubFunction(
-    "state", cg.void, [], define="USE_PT2323_STATE_PUBLISHER"
-)
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
-RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
+STATE_PUBLISHER = Publisher("state", cg.void, [], define="USE_PT2323_STATE_PUBLISHER")
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+RESTORE_PUBLISHER = Publisher("restore", cg.void, [])
 
 
 _CALLBACK_AUTOMATIONS = (

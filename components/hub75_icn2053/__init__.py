@@ -2,24 +2,29 @@ from esphome import automation
 import esphome.codegen as cg
 from esphome.components import display
 import esphome.config_validation as cv
-from esphome.const import CONF_BRIGHTNESS, CONF_MAX, CONF_MIN
+from esphome.const import CONF_BRIGHTNESS
 from esphome.types import ConfigType
+
+from ._publisher import Publisher
 
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["esp32"]
 DOMAIN = "hub75_icn2053"
 
+CONF_MIN = "min"
+CONF_MAX = "max"
+
 hub75_icn2053_ns = cg.esphome_ns.namespace(DOMAIN)
 HUB75Display = hub75_icn2053_ns.class_("HUB75Display", display.DisplayBuffer)
 Hub75Pins = hub75_icn2053_ns.struct("Hub75Pins")
-STATE_PUBLISHER = cg.HubFunction(
+STATE_PUBLISHER = Publisher(
     "state",
     cg.void,
     [(cg.int_, "brightness")],
     define="USE_HUB75_ICN2053_STATE_PUBLISHER",
 )
 BRIGHTNESS = STATE_PUBLISHER.param("brightness")
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 BASE_SCHEMA = cv.Schema({cv.GenerateID(): cv.use_id(HUB75Display)})
 

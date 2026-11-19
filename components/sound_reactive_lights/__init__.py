@@ -6,6 +6,8 @@ from esphome.components import speaker
 import esphome.config_validation as cv
 from esphome.const import CONF_MODE
 
+from ._publisher import Publisher
+
 CONF_SOUND_REACTIVE_LIGHTS_ID = "sound_reactive_lights_id"
 CONF_SENSITIVITY = "sensitivity"
 CONF_MAX_BRIGHTNESS = "max_brightness"
@@ -28,7 +30,7 @@ MODES = {
     "spectrum": ReactiveMode.MODE_SPECTRUM,
     "rainbow_pulse": ReactiveMode.MODE_RAINBOW_PULSE,
 }
-STATE_PUBLISHER = cg.HubFunction(
+STATE_PUBLISHER = Publisher(
     "state",
     cg.void,
     [
@@ -43,8 +45,8 @@ MODE = STATE_PUBLISHER.param("mode")
 ENABLED = STATE_PUBLISHER.param("enabled")
 SENSITIVITY = STATE_PUBLISHER.param("sensitivity")
 MAX_BRIGHTNESS = STATE_PUBLISHER.param("max_brightness")
-RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+RESTORE_PUBLISHER = Publisher("restore", cg.void, [])
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 CONFIG_SCHEMA = cv.Schema({})
 

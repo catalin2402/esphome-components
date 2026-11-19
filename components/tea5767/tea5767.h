@@ -19,14 +19,15 @@ enum class Setting : uint8_t {
 class TEA5767 final : public PollingComponent, public i2c::I2CDevice {
  public:
 #ifdef USE_TEA5767_STATE_PUBLISHER
-  HUB_PUBLISHER(state)
-  HUB_PUBLISHER(restore)
+  void set_state_publisher(void (*publisher)()) { this->state_publisher_ = publisher; }
+
+  void set_restore_publisher(void (*publisher)()) { this->restore_publisher_ = publisher; }
 #endif
 #ifdef USE_TEA5767_STATUS_PUBLISHER
-  HUB_PUBLISHER(status, uint64_t, uint8_t, bool)
+  void set_status_publisher(void (*publisher)(uint64_t, uint8_t, bool)) { this->status_publisher_ = publisher; }
 #endif
 #if defined(USE_TEA5767_STATE_PUBLISHER) || defined(USE_TEA5767_STATUS_PUBLISHER)
-  HUB_PUBLISHER(dump, const char *)
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
   void dump_config() override;
   void setup() override;
@@ -86,6 +87,18 @@ class TEA5767 final : public PollingComponent, public i2c::I2CDevice {
   }
 
  protected:
+#ifdef USE_TEA5767_STATE_PUBLISHER
+  void (*state_publisher_)(){nullptr};
+#endif
+#ifdef USE_TEA5767_STATE_PUBLISHER
+  void (*restore_publisher_)(){nullptr};
+#endif
+#ifdef USE_TEA5767_STATUS_PUBLISHER
+  void (*status_publisher_)(uint64_t, uint8_t, bool){nullptr};
+#endif
+#if defined(USE_TEA5767_STATE_PUBLISHER) || defined(USE_TEA5767_STATUS_PUBLISHER)
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   void publish_state_();
   void set_setting_(Setting setting, bool enabled);
   bool save_registers_();

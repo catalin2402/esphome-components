@@ -5,6 +5,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_ID as CONF_ID, CONF_OFFSET, CONF_VOLUME
 from esphome.types import ConfigType
 
+from ._publisher import Publisher
+
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 DOMAIN = "pt2258"
@@ -21,10 +23,8 @@ CONF_PT2258_ID = "pt2258_id"
 pt2258_ns = cg.esphome_ns.namespace(DOMAIN)
 PT2258 = pt2258_ns.class_("PT2258", cg.Component, i2c.I2CDevice)
 
-STATE_PUBLISHER = cg.HubFunction(
-    "state", cg.void, [], define="USE_PT2258_STATE_PUBLISHER"
-)
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+STATE_PUBLISHER = Publisher("state", cg.void, [], define="USE_PT2258_STATE_PUBLISHER")
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
 
 
 _CALLBACK_AUTOMATIONS = (

@@ -13,8 +13,9 @@ namespace esphome::hub75_icn2053 {
 class HUB75Display final : public display::DisplayBuffer {
  public:
 #ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
-  HUB_PUBLISHER(state, int)
-  HUB_PUBLISHER(dump, const char *)
+  void set_state_publisher(void (*publisher)(int)) { this->state_publisher_ = publisher; }
+
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
 #ifdef USE_NUMBER
   void control_brightness(number::Number *entity, float value);
@@ -54,6 +55,10 @@ class HUB75Display final : public display::DisplayBuffer {
   display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
 
  protected:
+#ifdef USE_HUB75_ICN2053_STATE_PUBLISHER
+  void (*state_publisher_)(int){nullptr};
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   void draw_absolute_pixel_internal(int x, int y, Color color) override;
   int get_width_internal() override { return this->config_.panel_width * this->config_.chain_length_x; }
   int get_height_internal() override { return this->config_.panel_height * this->config_.chain_length_y; }

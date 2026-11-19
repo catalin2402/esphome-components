@@ -5,6 +5,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_FREQUENCY
 from esphome.types import ConfigType
 
+from ._publisher import Publisher
+
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["i2c"]
 DOMAIN = "tea5767"
@@ -32,12 +34,10 @@ CONF_STEREO_NOISE_CANCELING = "stereo_noise_canceling"
 CONF_HIGH_CUT_CONTROL = "high_cut_control"
 Setting = tea5767_ns.enum("Setting", is_class=True)
 
-STATE_PUBLISHER = cg.HubFunction(
-    "state", cg.void, [], define="USE_TEA5767_STATE_PUBLISHER"
-)
-DUMP_PUBLISHER = cg.HubFunction("dump", cg.void, [(cg.const_char_ptr, "TAG")])
-RESTORE_PUBLISHER = cg.HubFunction("restore", cg.void, [])
-STATUS_PUBLISHER = cg.HubFunction(
+STATE_PUBLISHER = Publisher("state", cg.void, [], define="USE_TEA5767_STATE_PUBLISHER")
+DUMP_PUBLISHER = Publisher("dump", cg.void, [(cg.const_char_ptr, "TAG")])
+RESTORE_PUBLISHER = Publisher("restore", cg.void, [])
+STATUS_PUBLISHER = Publisher(
     "status",
     cg.void,
     [(cg.uint64, "frequency"), (cg.uint8, "level"), (cg.bool_, "stereo")],

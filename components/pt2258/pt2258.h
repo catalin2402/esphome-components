@@ -14,8 +14,9 @@ namespace esphome::pt2258 {
 class PT2258 final : public Component, public i2c::I2CDevice {
  public:
 #ifdef USE_PT2258_STATE_PUBLISHER
-  HUB_PUBLISHER(state)
-  HUB_PUBLISHER(dump, const char *)
+  void set_state_publisher(void (*publisher)()) { this->state_publisher_ = publisher; }
+
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
   void dump_config() override;
   void setup() override;
@@ -48,6 +49,10 @@ class PT2258 final : public Component, public i2c::I2CDevice {
 #endif
 
  protected:
+#ifdef USE_PT2258_STATE_PUBLISHER
+  void (*state_publisher_)(){nullptr};
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   void publish_state_();
   void send_data_();
   void notify_volume_changes_(const std::array<int, 7> &previous);

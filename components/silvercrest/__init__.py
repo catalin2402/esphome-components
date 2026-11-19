@@ -4,6 +4,8 @@ import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_ID, CONF_STATE
 from esphome.types import ConfigType
 
+from ._publisher import Publisher
+
 CODEOWNERS = ["@catalin2402"]
 AUTO_LOAD = ["remote_base"]
 DOMAIN = "silvercrest"
@@ -25,7 +27,7 @@ SilvercrestDumper = silvercrest_ns.class_(
     "SilvercrestDumper", remote_base.RemoteReceiverDumperBase
 )
 
-DUMP_PUBLISHER = cg.HubFunction(
+DUMP_PUBLISHER = Publisher(
     "dump",
     cg.void,
     [(cg.const_char_ptr, "TAG")],

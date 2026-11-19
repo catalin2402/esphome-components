@@ -9,9 +9,11 @@ namespace esphome::pt2323 {
 class PT2323 final : public Component, public i2c::I2CDevice {
  public:
 #ifdef USE_PT2323_STATE_PUBLISHER
-  HUB_PUBLISHER(state)
-  HUB_PUBLISHER(restore)
-  HUB_PUBLISHER(dump, const char *)
+  void set_state_publisher(void (*publisher)()) { this->state_publisher_ = publisher; }
+
+  void set_restore_publisher(void (*publisher)()) { this->restore_publisher_ = publisher; }
+
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
   void dump_config() override;
   void setup() override;
@@ -53,6 +55,11 @@ class PT2323 final : public Component, public i2c::I2CDevice {
   }
 
  protected:
+#ifdef USE_PT2323_STATE_PUBLISHER
+  void (*state_publisher_)(){nullptr};
+  void (*restore_publisher_)(){nullptr};
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   void publish_state_();
   uint8_t input_{0};
   bool enhance_{false};

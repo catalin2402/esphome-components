@@ -14,13 +14,18 @@ class BambuLabTags final : public Component, public mifare_classic::MifareClassi
   void setup() override;
   void dump_config() override;
 #ifdef USE_BAMBU_LAB_TAGS_TAG_PUBLISHER
-  HUB_PUBLISHER(tag, const Spool &)
-  HUB_PUBLISHER(dump, const char *)
+  void set_tag_publisher(void (*publisher)(const Spool &)) { this->tag_publisher_ = publisher; }
+
+  void set_dump_publisher(void (*publisher)(const char *)) { this->dump_publisher_ = publisher; }
 #endif
   void on_mifare_classic(mifare_classic::MifareClassicReader &reader, const nfc::NfcTagUid &uid) override;
   template<typename F> void add_on_tag_callback(F &&callback) { this->callbacks_.add(std::forward<F>(callback)); }
 
  protected:
+#ifdef USE_BAMBU_LAB_TAGS_TAG_PUBLISHER
+  void (*tag_publisher_)(const Spool &){nullptr};
+  void (*dump_publisher_)(const char *){nullptr};
+#endif
   Spool spool_;
   LazyCallbackManager<void(const Spool &)> callbacks_;
 };
