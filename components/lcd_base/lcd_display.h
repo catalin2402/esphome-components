@@ -110,7 +110,7 @@ template<typename... Ts> class LCDDisplayPageShowAction final : public Action<Ts
  public:
   TEMPLATABLE_VALUE(LCDDisplayPage *, page)
 
-  void play(Ts... x) override {
+  void play(const Ts &...x) override {
     auto *page = this->page_.value(x...);
     if (page != nullptr) {
       page->show();
