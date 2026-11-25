@@ -15,6 +15,7 @@ External ESPHome components maintained by
 | [graphic_equalizer](components/graphic_equalizer/) | Five-band speaker equalizer with saved user presets |
 | [hub75_icn2053](components/hub75_icn2053/) | ICN2053 HUB75 RGB matrix display |
 | [lcd_base](components/lcd_base/) | Local override of base ESPHome LCD support | ESPHome base |
+| [lcd_pcf8574_optimised](components/lcd_pcf8574_optimised/) | PCF8574 LCD driver that writes only changed characters |
 | [mifare_classic](components/mifare_classic/) | Shared MIFARE Classic reader interface |
 | [pn532](components/pn532/) | PN532 override with MIFARE Classic reader support |
 | [pt2258](components/pt2258/) | Six-channel volume controller |
