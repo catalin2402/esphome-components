@@ -20,6 +20,7 @@ from .. import (
     register_auriol,
 )
 
+AUTO_LOAD = ["auriol_4ld5661"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 AuriolSensor = auriol_4ld5661_ns.class_(

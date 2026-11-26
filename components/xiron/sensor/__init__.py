@@ -13,6 +13,7 @@ from esphome.types import ConfigType
 
 from .. import CONF_XIRON_ID, XironBase, register_xiron, xiron_ns
 
+AUTO_LOAD = ["xiron"]
 CODEOWNERS = ["@catalin2402"]
 DEPENDENCIES = ["remote_receiver"]
 XironSensor = xiron_ns.class_("XironSensor", XironBase, sensor.Sensor)

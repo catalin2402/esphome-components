@@ -23,6 +23,7 @@ CONF_ON_BRIGHTNESS = "on_brightness"
 CONF_ON_READY = "on_ready"
 CONF_ON_ERROR = "on_error"
 
+AUTO_LOAD = ["hub75_icn2053"]
 CODEOWNERS = ["@catalin2402"]
 
 DEPENDENCIES = ["esp32"]
